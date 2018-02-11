@@ -34,7 +34,13 @@ pub struct Deployment {
     message: String,
 }
 
-fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
+pub struct DeploymentsInfo {
+    deployments: Vec<Deployment>,
+    version: VersionHash,
+    message: String,
+}
+
+fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Result<Option<DeploymentsInfo>, Error> {
     let mut blob_id_by_deployment = HashMap::new();
     let mut deployments = HashMap::<String, Deployment>::new();
 
@@ -42,6 +48,11 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
     let head = repo.find_reference("refs/dm_head")
         .context("refs/dm_head not found")?;
     let head_commit = head.peel_to_commit()?;
+
+    if last_version.map(|id| id == head_commit.id()).unwrap_or(false) {
+        return Ok(None);
+    }
+
     let tree = head.peel_to_tree()?;
     let prod_deployments_obj = tree.get_path(Path::new("prod/deployments"))
         .context("prod/deployments not found")?
@@ -75,6 +86,8 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
     let mut revwalk = repo.revwalk()?;
 
     revwalk.push(head_commit.id())?;
+
+    // TODO: remove deployments that didn't change since last_version?
 
     for rev_result in revwalk {
         let commit = repo.find_commit(rev_result?)?;
@@ -116,7 +129,13 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
         }
     }
 
-    Ok(deployments.into_iter().map(|(_, v)| v).collect())
+    let result = DeploymentsInfo {
+        deployments: deployments.into_iter().map(|(_, v)| v).collect(),
+        version: head_commit.id(),
+        message: head_commit.message().unwrap_or("[invalid utf8]").to_string(),
+    };
+
+    Ok(Some(result))
 }
 
 fn update(repo: &Repository, url: &str) -> Result<(), Error> {
@@ -147,13 +166,16 @@ fn run() -> Result<(), Error> {
     let repo = init_or_open(checkout_path)?;
 
     let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
+    let mut last_version = None;
 
     loop {
         update(&repo, url)?;
 
-        let deployments = get_deployments(&repo)?;
+        if let Some(deployments) = get_deployments(&repo, last_version)? {
+            deployer.deploy(&deployments.deployments)?;
 
-        deployer.deploy(&deployments)?;
+            last_version = Some(deployments.version);
+        }
 
         thread::sleep(Duration::from_millis(1000));
         // return Ok(());
