@@ -142,7 +142,7 @@ fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
 }
 
 fn run() -> Result<(), Error> {
-    let url = "file:///home/florian/Projekte/privat/new-dm/versions";
+    let url = "../versions";
     let checkout_path = "./versions_checkout";
     let repo = init_or_open(checkout_path)?;
 
@@ -164,7 +164,10 @@ fn main() {
     match run() {
         Ok(()) => process::exit(0),
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{}\n{}", e, e.backtrace());
+            for cause in e.causes() {
+                eprintln!("caused by: {}", cause);
+            }
             process::exit(1);
         }
     }
