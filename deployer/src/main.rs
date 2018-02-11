@@ -31,6 +31,7 @@ pub struct Deployment {
     spec: DeploymentSpec,
     version: VersionHash,
     file_name: String,
+    message: String,
 }
 
 fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
@@ -40,7 +41,7 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
     // collect current versions of all deployments
     let head = repo.find_reference("refs/dm_head")
         .context("refs/dm_head not found")?;
-    let head_id = head.peel_to_commit()?.id();
+    let head_commit = head.peel_to_commit()?;
     let tree = head.peel_to_tree()?;
     let prod_deployments_obj = tree.get_path(Path::new("prod/deployments"))
         .context("prod/deployments not found")?
@@ -60,8 +61,9 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
             let name = spec.name.clone();
             let deployment = Deployment {
                 spec,
-                version: head_id,
-                file_name: entry.name().ok_or_else(|| format_err!("non-utf8 file name"))?.to_string()
+                version: head_commit.id(),
+                file_name: entry.name().ok_or_else(|| format_err!("non-utf8 file name"))?.to_string(),
+                message: head_commit.message().unwrap_or("[invalid utf8]").to_string()
             };
 
             blob_id_by_deployment.insert(name.clone(), blob.id());
@@ -72,7 +74,7 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
     // now walk back to find the oldest revision that contains each deployment
     let mut revwalk = repo.revwalk()?;
 
-    revwalk.push(head_id)?;
+    revwalk.push(head_commit.id())?;
 
     for rev_result in revwalk {
         let commit = repo.find_commit(rev_result?)?;
@@ -80,15 +82,18 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
 
         let prod_deployments_obj = tree.get_path(Path::new("prod/deployments"))
             .context("prod/deployments not found")?
-        .to_object(&repo)?;
+            .to_object(&repo)?;
         let prod_deployments = match prod_deployments_obj.into_tree() {
             Ok(t) => t,
             Err(_) => bail!("prod/deployments is not a tree!")
         };
 
         for (name, deployment) in deployments.iter_mut() {
-            let blob_id = *blob_id_by_deployment.get(name)
-                .expect("this should never happen");
+            let blob_id = if let Some(id) = blob_id_by_deployment.get(name) {
+                *id
+            } else {
+                continue
+            };
 
             let tree_entry = match prod_deployments.get_name(&deployment.file_name) {
                 Some(f) => f,
@@ -99,10 +104,16 @@ fn get_deployments(repo: &Repository) -> Result<Vec<Deployment>, Error> {
 
             if tree_entry.id() == blob_id {
                 deployment.version = commit.id();
+                deployment.message = commit.message().unwrap_or("[invalid utf8]").to_string();
+            } else {
+                // remove to stop looking at changes for this one
+                blob_id_by_deployment.remove(name);
             }
         }
 
-        // TODO stop when all deployments have changed
+        if blob_id_by_deployment.is_empty() {
+            break;
+        }
     }
 
     Ok(deployments.into_iter().map(|(_, v)| v).collect())
