@@ -1,0 +1,8 @@
+* deployer
+** TODO pull from versions repo, compare & deploy against mocked backend
+** TODO compare & deploy with real k8s
+** TODO integration test
+** TODO add structured logging
+* transition manager
+* aggregator
+* ui
