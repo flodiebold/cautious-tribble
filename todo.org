@@ -2,9 +2,12 @@
 ** DONE pull from versions repo, compare & deploy against mocked backend
    CLOSED: [2018-02-11 So 13:00]
 ** TODO compare & deploy with real k8s
+** TODO configuration
 ** TODO integration test
 ** TODO support multiple envs
 ** TODO add structured logging
+** TODO handle undeploying something
+is that a use case though?
 ** TODO improve error handling
  - handle some errors, instead of always crashing
 * transition manager

@@ -165,7 +165,10 @@ fn run() -> Result<(), Error> {
     let checkout_path = "./versions_checkout";
     let repo = init_or_open(checkout_path)?;
 
-    let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
+    // let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
+    let mut deployer: Box<deployment::Deployer> = Box::new(
+        deployment::kubernetes::KubernetesDeployer::new("/home/florian/.kube/config")?
+    );
     let mut last_version = None;
 
     loop {
