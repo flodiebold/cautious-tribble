@@ -5,11 +5,26 @@
 ** TODO configuration
 ** TODO integration test
 ** TODO support multiple envs
-** TODO add structured logging
 ** TODO handle undeploying something
 is that a use case though?
 ** TODO improve error handling
  - handle some errors, instead of always crashing
+** TODO add health resource
+** TODO add status resource
 * transition manager
+** DONE pull from versions repo regularly
+   CLOSED: [2018-02-12 Mo 23:03]
+** TODO transition from one env to the other
+** TODO add per-service locks
+** TODO add per-env locks; don't apply transitions where the target is locked
+** TODO add deployer status condition
+** TODO add unlock after transition
+** TODO add scheduled transitions
+** TODO add jenkins checks
+** TODO add health & status resources
+** TODO configuration
 * aggregator
 * ui
+* general
+** TODO set up rustfmt
+** TODO add structured logging
