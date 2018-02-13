@@ -14,7 +14,8 @@ is that a use case though?
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
-** TODO transition from one env to the other
+** DONE transition from one env to the other
+   CLOSED: [2018-02-13 Di 23:21]
 ** TODO add per-service locks
 ** TODO add per-env locks; don't apply transitions where the target is locked
 ** TODO add deployer status condition
@@ -22,6 +23,8 @@ is that a use case though?
 ** TODO add scheduled transitions
 ** TODO add jenkins checks
 ** TODO add health & status resources
+** TODO refactor git handling code
+** TODO handle remote callbacks during push and use push_update_reference
 ** TODO configuration
 * aggregator
 * ui

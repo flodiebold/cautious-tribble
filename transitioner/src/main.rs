@@ -11,7 +11,7 @@ use std::process;
 
 use failure::{ResultExt, Error};
 
-use git2::{Repository};
+use git2::{Repository, ObjectType, Signature};
 
 // TODO maybe move these to a common library
 fn update(repo: &Repository, url: &str) -> Result<(), Error> {
@@ -20,6 +20,19 @@ fn update(repo: &Repository, url: &str) -> Result<(), Error> {
 
     remote.fetch(&["+refs/heads/master:refs/dm_head"], None, None)
         .context("fetch failed")?;
+
+    Ok(())
+}
+
+fn push(repo: &Repository, url: &str) -> Result<(), Error> {
+    let mut remote = repo.remote_anonymous(url)
+        .context("creating remote failed")?;
+
+    // TODO according to git2 documentation: Note that you'll likely want to use
+    // RemoteCallbacks and set push_update_reference to test whether all the
+    // references were pushed successfully.
+    remote.push(&["+refs/dm_head:refs/heads/master"], None)
+        .context("push failed")?;
 
     Ok(())
 }
@@ -44,19 +57,83 @@ struct Transition {
 enum TransitionResult {
     /// The transition was performed successfully.
     Success,
-    /// The transition was not applicable for some reason.
+    /// The transition was not applicable for some reason, or there was no change.
     Skipped,
     /// The transition would be applicable, but is currently blocked and needs
     /// to be tried again.
-    Blocked
+    Blocked,
+    /// A precondition check was negative.
+    CheckFailed,
 }
 
 fn run_transition(transition: &Transition, repo: &Repository) -> Result<TransitionResult, Error> {
+    let head = repo.find_reference("refs/dm_head")
+        .context("refs/dm_head not found")?;
+    let head_commit = head.peel_to_commit()?;
+
+    let tree = head.peel_to_tree()?;
+    let source_deployments_obj = tree.get_path(&Path::new(&transition.source).join("deployments"))
+        .context("source deployments folder not found")?
+        .to_object(&repo)?;
+    let source_deployments = match source_deployments_obj.into_tree() {
+        Ok(t) => t,
+        Err(_) => bail!("(source)/deployments is not a tree!")
+    };
+
+    let target_deployments_obj = tree.get_path(&Path::new(&transition.target).join("deployments"))
+        .context("target deployments folder not found")?
+        .to_object(&repo)?;
+    let target_deployments = match target_deployments_obj.into_tree() {
+        Ok(t) => t,
+        Err(_) => bail!("(target)/deployments is not a tree!")
+    };
+    let mut target_deployments_builder = repo.treebuilder(Some(&target_deployments))?;
+
+    // copy over blob references
+    for entry in source_deployments.iter() {
+        if entry.kind() == Some(ObjectType::Blob) {
+            // find corresponding entry in target deployments
+            target_deployments_builder.insert(entry.name_bytes(), entry.id(), entry.filemode())?;
+        }
+    }
+
+    let new_target_deployments_oid = target_deployments_builder.write()?;
+
+    if new_target_deployments_oid == target_deployments.id() {
+        // nothing changed
+        return Ok(TransitionResult::Skipped);
+    }
+
+    // TODO refactor this:
+    let old_target_entry = tree.get_name(&transition.target).unwrap();
+    let mut target_tree_builder = repo.treebuilder(Some(old_target_entry.to_object(repo)?.as_tree().unwrap()))?;
+    target_tree_builder.insert("deployments", new_target_deployments_oid, old_target_entry.filemode())?;
+    let new_target_tree_oid = target_tree_builder.write()?;
+
+    let mut tree_builder = repo.treebuilder(Some(&tree))?;
+    tree_builder.insert(&transition.target, new_target_tree_oid, old_target_entry.filemode())?;
+    let new_tree_oid = tree_builder.write()?;
+    let new_tree = repo.find_tree(new_tree_oid)?;
+
+    let signature = Signature::now("DM Transitioner", "n/a")?;
+
+    let commit = repo.commit(
+        Some("refs/dm_head"),
+        &signature,
+        &signature,
+        &format!("Mirroring {} to {}", transition.source, transition.target),
+        &new_tree,
+        &[&head_commit]
+    )?;
+
+    let url = "../versions.git";
+    push(repo, url)?;
+
     Ok(TransitionResult::Success)
 }
 
 fn run() -> Result<(), Error> {
-    let url = "../versions";
+    let url = "../versions.git";
     let checkout_path = "./versions_checkout";
     let repo = init_or_open(checkout_path)?;
 
@@ -74,9 +151,14 @@ fn run() -> Result<(), Error> {
             match run_transition(&transition, &repo) {
                 Ok(TransitionResult::Success) => break,
                 Ok(TransitionResult::Skipped) => continue,
+                // TODO we could instead just block transitions that touch the source env
                 Ok(TransitionResult::Blocked) => break,
+                Ok(TransitionResult::CheckFailed) => continue,
                 Err(error) => {
-                    eprintln!("Transition failed: {}", error);
+                    eprintln!("Transition failed: {}\n{}", error, error.backtrace());
+                    for cause in error.causes() {
+                        eprintln!("caused by: {}", cause);
+                    }
                     break
                 }
             }
