@@ -1,36 +1,32 @@
 #[macro_use] extern crate failure;
 extern crate git2;
 extern crate kubeclient;
-extern crate serde;
-#[macro_use] extern crate serde_derive;
-extern crate serde_yaml;
+// extern crate serde;
+// extern crate serde_yaml;
 
+use std::ffi::OsStr;
 use std::time::Duration;
 use std::thread;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::collections::HashMap;
+use std::os::unix::ffi::OsStrExt;
 
 use failure::{ResultExt, Error};
 
-use git2::{Repository};
+use git2::{Repository, ErrorCode};
 
 mod deployment;
 
 /// The hash of a commit in the versions repo
 pub type VersionHash = git2::Oid;
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub struct DeploymentSpec {
-    name: String,
-    tag: Option<String>,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deployment {
-    spec: DeploymentSpec,
+    name: String,
+    file_name: PathBuf,
+    content: Vec<u8>,
     version: VersionHash,
-    file_name: String,
     message: String,
 }
 
@@ -66,14 +62,17 @@ fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Resu
         let obj = entry.to_object(&repo)?;
 
         if let Some(blob) = obj.as_blob() {
-            let spec = serde_yaml::from_slice::<DeploymentSpec>(blob.content())
-                .context("could not deserialize deployment")?;
-
-            let name = spec.name.clone();
+            let content = blob.content().to_owned();
+            let file_name = Path::new(OsStr::from_bytes(entry.name_bytes())).to_path_buf();
+            let name = file_name.file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| format_err!("Invalid file name {:?}", file_name))?
+                .to_string();
             let deployment = Deployment {
-                spec,
+                name: name.clone(),
+                file_name,
+                content,
                 version: head_commit.id(),
-                file_name: entry.name().ok_or_else(|| format_err!("non-utf8 file name"))?.to_string(),
                 message: head_commit.message().unwrap_or("[invalid utf8]").to_string()
             };
 
@@ -108,11 +107,12 @@ fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Resu
                 continue
             };
 
-            let tree_entry = match prod_deployments.get_name(&deployment.file_name) {
-                Some(f) => f,
-                None => {
+            let tree_entry = match prod_deployments.get_path(&deployment.file_name) {
+                Ok(f) => f,
+                Err(ref e) if e.code() == ErrorCode::NotFound => {
                     continue
-                }
+                },
+                Err(e) => Err(e)?
             };
 
             if tree_entry.id() == blob_id {
@@ -161,7 +161,7 @@ fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
 }
 
 fn run() -> Result<(), Error> {
-    let url = "../versions";
+    let url = "../versions.git";
     let checkout_path = "./versions_checkout";
     let repo = init_or_open(checkout_path)?;
 

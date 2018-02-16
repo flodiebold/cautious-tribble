@@ -35,18 +35,18 @@ impl KubernetesDeployer {
             // TODO don't need to do exists, just do proper error handling in kubeclient and handle 404
             let exists = self.client
                 .deployments()
-                .exists(&d.spec.name)
+                .exists(&d.name)
                 .map_err(SyncFailure::new)?;
 
             if !exists {
-                eprintln!("Deployment {} does not exist", d.spec.name);
-                result.insert(d.spec.name.clone(), DeploymentState::NotDeployed);
+                eprintln!("Deployment {} does not exist", d.name);
+                result.insert(d.name.clone(), DeploymentState::NotDeployed);
                 continue;
             }
 
             let kube_deployment = self.client
                 .deployments()
-                .get(&d.spec.name)
+                .get(&d.name)
                 .map_err(SyncFailure::new)?;
 
             let version_annotation = kube_deployment
@@ -56,11 +56,11 @@ impl KubernetesDeployer {
                 .and_then(|ann| ann.get(VERSION_ANNOTATION));
 
             let version = if let Some(v) = version_annotation { v } else {
-                eprintln!("Deployment {} does not have a version annotation! Ignoring.", d.spec.name);
+                eprintln!("Deployment {} does not have a version annotation! Ignoring.", d.name);
                 continue;
             };
 
-            result.insert(d.spec.name.clone(), DeploymentState::Deployed(version.parse()?));
+            result.insert(d.name.clone(), DeploymentState::Deployed(version.parse()?));
         }
 
         Ok(result)
@@ -72,8 +72,8 @@ impl Deployer for KubernetesDeployer {
         let current_state = self.retrieve_current_state(deployments)?;
 
         for d in deployments {
-            eprintln!("looking at {}", d.spec.name);
-            let deployed_version = if let Some(v) = current_state.get(&d.spec.name) { *v } else {
+            eprintln!("looking at {}", d.name);
+            let deployed_version = if let Some(v) = current_state.get(&d.name) { *v } else {
                 eprintln!("no known version, not deploying");
                 continue;
             };
@@ -83,7 +83,7 @@ impl Deployer for KubernetesDeployer {
                 continue;
             }
 
-            eprintln!("Deploying {} version {} (tag: {:?})", d.spec.name, d.version, d.spec.tag);
+            eprintln!("Deploying {} version {} with content {}", d.name, d.version, ::std::str::from_utf8(&d.content)?);
         }
 
         Ok(())

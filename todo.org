@@ -31,3 +31,4 @@ is that a use case though?
 * general
 ** TODO set up rustfmt
 ** TODO add structured logging
+** TODO slack integration

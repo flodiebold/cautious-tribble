@@ -25,20 +25,20 @@ impl DummyDeployer {
 impl Deployer for DummyDeployer {
     fn deploy(&mut self, deployments: &[Deployment]) -> Result<(), Error> {
         for d in deployments {
-            if let Some(current_deployment) = self.current.get(&d.spec.name) {
+            if let Some(current_deployment) = self.current.get(&d.name) {
                 if current_deployment.version != d.version {
-                    eprintln!("Deployment {}: tag {:?} ({}) -> tag {:?} ({}); message: {}",
-                              d.spec.name,
-                              current_deployment.spec.tag, current_deployment.version,
-                              d.spec.tag, d.version,
+                    eprintln!("Deployment {}: {} -> {}; message: {}",
+                              d.name,
+                              current_deployment.version,
+                              d.version,
                               d.message);
                 }
             } else {
-                eprintln!("Deployment {}: -> tag {:?} ({}); message: {}",
-                          d.spec.name, d.spec.tag, d.version, d.message);
+                eprintln!("Deployment {}: -> {}; message: {}",
+                          d.name, d.version, d.message);
             }
 
-            self.current.insert(d.spec.name.clone(), d.clone());
+            self.current.insert(d.name.clone(), d.clone());
         }
 
         Ok(())

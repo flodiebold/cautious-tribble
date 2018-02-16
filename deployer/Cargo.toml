@@ -6,8 +6,8 @@ authors = ["Florian Diebold <flodiebold@gmail.com>"]
 [dependencies]
 failure = "0.1"
 git2 = "0.6"
-serde = "1.0"
-serde_derive = "1.0"
-serde_yaml = "0.7"
+# serde = "1.0"
+# serde_derive = "1.0"
+# serde_yaml = "0.7"
 
 kubeclient = "0.1"
