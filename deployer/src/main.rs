@@ -1,8 +1,8 @@
 #[macro_use] extern crate failure;
 extern crate git2;
 extern crate kubeclient;
-// extern crate serde;
-// extern crate serde_yaml;
+extern crate serde;
+extern crate serde_yaml;
 
 use std::ffi::OsStr;
 use std::time::Duration;
@@ -175,7 +175,16 @@ fn run() -> Result<(), Error> {
         update(&repo, url)?;
 
         if let Some(deployments) = get_deployments(&repo, last_version)? {
-            deployer.deploy(&deployments.deployments)?;
+            let result = deployer.deploy(&deployments.deployments);
+
+            if let Err(e) = result {
+                // TODO: for kubernetes failures, maybe instead mark the service as failing to deploy and don't try again?
+                eprintln!("Deployment failed: {}\n{}", e, e.backtrace());
+                for cause in e.causes() {
+                    eprintln!("caused by: {}", cause);
+                }
+                continue;
+            }
 
             last_version = Some(deployments.version);
         }

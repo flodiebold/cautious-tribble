@@ -1,16 +1,19 @@
 * deployer
 ** DONE pull from versions repo, compare & deploy against mocked backend
    CLOSED: [2018-02-11 So 13:00]
-** TODO compare & deploy with real k8s
+** DONE compare & deploy with real k8s
+   CLOSED: [2018-02-18 So 18:42]
+** TODO allow running deployment content through filter before applying it
 ** TODO configuration
-** TODO integration test
 ** TODO support multiple envs
+** TODO configure kubectl correctly for the environment
+** TODO integration test
 ** TODO handle undeploying something
 is that a use case though?
 ** TODO improve error handling
- - handle some errors, instead of always crashing
 ** TODO add health resource
 ** TODO add status resource
+** TODO use k8s api instead of relying on kubectl for deployment
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
