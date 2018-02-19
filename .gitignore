@@ -2,4 +2,5 @@
 /versions
 /deployer/versions_checkout
 /transitioner/versions_checkout
+*/target
 /versions.git

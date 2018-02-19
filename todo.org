@@ -3,6 +3,7 @@
    CLOSED: [2018-02-11 So 13:00]
 ** DONE compare & deploy with real k8s
    CLOSED: [2018-02-18 So 18:42]
+** TODO when a deployment fails, continue deploying the rest of the services
 ** TODO allow running deployment content through filter before applying it
 ** TODO configuration
 ** TODO support multiple envs
@@ -10,6 +11,7 @@
 ** TODO integration test
 ** TODO handle undeploying something
 is that a use case though?
+** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
 ** TODO improve error handling
 ** TODO add health resource
 ** TODO add status resource
@@ -30,8 +32,14 @@ is that a use case though?
 ** TODO handle remote callbacks during push and use push_update_reference
 ** TODO configuration
 * aggregator
+** TODO fetch commit histories from repos
+** TODO get current k8s state
+** TODO watch for changes in versions repo
+** TODO notify about changes via websocket
 * ui
 * general
 ** TODO set up rustfmt
 ** TODO add structured logging
 ** TODO slack integration
+* refactoring
+** TODO factor out some common git helpers?

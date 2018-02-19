@@ -1,7 +1,9 @@
-#[macro_use] extern crate failure;
+#[macro_use]
+extern crate failure;
 extern crate git2;
 extern crate serde;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_yaml;
 
 use std::time::Duration;
@@ -9,16 +11,19 @@ use std::thread;
 use std::path::Path;
 use std::process;
 
-use failure::{ResultExt, Error};
+use failure::{Error, ResultExt};
 
-use git2::{Repository, ObjectType, Signature};
+use git2::{ObjectType, Repository, Signature};
+
+mod locks;
 
 // TODO maybe move these to a common library
 fn update(repo: &Repository, url: &str) -> Result<(), Error> {
     let mut remote = repo.remote_anonymous(url)
         .context("creating remote failed")?;
 
-    remote.fetch(&["+refs/heads/master:refs/dm_head"], None, None)
+    remote
+        .fetch(&["+refs/heads/master:refs/dm_head"], None, None)
         .context("fetch failed")?;
 
     Ok(())
@@ -31,7 +36,8 @@ fn push(repo: &Repository, url: &str) -> Result<(), Error> {
     // TODO according to git2 documentation: Note that you'll likely want to use
     // RemoteCallbacks and set push_update_reference to test whether all the
     // references were pushed successfully.
-    remote.push(&["+refs/dm_head:refs/heads/master"], None)
+    remote
+        .push(&["+refs/dm_head:refs/heads/master"], None)
         .context("push failed")?;
 
     Ok(())
@@ -39,21 +45,21 @@ fn push(repo: &Repository, url: &str) -> Result<(), Error> {
 
 fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
     let repo = if Path::new(checkout_path).is_dir() {
-        Repository::open(checkout_path)
-            .context("open failed")?
+        Repository::open(checkout_path).context("open failed")?
     } else {
-        Repository::init_bare(checkout_path)
-            .context("init --bare failed")?
+        Repository::init_bare(checkout_path).context("init --bare failed")?
     };
 
     Ok(repo)
 }
 
+#[derive(Debug)]
 struct Transition {
     source: String,
     target: String,
 }
 
+#[derive(Debug)]
 enum TransitionResult {
     /// The transition was performed successfully.
     Success,
@@ -67,6 +73,11 @@ enum TransitionResult {
 }
 
 fn run_transition(transition: &Transition, repo: &Repository) -> Result<TransitionResult, Error> {
+    let target_locks = locks::load_locks(repo, &transition.target)?;
+    if target_locks.env_lock.is_locked() {
+        return Ok(TransitionResult::Skipped);
+    }
+
     let head = repo.find_reference("refs/dm_head")
         .context("refs/dm_head not found")?;
     let head_commit = head.peel_to_commit()?;
@@ -77,7 +88,7 @@ fn run_transition(transition: &Transition, repo: &Repository) -> Result<Transiti
         .to_object(&repo)?;
     let source_deployments = match source_deployments_obj.into_tree() {
         Ok(t) => t,
-        Err(_) => bail!("(source)/deployments is not a tree!")
+        Err(_) => bail!("(source)/deployments is not a tree!"),
     };
 
     let target_deployments_obj = tree.get_path(&Path::new(&transition.target).join("deployments"))
@@ -85,7 +96,7 @@ fn run_transition(transition: &Transition, repo: &Repository) -> Result<Transiti
         .to_object(&repo)?;
     let target_deployments = match target_deployments_obj.into_tree() {
         Ok(t) => t,
-        Err(_) => bail!("(target)/deployments is not a tree!")
+        Err(_) => bail!("(target)/deployments is not a tree!"),
     };
     let mut target_deployments_builder = repo.treebuilder(Some(&target_deployments))?;
 
@@ -106,12 +117,21 @@ fn run_transition(transition: &Transition, repo: &Repository) -> Result<Transiti
 
     // TODO refactor this:
     let old_target_entry = tree.get_name(&transition.target).unwrap();
-    let mut target_tree_builder = repo.treebuilder(Some(old_target_entry.to_object(repo)?.as_tree().unwrap()))?;
-    target_tree_builder.insert("deployments", new_target_deployments_oid, old_target_entry.filemode())?;
+    let mut target_tree_builder =
+        repo.treebuilder(Some(old_target_entry.to_object(repo)?.as_tree().unwrap()))?;
+    target_tree_builder.insert(
+        "deployments",
+        new_target_deployments_oid,
+        old_target_entry.filemode(),
+    )?;
     let new_target_tree_oid = target_tree_builder.write()?;
 
     let mut tree_builder = repo.treebuilder(Some(&tree))?;
-    tree_builder.insert(&transition.target, new_target_tree_oid, old_target_entry.filemode())?;
+    tree_builder.insert(
+        &transition.target,
+        new_target_tree_oid,
+        old_target_entry.filemode(),
+    )?;
     let new_tree_oid = tree_builder.write()?;
     let new_tree = repo.find_tree(new_tree_oid)?;
 
@@ -123,7 +143,7 @@ fn run_transition(transition: &Transition, repo: &Repository) -> Result<Transiti
         &signature,
         &format!("Mirroring {} to {}", transition.source, transition.target),
         &new_tree,
-        &[&head_commit]
+        &[&head_commit],
     )?;
 
     let url = "../versions.git";
@@ -141,7 +161,7 @@ fn run() -> Result<(), Error> {
         Transition {
             source: "available".to_owned(),
             target: "prod".to_owned(),
-        }
+        },
     ];
 
     loop {
@@ -159,7 +179,7 @@ fn run() -> Result<(), Error> {
                     for cause in error.causes() {
                         eprintln!("caused by: {}", cause);
                     }
-                    break
+                    break;
                 }
             }
         }
