@@ -160,6 +160,10 @@ fn run() -> Result<(), Error> {
     let transitions = vec![
         Transition {
             source: "available".to_owned(),
+            target: "dev".to_owned(),
+        },
+        Transition {
+            source: "dev".to_owned(),
             target: "prod".to_owned(),
         },
     ];

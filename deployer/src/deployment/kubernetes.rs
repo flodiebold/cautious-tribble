@@ -10,6 +10,7 @@ use super::Deployer;
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
 pub struct KubernetesDeployer {
+    namespace: String,
     client: Kubernetes,
 }
 
@@ -20,11 +21,12 @@ enum DeploymentState {
 }
 
 impl KubernetesDeployer {
-    pub fn new(config: &str) -> Result<KubernetesDeployer, Error> {
+    pub fn new(config: &str, namespace: &str) -> Result<KubernetesDeployer, Error> {
         Ok(KubernetesDeployer {
+            namespace: namespace.to_owned(),
             client: Kubernetes::load_conf(config)
                 .map_err(SyncFailure::new)?
-                .namespace("default"),
+                .namespace(namespace),
         })
     }
 
@@ -114,7 +116,7 @@ impl KubernetesDeployer {
         use std::io::Write;
 
         let mut process = Command::new("kubectl")
-            .args(&["apply", "-f", "-"])
+            .args(&["apply", "--namespace", &self.namespace, "-f", "-"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

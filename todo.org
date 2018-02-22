@@ -5,10 +5,14 @@
    CLOSED: [2018-02-18 So 18:42]
 ** DONE when a deployment fails, continue deploying the rest of the services
    CLOSED: [2018-02-22 Do 21:15]
+** DONE support multiple envs
+   CLOSED: [2018-02-22 Do 22:38]
+ - deploy to different k8s namespaces
+** TODO support multiple clusters
+ - make sure kubectl apply uses same config...
 ** TODO allow running deployment content through filter before applying it
 ** TODO configuration
-** TODO support multiple envs
-** TODO just use blob OIDs instead of earliest commit
+** TODO just use blob OIDs instead of earliest commit?
 ** TODO configure kubectl correctly for the environment
 ** TODO integration test
 ** TODO handle undeploying something

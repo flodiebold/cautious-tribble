@@ -33,22 +33,33 @@ pub struct Deployment {
 
 pub struct DeploymentsInfo {
     deployments: Vec<Deployment>,
-    version: VersionHash,
-    message: String,
 }
 
 fn get_subtree<'repo>(
     repo: &'repo Repository,
     tree: git2::Tree,
     name: &str,
-) -> Result<git2::Tree<'repo>, Error> {
-    let obj = tree.get_name(name)
-        .ok_or_else(|| format_err!("{} does not exist", name))?
-        .to_object(repo)?;
+) -> Result<Option<git2::Tree<'repo>>, Error> {
+    let obj = if let Some(t) = tree.get_name(name) {
+        t.to_object(repo)?
+    } else {
+        return Ok(None);
+    };
     match obj.into_tree() {
-        Ok(t) => Ok(t),
+        Ok(t) => Ok(Some(t)),
         Err(_) => bail!("{} is not a tree", name),
     }
+}
+
+fn get_head_commit<'repo>(repo: &'repo Repository) -> Result<git2::Commit<'repo>, Error> {
+    let head = repo.find_reference("refs/dm_head")
+        .context("refs/dm_head not found")?;
+    Ok(head.peel_to_commit()?)
+}
+
+fn get_head_commit_hash(repo: &Repository) -> Result<VersionHash, Error> {
+    let commit = get_head_commit(repo)?;
+    Ok(commit.id())
 }
 
 fn get_deployments(
@@ -60,9 +71,7 @@ fn get_deployments(
     let mut deployments = HashMap::<String, Deployment>::new();
 
     // collect current versions of all deployments
-    let head = repo.find_reference("refs/dm_head")
-        .context("refs/dm_head not found")?;
-    let head_commit = head.peel_to_commit()?;
+    let head_commit = get_head_commit(repo)?;
 
     if last_version
         .map(|id| id == head_commit.id())
@@ -71,9 +80,17 @@ fn get_deployments(
         return Ok(None);
     }
 
-    let tree = head.peel_to_tree()?;
-    let env_tree = get_subtree(repo, tree, env)?;
-    let deployments_tree = get_subtree(repo, env_tree, env)?;
+    let tree = head_commit.tree()?;
+    let env_tree = if let Some(t) = get_subtree(repo, tree, env)? {
+        t
+    } else {
+        return Ok(None);
+    };
+    let deployments_tree = if let Some(t) = get_subtree(repo, env_tree, "deployments")? {
+        t
+    } else {
+        return Ok(None);
+    };
 
     for entry in deployments_tree.iter() {
         let obj = entry.to_object(&repo)?;
@@ -113,8 +130,16 @@ fn get_deployments(
         let commit = repo.find_commit(rev_result?)?;
         let tree = commit.tree()?;
 
-        let env_tree = get_subtree(repo, tree, env)?;
-        let deployments_tree = get_subtree(repo, env_tree, env)?;
+        let env_tree = if let Some(t) = get_subtree(repo, tree, env)? {
+            t
+        } else {
+            break;
+        };
+        let deployments_tree = if let Some(t) = get_subtree(repo, env_tree, "deployments")? {
+            t
+        } else {
+            break;
+        };
 
         for (name, deployment) in deployments.iter_mut() {
             let blob_id = if let Some(id) = blob_id_by_deployment.get(name) {
@@ -145,11 +170,6 @@ fn get_deployments(
 
     let result = DeploymentsInfo {
         deployments: deployments.into_iter().map(|(_, v)| v).collect(),
-        version: head_commit.id(),
-        message: head_commit
-            .message()
-            .unwrap_or("[invalid utf8]")
-            .to_string(),
     };
 
     Ok(Some(result))
@@ -182,26 +202,51 @@ fn run() -> Result<(), Error> {
     let repo = init_or_open(checkout_path)?;
 
     // let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
-    let mut deployer: Box<deployment::Deployer> = Box::new(
-        deployment::kubernetes::KubernetesDeployer::new("/home/florian/.kube/config")?,
-    );
+    let mut deployers = {
+        let mut m = HashMap::<_, Box<deployment::Deployer>>::new();
+        m.insert(
+            "prod",
+            Box::new(deployment::kubernetes::KubernetesDeployer::new(
+                "/home/florian/.kube/config",
+                "default",
+            )?),
+        );
+        m.insert(
+            "dev",
+            Box::new(deployment::kubernetes::KubernetesDeployer::new(
+                "/home/florian/.kube/config",
+                "dev",
+            )?),
+        );
+        m
+    };
     let mut last_version = None;
+
+    let envs = &["dev", "prod"];
 
     loop {
         update(&repo, url)?;
 
-        if let Some(deployments) = get_deployments(&repo, "prod", last_version)? {
-            let result = deployer.deploy(&deployments.deployments);
+        for env in envs {
+            if let Some(deployments) = get_deployments(&repo, env, last_version)? {
+                let deployer = if let Some(d) = deployers.get_mut(env) {
+                    d
+                } else {
+                    // no deployer, ignore
+                    continue;
+                };
+                let result = deployer.deploy(&deployments.deployments);
 
-            if let Err(e) = result {
-                eprintln!("Deployment failed: {}\n{}", e, e.backtrace());
-                for cause in e.causes() {
-                    eprintln!("caused by: {}", cause);
+                if let Err(e) = result {
+                    eprintln!("Deployment failed: {}\n{}", e, e.backtrace());
+                    for cause in e.causes() {
+                        eprintln!("caused by: {}", cause);
+                    }
+                    continue;
                 }
-                continue;
-            }
 
-            last_version = Some(deployments.version);
+                last_version = Some(get_head_commit_hash(&repo)?);
+            }
         }
 
         thread::sleep(Duration::from_millis(1000));
