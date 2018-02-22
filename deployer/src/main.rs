@@ -1,4 +1,5 @@
-#[macro_use] extern crate failure;
+#[macro_use]
+extern crate failure;
 extern crate git2;
 extern crate kubeclient;
 extern crate serde;
@@ -12,9 +13,9 @@ use std::process;
 use std::collections::HashMap;
 use std::os::unix::ffi::OsStrExt;
 
-use failure::{ResultExt, Error};
+use failure::{Error, ResultExt};
 
-use git2::{Repository, ErrorCode};
+use git2::{ErrorCode, Repository};
 
 mod deployment;
 
@@ -36,7 +37,25 @@ pub struct DeploymentsInfo {
     message: String,
 }
 
-fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Result<Option<DeploymentsInfo>, Error> {
+fn get_subtree<'repo>(
+    repo: &'repo Repository,
+    tree: git2::Tree,
+    name: &str,
+) -> Result<git2::Tree<'repo>, Error> {
+    let obj = tree.get_name(name)
+        .ok_or_else(|| format_err!("{} does not exist", name))?
+        .to_object(repo)?;
+    match obj.into_tree() {
+        Ok(t) => Ok(t),
+        Err(_) => bail!("{} is not a tree", name),
+    }
+}
+
+fn get_deployments(
+    repo: &Repository,
+    env: &str,
+    last_version: Option<VersionHash>,
+) -> Result<Option<DeploymentsInfo>, Error> {
     let mut blob_id_by_deployment = HashMap::new();
     let mut deployments = HashMap::<String, Deployment>::new();
 
@@ -45,26 +64,25 @@ fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Resu
         .context("refs/dm_head not found")?;
     let head_commit = head.peel_to_commit()?;
 
-    if last_version.map(|id| id == head_commit.id()).unwrap_or(false) {
+    if last_version
+        .map(|id| id == head_commit.id())
+        .unwrap_or(false)
+    {
         return Ok(None);
     }
 
     let tree = head.peel_to_tree()?;
-    let prod_deployments_obj = tree.get_path(Path::new("prod/deployments"))
-        .context("prod/deployments not found")?
-        .to_object(&repo)?;
-    let prod_deployments = match prod_deployments_obj.into_tree() {
-        Ok(t) => t,
-        Err(_) => bail!("prod/deployments is not a tree!")
-    };
+    let env_tree = get_subtree(repo, tree, env)?;
+    let deployments_tree = get_subtree(repo, env_tree, env)?;
 
-    for entry in prod_deployments.iter() {
+    for entry in deployments_tree.iter() {
         let obj = entry.to_object(&repo)?;
 
         if let Some(blob) = obj.as_blob() {
             let content = blob.content().to_owned();
             let file_name = Path::new(OsStr::from_bytes(entry.name_bytes())).to_path_buf();
-            let name = file_name.file_stem()
+            let name = file_name
+                .file_stem()
                 .and_then(|s| s.to_str())
                 .ok_or_else(|| format_err!("Invalid file name {:?}", file_name))?
                 .to_string();
@@ -73,7 +91,10 @@ fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Resu
                 file_name,
                 content,
                 version: head_commit.id(),
-                message: head_commit.message().unwrap_or("[invalid utf8]").to_string()
+                message: head_commit
+                    .message()
+                    .unwrap_or("[invalid utf8]")
+                    .to_string(),
             };
 
             blob_id_by_deployment.insert(name.clone(), blob.id());
@@ -92,27 +113,20 @@ fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Resu
         let commit = repo.find_commit(rev_result?)?;
         let tree = commit.tree()?;
 
-        let prod_deployments_obj = tree.get_path(Path::new("prod/deployments"))
-            .context("prod/deployments not found")?
-            .to_object(&repo)?;
-        let prod_deployments = match prod_deployments_obj.into_tree() {
-            Ok(t) => t,
-            Err(_) => bail!("prod/deployments is not a tree!")
-        };
+        let env_tree = get_subtree(repo, tree, env)?;
+        let deployments_tree = get_subtree(repo, env_tree, env)?;
 
         for (name, deployment) in deployments.iter_mut() {
             let blob_id = if let Some(id) = blob_id_by_deployment.get(name) {
                 *id
             } else {
-                continue
+                continue;
             };
 
-            let tree_entry = match prod_deployments.get_path(&deployment.file_name) {
+            let tree_entry = match deployments_tree.get_path(&deployment.file_name) {
                 Ok(f) => f,
-                Err(ref e) if e.code() == ErrorCode::NotFound => {
-                    continue
-                },
-                Err(e) => Err(e)?
+                Err(ref e) if e.code() == ErrorCode::NotFound => continue,
+                Err(e) => Err(e)?,
             };
 
             if tree_entry.id() == blob_id {
@@ -132,7 +146,10 @@ fn get_deployments(repo: &Repository, last_version: Option<VersionHash>) -> Resu
     let result = DeploymentsInfo {
         deployments: deployments.into_iter().map(|(_, v)| v).collect(),
         version: head_commit.id(),
-        message: head_commit.message().unwrap_or("[invalid utf8]").to_string(),
+        message: head_commit
+            .message()
+            .unwrap_or("[invalid utf8]")
+            .to_string(),
     };
 
     Ok(Some(result))
@@ -142,7 +159,8 @@ fn update(repo: &Repository, url: &str) -> Result<(), Error> {
     let mut remote = repo.remote_anonymous(url)
         .context("creating remote failed")?;
 
-    remote.fetch(&["+refs/heads/master:refs/dm_head"], None, None)
+    remote
+        .fetch(&["+refs/heads/master:refs/dm_head"], None, None)
         .context("fetch failed")?;
 
     Ok(())
@@ -150,11 +168,9 @@ fn update(repo: &Repository, url: &str) -> Result<(), Error> {
 
 fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
     let repo = if Path::new(checkout_path).is_dir() {
-        Repository::open(checkout_path)
-            .context("open failed")?
+        Repository::open(checkout_path).context("open failed")?
     } else {
-        Repository::init_bare(checkout_path)
-            .context("init --bare failed")?
+        Repository::init_bare(checkout_path).context("init --bare failed")?
     };
 
     Ok(repo)
@@ -167,14 +183,14 @@ fn run() -> Result<(), Error> {
 
     // let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
     let mut deployer: Box<deployment::Deployer> = Box::new(
-        deployment::kubernetes::KubernetesDeployer::new("/home/florian/.kube/config")?
+        deployment::kubernetes::KubernetesDeployer::new("/home/florian/.kube/config")?,
     );
     let mut last_version = None;
 
     loop {
         update(&repo, url)?;
 
-        if let Some(deployments) = get_deployments(&repo, last_version)? {
+        if let Some(deployments) = get_deployments(&repo, "prod", last_version)? {
             let result = deployer.deploy(&deployments.deployments);
 
             if let Err(e) = result {
@@ -189,7 +205,6 @@ fn run() -> Result<(), Error> {
         }
 
         thread::sleep(Duration::from_millis(1000));
-        // return Ok(());
     }
 }
 

@@ -3,7 +3,8 @@
    CLOSED: [2018-02-11 So 13:00]
 ** DONE compare & deploy with real k8s
    CLOSED: [2018-02-18 So 18:42]
-** TODO when a deployment fails, continue deploying the rest of the services
+** DONE when a deployment fails, continue deploying the rest of the services
+   CLOSED: [2018-02-22 Do 21:15]
 ** TODO allow running deployment content through filter before applying it
 ** TODO configuration
 ** TODO support multiple envs
@@ -39,6 +40,7 @@ is that a use case though?
 ** TODO notify about changes via websocket
 * ui
 * general
+** TODO configuration
 ** TODO set up rustfmt
 ** TODO add structured logging
 ** TODO slack integration
