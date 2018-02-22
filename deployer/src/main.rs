@@ -178,7 +178,6 @@ fn run() -> Result<(), Error> {
             let result = deployer.deploy(&deployments.deployments);
 
             if let Err(e) = result {
-                // TODO: for kubernetes failures, maybe instead mark the service as failing to deploy and don't try again?
                 eprintln!("Deployment failed: {}\n{}", e, e.backtrace());
                 for cause in e.causes() {
                     eprintln!("caused by: {}", cause);

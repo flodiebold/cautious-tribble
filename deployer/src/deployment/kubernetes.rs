@@ -56,19 +56,19 @@ impl KubernetesDeployer {
                 .metadata
                 .annotations
                 .as_ref()
-                .and_then(|ann| ann.get(VERSION_ANNOTATION));
+                .and_then(|ann| ann.get(VERSION_ANNOTATION))
+                .map(|s| s.as_str());
 
-            let version = if let Some(v) = version_annotation {
-                v
-            } else {
-                eprintln!(
-                    "Deployment {} does not have a version annotation! Ignoring.",
-                    d.name
-                );
-                continue;
-            };
+            let version = version_annotation.unwrap_or("");
 
-            result.insert(d.name.clone(), DeploymentState::Deployed(version.parse()?));
+            result.insert(
+                d.name.clone(),
+                DeploymentState::Deployed(
+                    version
+                        .parse()
+                        .unwrap_or(VersionHash::from_bytes(&[0; 20]).unwrap()),
+                ),
+            );
         }
 
         Ok(result)
@@ -77,7 +77,7 @@ impl KubernetesDeployer {
     fn do_deploy(&mut self, deployment: &Deployment) -> Result<(), Error> {
         use serde_yaml::{self, Mapping, Value};
         let mut data: Value = serde_yaml::from_slice(&deployment.content)?;
-        let mut root = data.as_mapping_mut()
+        let root = data.as_mapping_mut()
             .ok_or_else(|| format_err!("bad deployment yaml: root not a mapping"))?;
         {
             let metadata = root.get_mut(&Value::String("metadata".to_owned()))
@@ -178,8 +178,16 @@ impl Deployer for KubernetesDeployer {
                 ::std::str::from_utf8(&d.content)?
             );
 
-            self.do_deploy(d)
-                .with_context(|_| format!("Error deploying {}", d.name))?;
+            match self.do_deploy(d) {
+                Ok(()) => {}
+                Err(e) => {
+                    // TODO: maybe instead the service as failing to deploy and don't try again?
+                    eprintln!("Deployment for {} failed: {}\n{}", d.name, e, e.backtrace());
+                    for cause in e.causes() {
+                        eprintln!("caused by: {}", cause);
+                    }
+                }
+            }
         }
 
         Ok(())

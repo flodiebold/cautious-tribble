@@ -7,6 +7,7 @@
 ** TODO allow running deployment content through filter before applying it
 ** TODO configuration
 ** TODO support multiple envs
+** TODO just use blob OIDs instead of earliest commit
 ** TODO configure kubectl correctly for the environment
 ** TODO integration test
 ** TODO handle undeploying something
