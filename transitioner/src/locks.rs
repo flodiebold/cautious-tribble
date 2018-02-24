@@ -2,6 +2,8 @@ use git2::Repository;
 use failure::{Error, ResultExt};
 use serde_yaml;
 
+use super::TreeZipper;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Lock {
     pub reasons: Vec<String>,
@@ -35,26 +37,14 @@ impl Default for Locks {
 }
 
 pub fn load_locks<'repo>(repo: &'repo Repository, env: &str) -> Result<Locks, Error> {
-    let head = repo.find_reference("refs/dm_head")
-        .context("refs/dm_head not found")?;
+    let head = ::get_head_commit(repo)?;
+    let tree = head.tree()?;
 
-    let tree = head.peel_to_tree()?;
+    let mut zipper = TreeZipper::from(repo, tree);
+    zipper.descend(env)?;
 
-    let env_tree_obj = tree.get_name(&env)
-        .ok_or_else(|| format_err!("env {} not found in repo", env))?
-        .to_object(repo)?;
-    let env_tree = env_tree_obj.peel_to_tree()?;
-
-    let locks_file = env_tree.get_name("locks.yaml");
-
-    let locks_blob = if let Some(entry) = locks_file {
-        // TODO go back to peel_to_blob if https://github.com/alexcrichton/git2-rs/issues/299 is fixed
-        // entry.to_object(repo)?.peel_to_blob()?
-        entry
-            .to_object(repo)?
-            .peel(::git2::ObjectType::Blob)?
-            .into_blob()
-            .unwrap()
+    let locks_blob = if let Some(blob) = zipper.get_blob("locks.yaml")? {
+        blob
     } else {
         return Ok(Locks::default());
     };

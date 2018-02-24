@@ -13,7 +13,6 @@
 ** TODO allow running deployment content through filter before applying it
 ** TODO configuration
 ** TODO just use blob OIDs instead of earliest commit?
-** TODO configure kubectl correctly for the environment
 ** TODO integration test
 ** TODO handle undeploying something
 is that a use case though?
@@ -27,8 +26,9 @@ is that a use case though?
    CLOSED: [2018-02-12 Mo 23:03]
 ** DONE transition from one env to the other
    CLOSED: [2018-02-13 Di 23:21]
+** DONE add per-env locks; don't apply transitions where the target is locked
+   CLOSED: [2018-02-24 Sa 17:55]
 ** TODO add per-service locks
-** TODO add per-env locks; don't apply transitions where the target is locked
 ** TODO add deployer status condition
 ** TODO add unlock after transition
 ** TODO add scheduled transitions
@@ -45,8 +45,13 @@ is that a use case though?
 * ui
 * general
 ** TODO configuration
+ - work with config maps
+ - reload regularly
 ** TODO set up rustfmt
 ** TODO add structured logging
 ** TODO slack integration
+** TODO set up CI
+** TODO build static binaries
 * refactoring
 ** TODO factor out some common git helpers?
+ - nice "zipper" interface for tree building / walking?

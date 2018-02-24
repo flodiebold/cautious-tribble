@@ -1,13 +1,11 @@
 [package]
-name = "transitioner"
+name = "common"
 version = "0.1.0"
 authors = ["Florian Diebold <flodiebold@gmail.com>"]
 
 [dependencies]
 failure = "0.1"
 git2 = "0.6"
-serde = "1.0"
-serde_derive = "1.0"
-serde_yaml = "0.7"
-
-common = { path = "../common" }
+# serde = "1.0"
+# serde_derive = "1.0"
+# serde_yaml = "0.7"

@@ -5,6 +5,8 @@ extern crate kubeclient;
 extern crate serde;
 extern crate serde_yaml;
 
+extern crate common;
+
 use std::ffi::OsStr;
 use std::time::Duration;
 use std::thread;
@@ -13,9 +15,11 @@ use std::process;
 use std::collections::HashMap;
 use std::os::unix::ffi::OsStrExt;
 
-use failure::{Error, ResultExt};
+use failure::Error;
 
 use git2::{ErrorCode, Repository};
+
+use common::git::{self, TreeZipper};
 
 mod deployment;
 
@@ -35,33 +39,6 @@ pub struct DeploymentsInfo {
     deployments: Vec<Deployment>,
 }
 
-fn get_subtree<'repo>(
-    repo: &'repo Repository,
-    tree: git2::Tree,
-    name: &str,
-) -> Result<Option<git2::Tree<'repo>>, Error> {
-    let obj = if let Some(t) = tree.get_name(name) {
-        t.to_object(repo)?
-    } else {
-        return Ok(None);
-    };
-    match obj.into_tree() {
-        Ok(t) => Ok(Some(t)),
-        Err(_) => bail!("{} is not a tree", name),
-    }
-}
-
-fn get_head_commit<'repo>(repo: &'repo Repository) -> Result<git2::Commit<'repo>, Error> {
-    let head = repo.find_reference("refs/dm_head")
-        .context("refs/dm_head not found")?;
-    Ok(head.peel_to_commit()?)
-}
-
-fn get_head_commit_hash(repo: &Repository) -> Result<VersionHash, Error> {
-    let commit = get_head_commit(repo)?;
-    Ok(commit.id())
-}
-
 fn get_deployments(
     repo: &Repository,
     env: &str,
@@ -71,7 +48,7 @@ fn get_deployments(
     let mut deployments = HashMap::<String, Deployment>::new();
 
     // collect current versions of all deployments
-    let head_commit = get_head_commit(repo)?;
+    let head_commit = git::get_head_commit(repo)?;
 
     if last_version
         .map(|id| id == head_commit.id())
@@ -81,14 +58,13 @@ fn get_deployments(
     }
 
     let tree = head_commit.tree()?;
-    let env_tree = if let Some(t) = get_subtree(repo, tree, env)? {
+    let mut zipper = TreeZipper::from(repo, tree);
+    zipper.descend(env)?;
+    zipper.descend("deployments")?;
+    let deployments_tree = if let Some(t) = zipper.into_inner() {
         t
     } else {
-        return Ok(None);
-    };
-    let deployments_tree = if let Some(t) = get_subtree(repo, env_tree, "deployments")? {
-        t
-    } else {
+        // deployments folder does not exist
         return Ok(None);
     };
 
@@ -130,12 +106,10 @@ fn get_deployments(
         let commit = repo.find_commit(rev_result?)?;
         let tree = commit.tree()?;
 
-        let env_tree = if let Some(t) = get_subtree(repo, tree, env)? {
-            t
-        } else {
-            break;
-        };
-        let deployments_tree = if let Some(t) = get_subtree(repo, env_tree, "deployments")? {
+        let mut zipper = TreeZipper::from(repo, tree);
+        zipper.descend(env)?;
+        zipper.descend("deployments")?;
+        let deployments_tree = if let Some(t) = zipper.into_inner() {
             t
         } else {
             break;
@@ -175,31 +149,10 @@ fn get_deployments(
     Ok(Some(result))
 }
 
-fn update(repo: &Repository, url: &str) -> Result<(), Error> {
-    let mut remote = repo.remote_anonymous(url)
-        .context("creating remote failed")?;
-
-    remote
-        .fetch(&["+refs/heads/master:refs/dm_head"], None, None)
-        .context("fetch failed")?;
-
-    Ok(())
-}
-
-fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
-    let repo = if Path::new(checkout_path).is_dir() {
-        Repository::open(checkout_path).context("open failed")?
-    } else {
-        Repository::init_bare(checkout_path).context("init --bare failed")?
-    };
-
-    Ok(repo)
-}
-
 fn run() -> Result<(), Error> {
     let url = "../versions.git";
     let checkout_path = "./versions_checkout";
-    let repo = init_or_open(checkout_path)?;
+    let repo = git::init_or_open(checkout_path)?;
 
     // let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
     let mut deployers = {
@@ -225,7 +178,7 @@ fn run() -> Result<(), Error> {
     let envs = &["dev", "prod"];
 
     loop {
-        update(&repo, url)?;
+        git::update(&repo, url)?;
 
         for env in envs {
             if let Some(deployments) = get_deployments(&repo, env, last_version)? {
@@ -245,7 +198,7 @@ fn run() -> Result<(), Error> {
                     continue;
                 }
 
-                last_version = Some(get_head_commit_hash(&repo)?);
+                last_version = Some(git::get_head_commit(&repo)?.id());
             }
         }
 
