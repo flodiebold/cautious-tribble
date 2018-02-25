@@ -2,7 +2,7 @@ use git2::Repository;
 use failure::{Error, ResultExt};
 use serde_yaml;
 
-use super::TreeZipper;
+use common::git::{self, TreeZipper};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Lock {
@@ -37,7 +37,7 @@ impl Default for Locks {
 }
 
 pub fn load_locks<'repo>(repo: &'repo Repository, env: &str) -> Result<Locks, Error> {
-    let head = ::get_head_commit(repo)?;
+    let head = git::get_head_commit(repo)?;
     let tree = head.tree()?;
 
     let mut zipper = TreeZipper::from(repo, tree);
