@@ -6,6 +6,9 @@ extern crate serde_derive;
 extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 extern crate common;
 
@@ -109,19 +112,22 @@ fn run_transition(
         &[&head_commit],
     )?;
 
-    eprintln!("Made commit {} mirroring {} to {}. Pushing...", commit, transition.source, transition.target);
+    info!("Made commit {} mirroring {} to {}. Pushing...", commit, transition.source, transition.target);
 
     git::push(repo, &config.common.versions_url)?;
 
-    eprintln!("Pushed.");
+    info!("Pushed.");
 
     Ok(TransitionResult::Success)
 }
 
 fn run() -> Result<(), Error> {
+    env_logger::init();
     let options = Options::from_args();
     let config = config::Config::load(&options.config)?;
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+
+    info!("Transitioner running.");
 
     loop {
         git::update(&repo, &config.common.versions_url)?;
@@ -134,9 +140,9 @@ fn run() -> Result<(), Error> {
                 Ok(TransitionResult::Blocked) => break,
                 Ok(TransitionResult::CheckFailed) => continue,
                 Err(error) => {
-                    eprintln!("Transition failed: {}\n{}", error, error.backtrace());
+                    error!("Transition failed: {}\n{}", error, error.backtrace());
                     for cause in error.causes() {
-                        eprintln!("caused by: {}", cause);
+                        error!("caused by: {}", cause);
                     }
                     break;
                 }

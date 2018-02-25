@@ -8,6 +8,9 @@ extern crate serde_derive;
 extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 extern crate common;
 
@@ -164,6 +167,7 @@ fn get_deployments(
 }
 
 fn run() -> Result<(), Error> {
+    env_logger::init();
     let options = Options::from_args();
     let config = Config::load(&options.config)?;
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
@@ -184,9 +188,9 @@ fn run() -> Result<(), Error> {
                 let result = deployer.deploy(&deployments.deployments);
 
                 if let Err(e) = result {
-                    eprintln!("Deployment failed: {}\n{}", e, e.backtrace());
+                    error!("Deployment failed: {}\n{}", e, e.backtrace());
                     for cause in e.causes() {
-                        eprintln!("caused by: {}", cause);
+                        error!("caused by: {}", cause);
                     }
                     continue;
                 }

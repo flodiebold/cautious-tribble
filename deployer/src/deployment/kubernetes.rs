@@ -50,7 +50,7 @@ impl KubernetesDeployer {
                 .map_err(SyncFailure::new)?;
 
             if !exists {
-                eprintln!("Deployment {} does not exist", d.name);
+                warn!("Deployment {} does not exist", d.name);
                 result.insert(d.name.clone(), DeploymentState::NotDeployed);
                 continue;
             }
@@ -147,12 +147,12 @@ impl KubernetesDeployer {
             );
         }
 
-        eprintln!(
+        debug!(
             "kubectl stdout: {}",
             String::from_utf8_lossy(&output.stdout)
         );
 
-        eprintln!(
+        debug!(
             "kubectl stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
@@ -166,20 +166,20 @@ impl Deployer for KubernetesDeployer {
         let current_state = self.retrieve_current_state(deployments)?;
 
         for d in deployments {
-            eprintln!("looking at {}", d.name);
+            debug!("looking at {}", d.name);
             let deployed_version = if let Some(v) = current_state.get(&d.name) {
                 *v
             } else {
-                eprintln!("no known version, not deploying");
+                warn!("no known version for {}, not deploying", d.name);
                 continue;
             };
 
             if deployed_version == DeploymentState::Deployed(d.version) {
-                eprintln!("same version, not deploying");
+                info!("same version for {}, not deploying", d.name);
                 continue;
             }
 
-            eprintln!(
+            info!(
                 "Deploying {} version {} with content {}",
                 d.name,
                 d.version,
@@ -190,9 +190,9 @@ impl Deployer for KubernetesDeployer {
                 Ok(()) => {}
                 Err(e) => {
                     // TODO: maybe instead the service as failing to deploy and don't try again?
-                    eprintln!("Deployment for {} failed: {}\n{}", d.name, e, e.backtrace());
+                    error!("Deployment for {} failed: {}\n{}", d.name, e, e.backtrace());
                     for cause in e.causes() {
-                        eprintln!("caused by: {}", cause);
+                        error!("caused by: {}", cause);
                     }
                 }
             }
