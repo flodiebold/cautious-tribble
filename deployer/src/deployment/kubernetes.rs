@@ -9,6 +9,12 @@ use super::Deployer;
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    kubeconf: String,
+    namespace: String,
+}
+
 pub struct KubernetesDeployer {
     namespace: String,
     client: Kubernetes,
@@ -21,12 +27,12 @@ enum DeploymentState {
 }
 
 impl KubernetesDeployer {
-    pub fn new(config: &str, namespace: &str) -> Result<KubernetesDeployer, Error> {
+    pub fn new(config: &Config) -> Result<KubernetesDeployer, Error> {
         Ok(KubernetesDeployer {
-            namespace: namespace.to_owned(),
-            client: Kubernetes::load_conf(config)
+            namespace: config.namespace.to_owned(),
+            client: Kubernetes::load_conf(&config.kubeconf)
                 .map_err(SyncFailure::new)?
-                .namespace(namespace),
+                .namespace(&config.namespace),
         })
     }
 

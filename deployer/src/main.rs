@@ -3,7 +3,11 @@ extern crate failure;
 extern crate git2;
 extern crate kubeclient;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_yaml;
+#[macro_use]
+extern crate structopt;
 
 extern crate common;
 
@@ -12,16 +16,26 @@ use std::time::Duration;
 use std::thread;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::os::unix::ffi::OsStrExt;
 
 use failure::Error;
-
 use git2::{ErrorCode, Repository};
+use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
 
 mod deployment;
+mod config;
+
+use config::Config;
+
+#[derive(Debug, StructOpt)]
+struct Options {
+    /// The location of the configuration file.
+    #[structopt(short = "c", long = "config", parse(from_os_str))]
+    config: PathBuf,
+}
 
 /// The hash of a commit in the versions repo
 pub type VersionHash = git2::Oid;
@@ -150,44 +164,23 @@ fn get_deployments(
 }
 
 fn run() -> Result<(), Error> {
-    let url = "../versions.git";
-    let checkout_path = "./versions_checkout";
-    let repo = git::init_or_open(checkout_path)?;
+    let options = Options::from_args();
+    let config = Config::load(&options.config)?;
+    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
-    // let mut deployer: Box<deployment::Deployer> = Box::new(deployment::DummyDeployer::new());
-    let mut deployers = {
-        let mut m = HashMap::<_, Box<deployment::Deployer>>::new();
-        m.insert(
-            "prod",
-            Box::new(deployment::kubernetes::KubernetesDeployer::new(
-                "/home/florian/.kube/config",
-                "default",
-            )?),
-        );
-        m.insert(
-            "dev",
-            Box::new(deployment::kubernetes::KubernetesDeployer::new(
-                "/home/florian/.kube/config",
-                "dev",
-            )?),
-        );
-        m
-    };
+    let mut deployers = config
+        .deployers
+        .iter()
+        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
+        .collect::<Result<BTreeMap<_, _>, Error>>()?;
+
     let mut last_version = None;
 
-    let envs = &["dev", "prod"];
-
     loop {
-        git::update(&repo, url)?;
+        git::update(&repo, &config.common.versions_url)?;
 
-        for env in envs {
+        for (env, deployer) in deployers.iter_mut() {
             if let Some(deployments) = get_deployments(&repo, env, last_version)? {
-                let deployer = if let Some(d) = deployers.get_mut(env) {
-                    d
-                } else {
-                    // no deployer, ignore
-                    continue;
-                };
                 let result = deployer.deploy(&deployments.deployments);
 
                 if let Err(e) = result {

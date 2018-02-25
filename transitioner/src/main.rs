@@ -4,23 +4,36 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
+#[macro_use]
+extern crate structopt;
 
 extern crate common;
 
+use std::path::PathBuf;
 use std::time::Duration;
 use std::thread;
 use std::process;
 
 use failure::Error;
-
 use git2::{ObjectType, Repository, Signature};
+use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
 
 mod locks;
+mod config;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Transition {
+use config::Config;
+
+#[derive(Debug, StructOpt)]
+struct Options {
+    /// The location of the configuration file.
+    #[structopt(short = "c", long = "config", parse(from_os_str))]
+    config: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transition {
     source: String,
     target: String,
 }
@@ -38,7 +51,11 @@ enum TransitionResult {
     CheckFailed,
 }
 
-fn run_transition(transition: &Transition, repo: &Repository) -> Result<TransitionResult, Error> {
+fn run_transition(
+    transition: &Transition,
+    repo: &Repository,
+    config: &Config,
+) -> Result<TransitionResult, Error> {
     let target_locks = locks::load_locks(repo, &transition.target)?;
     if target_locks.env_lock.is_locked() {
         return Ok(TransitionResult::Skipped);
@@ -83,7 +100,7 @@ fn run_transition(transition: &Transition, repo: &Repository) -> Result<Transiti
 
     let signature = Signature::now("DM Transitioner", "n/a")?;
 
-    repo.commit(
+    let commit = repo.commit(
         Some("refs/dm_head"),
         &signature,
         &signature,
@@ -92,33 +109,25 @@ fn run_transition(transition: &Transition, repo: &Repository) -> Result<Transiti
         &[&head_commit],
     )?;
 
-    let url = "../versions.git";
-    git::push(repo, url)?;
+    eprintln!("Made commit {} mirroring {} to {}. Pushing...", commit, transition.source, transition.target);
+
+    git::push(repo, &config.common.versions_url)?;
+
+    eprintln!("Pushed.");
 
     Ok(TransitionResult::Success)
 }
 
 fn run() -> Result<(), Error> {
-    let url = "../versions.git";
-    let checkout_path = "./versions_checkout";
-    let repo = git::init_or_open(checkout_path)?;
-
-    let transitions = vec![
-        Transition {
-            source: "available".to_owned(),
-            target: "dev".to_owned(),
-        },
-        Transition {
-            source: "dev".to_owned(),
-            target: "prod".to_owned(),
-        },
-    ];
+    let options = Options::from_args();
+    let config = config::Config::load(&options.config)?;
+    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
     loop {
-        git::update(&repo, url)?;
+        git::update(&repo, &config.common.versions_url)?;
 
-        for transition in transitions.iter() {
-            match run_transition(&transition, &repo) {
+        for transition in config.transitions.iter() {
+            match run_transition(&transition, &repo, &config) {
                 Ok(TransitionResult::Success) => break,
                 Ok(TransitionResult::Skipped) => continue,
                 // TODO we could instead just block transitions that touch the source env

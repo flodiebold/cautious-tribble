@@ -8,19 +8,29 @@
 ** DONE support multiple envs
    CLOSED: [2018-02-22 Do 22:38]
  - deploy to different k8s namespaces
+** DONE configuration
+   CLOSED: [2018-02-25 So 18:03]
+ - versions repo url (+ credentials)
+ - versions repo checkout path
+ - deployers per env
+   - kubeconfig
+   - namespace
+ - specify config path on command line
+** TODO add status resource
+** TODO integration test
 ** TODO support multiple clusters
  - make sure kubectl apply uses same config...
 ** TODO allow running deployment content through filter before applying it
-** TODO configuration
+** TODO handle missing namespace
+create or ignore?
 ** TODO just use blob OIDs instead of earliest commit?
-** TODO integration test
 ** TODO handle undeploying something
 is that a use case though?
 ** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
 ** TODO improve error handling
 ** TODO add health resource
-** TODO add status resource
 ** TODO use k8s api instead of relying on kubectl for deployment
+** TODO reload config on every loop
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -28,15 +38,36 @@ is that a use case though?
    CLOSED: [2018-02-13 Di 23:21]
 ** DONE add per-env locks; don't apply transitions where the target is locked
    CLOSED: [2018-02-24 Sa 17:55]
-** TODO add per-service locks
+** DONE refactor git handling code
+   CLOSED: [2018-02-25 So 16:56]
+** DONE configuration
+   CLOSED: [2018-02-25 So 18:03]
+ - versions repo url (+ credentials)
+ - versions repo checkout path
+ - transitions
+ - specify config path on command line
 ** TODO add deployer status condition
-** TODO add unlock after transition
 ** TODO add scheduled transitions
+** TODO add per-service locks
+** TODO add unlock after transition
 ** TODO add jenkins checks
+** TODO add k8s job checks
 ** TODO add health & status resources
-** TODO refactor git handling code
 ** TODO handle remote callbacks during push and use push_update_reference
-** TODO configuration
+** TODO reload config on every loop
+* test cases
+** deployer
+*** when I add a service in dev, the deployer deploys it
+*** when I change a service in dev, the deployer updates it
+*** when I add/change multiple services at the same time, the deployer updates all of them
+*** when K8s is not reachable, the deployer tries again and deploys as soon as it's back again
+** transitioner
+*** when I add/change a service in available, the transitioner copies it to dev
+*** when I add/change a service in available and dev is locked, the transitioner does not copy it to dev
+*** when dev is unlocked, the transitioner mirrors any pending changes from available
+** deployer + transitioner
+*** when I change a service in available, it first gets deployed to dev. Then, when the deployment was successful, it gets deployed to pp
+*** when a deployment to dev is not successful, it is not mirrored to pp
 * aggregator
 ** TODO fetch commit histories from repos
 ** TODO get current k8s state
@@ -44,14 +75,12 @@ is that a use case though?
 ** TODO notify about changes via websocket
 * ui
 * general
-** TODO configuration
- - work with config maps
- - reload regularly
 ** TODO set up rustfmt
 ** TODO add structured logging
 ** TODO slack integration
 ** TODO set up CI
 ** TODO build static binaries
 * refactoring
-** TODO factor out some common git helpers?
+** DONE factor out some common git helpers?
+   CLOSED: [2018-02-25 So 00:16]
  - nice "zipper" interface for tree building / walking?
