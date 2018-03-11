@@ -15,6 +15,12 @@ pub struct Config {
     namespace: String,
 }
 
+impl Config {
+    pub fn create(&self) -> Result<KubernetesDeployer, Error> {
+        KubernetesDeployer::new(self)
+    }
+}
+
 pub struct KubernetesDeployer {
     namespace: String,
     client: Kubernetes,
@@ -27,7 +33,7 @@ enum DeploymentState {
 }
 
 impl KubernetesDeployer {
-    pub fn new(config: &Config) -> Result<KubernetesDeployer, Error> {
+    fn new(config: &Config) -> Result<KubernetesDeployer, Error> {
         Ok(KubernetesDeployer {
             namespace: config.namespace.to_owned(),
             client: Kubernetes::load_conf(&config.kubeconf)

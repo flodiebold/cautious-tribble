@@ -79,6 +79,7 @@ is that a use case though?
 ** TODO add structured logging
 ** TODO slack integration
 ** TODO set up CI
+** TODO test coverage
 ** TODO build static binaries
 * refactoring
 ** DONE factor out some common git helpers?
