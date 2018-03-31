@@ -1,0 +1,8 @@
+common:
+  versions_url: ""
+  versions_checkout_path: ""
+transitions:
+  - source: pp
+    target: prod
+  - source: available
+    target: pp

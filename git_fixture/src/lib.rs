@@ -1,8 +1,8 @@
 extern crate git2;
 #[macro_use]
 extern crate failure;
-extern crate tempfile;
 extern crate serde;
+extern crate tempfile;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
@@ -12,8 +12,8 @@ extern crate common;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use failure::Error;
 use common::git::TreeZipper;
+use failure::Error;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct RepoTemplate {
@@ -164,7 +164,7 @@ pub struct RepoFixture {
 }
 
 impl RepoFixture {
-    pub fn from_string(s: &str) -> Result<RepoFixture, Error> {
+    pub fn from_str(s: &str) -> Result<RepoFixture, Error> {
         RepoTemplate::from_string(s)?.create()
     }
     pub fn set_ref(&self, ref_name: &str, commit_name: &str) -> Result<(), Error> {
@@ -177,5 +177,31 @@ impl RepoFixture {
             .get(commit_name)
             .ok_or_else(|| format_err!("named commit not found: {}", commit_name))?
             .clone())
+    }
+
+    pub fn assert_ref_matches(&self, ref_name: &str, commit_name: &str) {
+        use std::process::Command;
+        let commit_id = self.repo.refname_to_id(ref_name).unwrap();
+        let actual_commit = self.repo.find_commit(commit_id).unwrap();
+        let expected_commit = self.repo
+            .find_commit(self.get_commit(commit_name).unwrap())
+            .unwrap();
+
+        let actual_parent_ids = actual_commit.parent_ids().collect::<Vec<_>>();
+        let expected_parent_ids = expected_commit.parent_ids().collect::<Vec<_>>();
+        assert_eq!(
+            actual_parent_ids, expected_parent_ids,
+            "parent ids did not match"
+        );
+
+        let actual_tree = actual_commit.tree_id();
+        let expected_tree = expected_commit.tree_id();
+        if actual_tree != expected_tree {
+            let diff = Command::new("git")
+                .args(&["diff", &format!("{}", expected_tree), &format!("{}", actual_tree)])
+                .current_dir(self.repo.path())
+                .output().unwrap().stdout;
+            panic!("Trees differed: {}", String::from_utf8_lossy(&diff));
+        }
     }
 }

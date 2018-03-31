@@ -1,0 +1,9 @@
+commits:
+  - files:
+      available/deployments/foo: x
+      prod/deployments/foo: y
+    name: head
+  - files:
+      available/deployments/foo: x
+      prod/deployments/foo: x
+    name: expected

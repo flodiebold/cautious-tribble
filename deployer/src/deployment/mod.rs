@@ -149,7 +149,7 @@ mod test {
 
     #[test]
     fn test_get_deployments_no_deployments() {
-        let fixture = git_fixture::RepoFixture::from_string(include_str!(
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_deployments_no_deployments.yaml"
         )).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
@@ -159,7 +159,7 @@ mod test {
 
     #[test]
     fn test_get_deployments_1() {
-        let fixture = git_fixture::RepoFixture::from_string(include_str!(
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_deployments_1.yaml"
         )).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
@@ -178,7 +178,7 @@ mod test {
 
     #[test]
     fn test_get_deployments_2() {
-        let fixture = git_fixture::RepoFixture::from_string(include_str!(
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_deployments_2.yaml"
         )).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
@@ -205,8 +205,36 @@ mod test {
 
     #[test]
     fn test_get_deployments_changed() {
-        let fixture = git_fixture::RepoFixture::from_string(include_str!(
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_deployments_changed.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let result = get_deployments(
+            &fixture.repo,
+            "available",
+            fixture.commits.get("first").cloned(),
+        ).unwrap();
+        assert!(result.is_some());
+        let mut info = result.unwrap();
+        info.deployments.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.deployments.len(), 2);
+        assert_eq!(info.deployments[0].name, "bar");
+        assert_eq!(info.deployments[0].content, "yy".as_bytes());
+        assert_eq!(
+            info.deployments[0].version,
+            fixture.get_commit("head").unwrap()
+        );
+        assert_eq!(info.deployments[1].name, "foo");
+        assert_eq!(
+            info.deployments[1].version,
+            fixture.get_commit("first").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_get_deployments_added() {
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_deployments_added.yaml"
         )).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let result = get_deployments(

@@ -1,0 +1,14 @@
+commits:
+  - files:
+      prod/locks.yaml: |
+        env_lock:
+          reasons:
+            - testing
+      pp/locks.yaml: |
+        env_lock:
+          reasons:
+            - testing
+      available/deployments/foo: x
+      pp/deployments/foo: y
+      prod/deployments/foo: z
+    name: head

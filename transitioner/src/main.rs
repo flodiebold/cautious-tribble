@@ -11,11 +11,13 @@ extern crate log;
 extern crate env_logger;
 
 extern crate common;
+#[cfg(test)]
+extern crate git_fixture;
 
 use std::path::PathBuf;
-use std::time::Duration;
-use std::thread;
 use std::process;
+use std::thread;
+use std::time::Duration;
 
 use failure::Error;
 use git2::{ObjectType, Repository, Signature};
@@ -23,8 +25,8 @@ use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
 
-mod locks;
 mod config;
+mod locks;
 
 use config::Config;
 
@@ -41,7 +43,7 @@ pub struct Transition {
     target: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum TransitionResult {
     /// The transition was performed successfully.
     Success,
@@ -112,13 +114,150 @@ fn run_transition(
         &[&head_commit],
     )?;
 
-    info!("Made commit {} mirroring {} to {}. Pushing...", commit, transition.source, transition.target);
+    info!(
+        "Made commit {} mirroring {} to {}. Pushing...",
+        commit, transition.source, transition.target
+    );
 
     git::push(repo, &config.common.versions_url)?;
 
     info!("Pushed.");
 
     Ok(TransitionResult::Success)
+}
+
+fn run_one_transition(repo: &Repository, config: &Config) -> Result<(), Error> {
+    for transition in config.transitions.iter() {
+        match run_transition(&transition, &repo, &config)? {
+            TransitionResult::Success => break,
+            TransitionResult::Skipped => continue,
+            // TODO we could instead just block transitions that touch the source env
+            TransitionResult::Blocked => break,
+            TransitionResult::CheckFailed => continue,
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use git_fixture::RepoFixture;
+    fn make_empty_repo() -> RepoFixture {
+        RepoFixture::from_str("commits: []").unwrap()
+    }
+
+    fn make_config(s: &str, repo: &git2::Repository) -> Result<config::Config, Error> {
+        let mut c: config::Config = serde_yaml::from_str(s)?;
+        c.common.versions_url = repo.path().to_string_lossy().into_owned();
+        c.common.versions_checkout_path = repo.path().to_string_lossy().into_owned();
+        Ok(c)
+    }
+
+    #[test]
+    fn test_transition_source_missing() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/transition_source_missing.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+
+        let result = run_transition(&config.transitions[0], &fixture.repo, &config).unwrap();
+
+        assert_eq!(result, TransitionResult::Skipped);
+        assert_eq!(
+            fixture.repo.refname_to_id("refs/dm_head").unwrap(),
+            fixture.get_commit("head").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_transition_target_created() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/transition_target_created.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+
+        run_one_transition(&fixture.repo, &config).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_transition_target_changed() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/transition_target_changed.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+
+        run_one_transition(&fixture.repo, &config).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_transition_priority() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/transition_priority.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+
+        run_one_transition(&fixture.repo, &config).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_second_transition_runs() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/second_transition_runs.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+
+        run_one_transition(&fixture.repo, &config).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_prod_locked() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/prod_locked.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+
+        run_one_transition(&fixture.repo, &config).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_both_locked() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/both_locked.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+
+        run_one_transition(&fixture.repo, &config).unwrap();
+
+        assert_eq!(
+            fixture.repo.refname_to_id("refs/dm_head").unwrap(),
+            fixture.get_commit("head").unwrap()
+        );
+    }
 }
 
 fn run() -> Result<(), Error> {
@@ -132,20 +271,10 @@ fn run() -> Result<(), Error> {
     loop {
         git::update(&repo, &config.common.versions_url)?;
 
-        for transition in config.transitions.iter() {
-            match run_transition(&transition, &repo, &config) {
-                Ok(TransitionResult::Success) => break,
-                Ok(TransitionResult::Skipped) => continue,
-                // TODO we could instead just block transitions that touch the source env
-                Ok(TransitionResult::Blocked) => break,
-                Ok(TransitionResult::CheckFailed) => continue,
-                Err(error) => {
-                    error!("Transition failed: {}\n{}", error, error.backtrace());
-                    for cause in error.causes() {
-                        error!("caused by: {}", cause);
-                    }
-                    break;
-                }
+        if let Err(error) = run_one_transition(&repo, &config) {
+            error!("Transition failed: {}\n{}", error, error.backtrace());
+            for cause in error.causes() {
+                error!("caused by: {}", cause);
             }
         }
 

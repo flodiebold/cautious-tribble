@@ -15,3 +15,6 @@ log = "0.4.1"
 env_logger = "0.5.4"
 
 common = { path = "../common" }
+
+[dev-dependencies]
+git_fixture = { path = "../git_fixture" }
