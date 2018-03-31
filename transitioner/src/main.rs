@@ -143,9 +143,6 @@ fn run_one_transition(repo: &Repository, config: &Config) -> Result<(), Error> {
 mod test {
     use super::*;
     use git_fixture::RepoFixture;
-    fn make_empty_repo() -> RepoFixture {
-        RepoFixture::from_str("commits: []").unwrap()
-    }
 
     fn make_config(s: &str, repo: &git2::Repository) -> Result<config::Config, Error> {
         let mut c: config::Config = serde_yaml::from_str(s)?;
