@@ -1,7 +1,6 @@
 use failure::Error;
 
-use Deployment;
-use super::Deployer;
+use super::{Deployer, Deployment};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config;

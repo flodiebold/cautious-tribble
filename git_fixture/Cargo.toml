@@ -1,24 +1,15 @@
 [package]
-name = "deployer"
+name = "git_fixture"
 version = "0.1.0"
 authors = ["Florian Diebold <flodiebold@gmail.com>"]
 
 [dependencies]
+tempfile = "3"
 failure = "0.1"
 git2 = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.7"
-serde_json = "1.0"
-structopt = "0.2"
-
-log = "0.4.1"
-env_logger = "0.5.4"
-
-
-kubeclient = "0.1"
 
 common = { path = "../common" }
 
-[dev-dependencies]
-git_fixture = { path = "../git_fixture" }

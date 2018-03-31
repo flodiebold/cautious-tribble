@@ -4,8 +4,7 @@ use kubeclient::Kubernetes;
 use kubeclient::clients::ReadClient;
 use failure::{Error, ResultExt, SyncFailure};
 
-use {Deployment, VersionHash};
-use super::Deployer;
+use super::{Deployment, VersionHash, Deployer};
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
