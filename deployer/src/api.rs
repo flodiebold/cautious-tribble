@@ -60,7 +60,8 @@ fn router(service_state: Arc<ServiceState>) -> Router {
 }
 
 pub fn start(service_state: Arc<ServiceState>) {
-    thread::spawn(|| {
-        gotham::start("0.0.0.0:9001", router(service_state));
+    thread::spawn(move || {
+        let port = service_state.config.common.api_port.unwrap_or(9001);
+        gotham::start(("0.0.0.0", port), router(service_state));
     });
 }

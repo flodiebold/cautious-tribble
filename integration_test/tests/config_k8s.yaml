@@ -1,0 +1,14 @@
+common:
+  versions_url: "./versions.git"
+  versions_checkout_path: "./versions_checkout"
+  api_port: %%api_port%%
+deployers:
+  dev:
+    type: Kubernetes
+    kubeconf: "./kube_config"
+    namespace: "dev-%%suffix%%"
+  prod:
+    type: Kubernetes
+    kubeconf: "./kube_config"
+    namespace: "prod-%%suffix%%"
+

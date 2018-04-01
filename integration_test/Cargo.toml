@@ -8,6 +8,7 @@ tempfile = "3"
 nix = "0.10"
 reqwest = "0.8"
 failure = "0.1"
+rand = "0.4"
 
 common = { path = "../common" }
 git_fixture = { path = "../git_fixture" }

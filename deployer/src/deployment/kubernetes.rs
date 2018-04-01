@@ -21,6 +21,7 @@ impl Config {
 }
 
 pub struct KubernetesDeployer {
+    kubeconf: String,
     namespace: String,
     client: Kubernetes,
 }
@@ -34,7 +35,8 @@ enum DeploymentState {
 impl KubernetesDeployer {
     fn new(config: &Config) -> Result<KubernetesDeployer, Error> {
         Ok(KubernetesDeployer {
-            namespace: config.namespace.to_owned(),
+            kubeconf: config.kubeconf.clone(),
+            namespace: config.namespace.clone(),
             client: Kubernetes::load_conf(&config.kubeconf)
                 .map_err(SyncFailure::new)?
                 .namespace(&config.namespace),
@@ -127,7 +129,10 @@ impl KubernetesDeployer {
         use std::io::Write;
 
         let mut process = Command::new("kubectl")
-            .args(&["apply", "--namespace", &self.namespace, "-f", "-"])
+            .args(&["apply",
+                    "--namespace", &self.namespace,
+                    "--kubeconfig", &self.kubeconf,
+                    "-f", "-"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

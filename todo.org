@@ -61,7 +61,15 @@ is that a use case though?
 ** TODO handle remote callbacks during push and use push_update_reference
 ** TODO reload config on every loop
 * integration tests
-** TODO fix hard-coded ports and namespaces, so the tests can run in parallel
+** DONE fix hard-coded ports and namespaces, so the tests can run in parallel
+   CLOSED: [2018-04-01 So 19:22]
+** DONE create namespaces
+   CLOSED: [2018-04-01 So 19:22]
+** DONE tear down created namespaces afterwards
+   CLOSED: [2018-04-01 So 19:48]
+** DONE check that service is deployed
+   CLOSED: [2018-04-01 So 19:48]
+** TODO add script that handles minikube setup & teardown
 ** TODO fix signal handling
 ** test cases
 *** deployer

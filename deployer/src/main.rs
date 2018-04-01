@@ -112,6 +112,9 @@ fn run() -> Result<(), Error> {
 
         for (env, deployer) in deployers.iter_mut() {
             if let Some(deployments) = deployment::get_deployments(&repo, env, last_version)? {
+                let version = git::get_head_commit(&repo)?.id();
+
+                info!("Got a change for {} to version {:?}, now deploying...", env, version);
                 let result = deployer.deploy(&deployments.deployments);
 
                 if let Err(e) = result {
@@ -122,8 +125,6 @@ fn run() -> Result<(), Error> {
                     continue;
                 }
 
-                let version = git::get_head_commit(&repo)?.id();
-
                 let new_status = DeployerStatus {
                     deployed_version: version,
                     rollout_status: RolloutStatus::Clean, // TODO
@@ -133,6 +134,8 @@ fn run() -> Result<(), Error> {
                     .deployers
                     .insert(env.to_string(), new_status);
                 service_state.latest_status.set(latest_status);
+
+                info!("Deployed {} up to {:?}", env, version);
 
                 last_version = Some(version); // TODO doesn't this need to be per env?
             }

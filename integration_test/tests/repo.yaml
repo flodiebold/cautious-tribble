@@ -1,4 +1,38 @@
 commits:
   - files:
-      available/deployments/foo: x
+      dev/deployments/s1-service: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: s1
+        spec:
+          type: NodePort
+          selector:
+            app: s1
+          ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+      dev/deployments/s1: |
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: s1
+          labels:
+            app: s1
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: s1
+          template:
+            metadata:
+              labels:
+                app: s1
+            spec:
+              containers:
+              - name: service
+                image: exampleservice:23
+                ports:
+                - containerPort: 80
     name: head
