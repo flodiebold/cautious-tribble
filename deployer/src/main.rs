@@ -9,26 +9,34 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
+extern crate serde_json;
 #[macro_use]
 extern crate structopt;
+extern crate crossbeam;
+extern crate gotham;
+extern crate hyper;
+extern crate mime;
 
 extern crate common;
 #[cfg(test)]
 extern crate git_fixture;
 
-use std::time::Duration;
-use std::thread;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process;
-use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
+use crossbeam::sync::ArcCell;
 use failure::Error;
 use structopt::StructOpt;
 
 use common::git;
 
-mod deployment;
+mod api;
 mod config;
+mod deployment;
 
 use config::Config;
 
@@ -37,6 +45,45 @@ struct Options {
     /// The location of the configuration file.
     #[structopt(short = "c", long = "config", parse(from_os_str))]
     config: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum RolloutStatus {
+    InProgress,
+    Clean,
+    Failed { message: String },
+}
+
+fn serialize_hash<S: serde::Serializer>(
+    hash: &deployment::VersionHash,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&format!("{}", hash))
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DeployerStatus {
+    #[serde(serialize_with = "serialize_hash")]
+    deployed_version: deployment::VersionHash,
+    rollout_status: RolloutStatus,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AllDeployerStatus {
+    deployers: BTreeMap<String, DeployerStatus>,
+}
+
+impl AllDeployerStatus {
+    pub fn empty() -> AllDeployerStatus {
+        AllDeployerStatus {
+            deployers: BTreeMap::new(),
+        }
+    }
+}
+
+pub struct ServiceState {
+    latest_status: ArcCell<AllDeployerStatus>,
+    config: config::Config,
 }
 
 fn run() -> Result<(), Error> {
@@ -53,8 +100,15 @@ fn run() -> Result<(), Error> {
 
     let mut last_version = None;
 
+    let service_state = Arc::new(ServiceState {
+        latest_status: ArcCell::new(Arc::new(AllDeployerStatus::empty())),
+        config,
+    });
+
+    api::start(service_state.clone());
+
     loop {
-        git::update(&repo, &config.common.versions_url)?;
+        git::update(&repo, &service_state.config.common.versions_url)?;
 
         for (env, deployer) in deployers.iter_mut() {
             if let Some(deployments) = deployment::get_deployments(&repo, env, last_version)? {
@@ -68,7 +122,19 @@ fn run() -> Result<(), Error> {
                     continue;
                 }
 
-                last_version = Some(git::get_head_commit(&repo)?.id());
+                let version = git::get_head_commit(&repo)?.id();
+
+                let new_status = DeployerStatus {
+                    deployed_version: version,
+                    rollout_status: RolloutStatus::Clean, // TODO
+                };
+                let mut latest_status = service_state.latest_status.get();
+                Arc::make_mut(&mut latest_status)
+                    .deployers
+                    .insert(env.to_string(), new_status);
+                service_state.latest_status.set(latest_status);
+
+                last_version = Some(version); // TODO doesn't this need to be per env?
             }
         }
 
