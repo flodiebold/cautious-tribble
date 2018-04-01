@@ -199,7 +199,7 @@ impl Deployer for KubernetesDeployer {
             match self.do_deploy(d) {
                 Ok(()) => {}
                 Err(e) => {
-                    // TODO: maybe instead the service as failing to deploy and don't try again?
+                    // TODO: maybe instead mark the service as failing to deploy and don't try again?
                     error!("Deployment for {} failed: {}\n{}", d.name, e, e.backtrace());
                     for cause in e.causes() {
                         error!("caused by: {}", cause);

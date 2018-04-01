@@ -10,7 +10,7 @@ fn deploy_k8s() {
     fixture.set_ref("refs/heads/master", "head").unwrap();
     test.run_deployer(include_str!("./config_k8s.yaml"))
         .wait_ready()
-        .wait_env_rollout_done("dev", "head");
+        .wait_env_rollout_done("dev");
     let mut url = test.get_service_url("dev-", "s1");
     url.push_str("/answer");
     eprintln!("Requesting {}...", url);

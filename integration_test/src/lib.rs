@@ -166,7 +166,7 @@ impl IntegrationTest {
         String::from_utf8(output.stdout).unwrap().trim().to_owned()
     }
 
-    pub fn wait_env_rollout_done(&mut self, env: &str, commit_name: &str) -> &mut Self {
+    pub fn wait_env_rollout_done(&mut self, env: &str) -> &mut Self {
         // TODO
         std::thread::sleep_ms(3000);
         self
