@@ -21,7 +21,8 @@ crossbeam = "0.3"
 log = "0.4.1"
 env_logger = "0.5.4"
 
-kubeclient = "0.1"
+# kubeclient = "0.1"
+kubeclient = { git = "https://github.com/anowell/kubeclient-rs.git" }
 
 common = { path = "../common" }
 

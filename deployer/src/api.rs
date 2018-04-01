@@ -1,9 +1,9 @@
-use gotham::handler::HandlerFuture;
+use std::thread;
 use std::io;
 use std::sync::Arc;
 
 use gotham;
-use gotham::handler::{Handler, IntoHandlerFuture, NewHandler};
+use gotham::handler::{HandlerFuture, Handler, IntoHandlerFuture, NewHandler};
 use gotham::http::response;
 use gotham::router::{Router, builder::{build_simple_router, DefineSingleRoute, DrawRoutes}};
 use gotham::state::State;
@@ -60,5 +60,7 @@ fn router(service_state: Arc<ServiceState>) -> Router {
 }
 
 pub fn start(service_state: Arc<ServiceState>) {
-    gotham::start("0.0.0.0:9001", router(service_state));
+    thread::spawn(|| {
+        gotham::start("0.0.0.0:9001", router(service_state));
+    });
 }

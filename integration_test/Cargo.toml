@@ -1,0 +1,14 @@
+[package]
+name = "integration_test"
+version = "0.1.0"
+authors = ["Florian Diebold <flodiebold@gmail.com>"]
+
+[dependencies]
+tempfile = "3"
+nix = "0.10"
+reqwest = "0.8"
+failure = "0.1"
+
+common = { path = "../common" }
+git_fixture = { path = "../git_fixture" }
+deployer = { path = "../deployer" }

@@ -1,2 +1,2 @@
 [workspace]
-members = ["common", "deployer", "transitioner", "git_fixture"]
+members = ["common", "deployer", "transitioner", "git_fixture", "integration_test"]

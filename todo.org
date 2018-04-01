@@ -16,8 +16,12 @@
    - kubeconfig
    - namespace
  - specify config path on command line
-** TODO add status resource
+** DONE add health resource
+   CLOSED: [2018-04-01 So 17:14]
+** DONE add status resource
+   CLOSED: [2018-04-01 So 17:14]
 ** TODO integration test
+** TODO check actual rollout status for status resource
 ** TODO support multiple clusters
  - make sure kubectl apply uses same config...
 ** TODO allow running deployment content through filter before applying it
@@ -28,7 +32,7 @@ create or ignore?
 is that a use case though?
 ** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
 ** TODO improve error handling
-** TODO add health resource
+** TODO fix signal handling
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
 * transition manager
@@ -53,21 +57,25 @@ is that a use case though?
 ** TODO add jenkins checks
 ** TODO add k8s job checks
 ** TODO add health & status resources
+** TODO fix signal handling
 ** TODO handle remote callbacks during push and use push_update_reference
 ** TODO reload config on every loop
-* test cases
-** deployer
-*** when I add a service in dev, the deployer deploys it
-*** when I change a service in dev, the deployer updates it
-*** when I add/change multiple services at the same time, the deployer updates all of them
-*** when K8s is not reachable, the deployer tries again and deploys as soon as it's back again
-** transitioner
-*** when I add/change a service in available, the transitioner copies it to dev
-*** when I add/change a service in available and dev is locked, the transitioner does not copy it to dev
-*** when dev is unlocked, the transitioner mirrors any pending changes from available
-** deployer + transitioner
-*** when I change a service in available, it first gets deployed to dev. Then, when the deployment was successful, it gets deployed to pp
-*** when a deployment to dev is not successful, it is not mirrored to pp
+* integration tests
+** TODO fix hard-coded ports and namespaces, so the tests can run in parallel
+** TODO fix signal handling
+** test cases
+*** deployer
+**** when I add a service in dev, the deployer deploys it
+**** when I change a service in dev, the deployer updates it
+**** when I add/change multiple services at the same time, the deployer updates all of them
+**** when K8s is not reachable, the deployer tries again and deploys as soon as it's back again
+*** transitioner
+**** when I add/change a service in available, the transitioner copies it to dev
+**** when I add/change a service in available and dev is locked, the transitioner does not copy it to dev
+**** when dev is unlocked, the transitioner mirrors any pending changes from available
+*** deployer + transitioner
+**** when I change a service in available, it first gets deployed to dev. Then, when the deployment was successful, it gets deployed to pp
+**** when a deployment to dev is not successful, it is not mirrored to pp
 * aggregator
 ** TODO fetch commit histories from repos
 ** TODO get current k8s state

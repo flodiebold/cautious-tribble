@@ -16,7 +16,7 @@ use common::git::TreeZipper;
 use failure::Error;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct RepoTemplate {
+pub struct RepoTemplate {
     commits: Vec<Commit>,
 }
 
@@ -32,8 +32,25 @@ impl RepoTemplate {
         for commit in self.commits.iter() {
             last_commit = Some(commit.create(&mut repo, &mut commits, last_commit)?);
         }
-        // TODO
-        Ok(RepoFixture { dir, repo, commits })
+        Ok(RepoFixture {
+            dir: Some(dir),
+            repo,
+            commits,
+        })
+    }
+
+    pub fn create_in(&self, path: &Path) -> Result<RepoFixture, Error> {
+        let mut repo = git2::Repository::init_bare(path)?;
+        let mut commits = HashMap::with_capacity(self.commits.len());
+        let mut last_commit = None;
+        for commit in self.commits.iter() {
+            last_commit = Some(commit.create(&mut repo, &mut commits, last_commit)?);
+        }
+        Ok(RepoFixture {
+            dir: None,
+            repo,
+            commits,
+        })
     }
 }
 
@@ -158,7 +175,7 @@ pub fn test_path_order() {
 
 pub struct RepoFixture {
     #[allow(dead_code)] // it's there to keep the temp dir alive
-    dir: tempfile::TempDir,
+    dir: Option<tempfile::TempDir>,
     pub repo: git2::Repository,
     pub commits: HashMap<String, git2::Oid>,
 }
@@ -198,9 +215,15 @@ impl RepoFixture {
         let expected_tree = expected_commit.tree_id();
         if actual_tree != expected_tree {
             let diff = Command::new("git")
-                .args(&["diff", &format!("{}", expected_tree), &format!("{}", actual_tree)])
+                .args(&[
+                    "diff",
+                    &format!("{}", expected_tree),
+                    &format!("{}", actual_tree),
+                ])
                 .current_dir(self.repo.path())
-                .output().unwrap().stdout;
+                .output()
+                .unwrap()
+                .stdout;
             panic!("Trees differed: {}", String::from_utf8_lossy(&diff));
         }
     }

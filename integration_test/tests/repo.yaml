@@ -1,0 +1,4 @@
+commits:
+  - files:
+      available/deployments/foo: x
+    name: head

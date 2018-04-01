@@ -1,5 +1,5 @@
 common:
-  versions_url: "../versions.git"
+  versions_url: "./versions.git"
   versions_checkout_path: "./versions_checkout"
 transitions:
   - source: available
