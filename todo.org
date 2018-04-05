@@ -35,6 +35,8 @@ is that a use case though?
 ** TODO fix signal handling
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
+** TODO support deploying services
+** TODO support deploying daemonsets
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -69,7 +71,10 @@ is that a use case though?
    CLOSED: [2018-04-01 So 19:48]
 ** DONE check that service is deployed
    CLOSED: [2018-04-01 So 19:48]
-** TODO add script that handles minikube setup & teardown
+** DONE add script that handles minikube setup & teardown
+   CLOSED: [2018-04-05 Do 23:09]
+** TODO fix sometimes failing integration test
+** TODO check deployed version
 ** TODO fix signal handling
 ** test cases
 *** deployer

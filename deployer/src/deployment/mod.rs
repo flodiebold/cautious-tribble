@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use failure::Error;
 use git2::{self, ErrorCode, Repository};
 
+use ::RolloutStatus;
 use git::{self, TreeZipper};
 
 pub mod dummy;
@@ -13,6 +14,8 @@ pub mod kubernetes;
 
 pub trait Deployer {
     fn deploy(&mut self, deployments: &[Deployment]) -> Result<(), Error>;
+
+    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<RolloutStatus, Error>;
 }
 
 /// The hash of a commit in the versions repo

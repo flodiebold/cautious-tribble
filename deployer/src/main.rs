@@ -8,8 +8,8 @@ extern crate log;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_yaml;
 extern crate serde_json;
+extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
 extern crate crossbeam;
@@ -47,24 +47,50 @@ struct Options {
     config: PathBuf,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub enum RolloutStatus {
     InProgress,
     Clean,
     Failed { message: String },
 }
 
-fn serialize_hash<S: serde::Serializer>(
-    hash: &deployment::VersionHash,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&format!("{}", hash))
+impl RolloutStatus {
+    pub fn combine(self, other: RolloutStatus) -> RolloutStatus {
+        use RolloutStatus::*;
+        match self {
+            Clean => other,
+            InProgress => match other {
+                Clean | InProgress => InProgress,
+                Failed { message } => Failed { message },
+            },
+            Failed { mut message } => match other {
+                Clean | InProgress => Failed { message },
+                Failed { message: other_message } => {
+                    message.push_str("\n");
+                    message.push_str(&other_message);
+                    Failed { message }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct HashWrapper(deployment::VersionHash);
+
+impl serde::Serialize for HashWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0))
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DeployerStatus {
-    #[serde(serialize_with = "serialize_hash")]
-    deployed_version: deployment::VersionHash,
+    deployed_version: HashWrapper,
+    last_successfully_deployed_version: Option<HashWrapper>,
     rollout_status: RolloutStatus,
 }
 
@@ -111,34 +137,67 @@ fn run() -> Result<(), Error> {
         git::update(&repo, &service_state.config.common.versions_url)?;
 
         for (env, deployer) in deployers.iter_mut() {
-            if let Some(deployments) = deployment::get_deployments(&repo, env, last_version)? {
-                let version = git::get_head_commit(&repo)?.id();
+            let version = git::get_head_commit(&repo)?.id();
 
-                info!("Got a change for {} to version {:?}, now deploying...", env, version);
+            let mut latest_status = service_state.latest_status.get();
+
+            let mut rollout_status = latest_status
+                .deployers
+                .get(&*env)
+                .map(|d| d.rollout_status.clone());
+
+            let mut last_successfully_deployed_version = latest_status
+                .deployers
+                .get(&*env)
+                .and_then(|d| d.last_successfully_deployed_version);
+
+            if let Some(deployments) = deployment::get_deployments(&repo, env, last_version)? {
+                info!(
+                    "Got a change for {} to version {:?}, now deploying...",
+                    env, version
+                );
                 let result = deployer.deploy(&deployments.deployments);
+
+                rollout_status = Some(RolloutStatus::InProgress);
 
                 if let Err(e) = result {
                     error!("Deployment failed: {}\n{}", e, e.backtrace());
                     for cause in e.causes() {
                         error!("caused by: {}", cause);
                     }
+
                     continue;
                 }
 
+                info!("Deployed {} up to {:?}", env, version);
+            }
+
+            if rollout_status == Some(RolloutStatus::InProgress) {
+                if let Some(deployments) =
+                    deployment::get_deployments(&repo, env, last_successfully_deployed_version.map(|v| v.0))?
+                {
+                    rollout_status = Some(deployer.check_rollout_status(&deployments.deployments)?);
+
+                    if rollout_status == Some(RolloutStatus::Clean) {
+                        last_successfully_deployed_version = Some(HashWrapper(version));
+                    }
+                }
+            }
+
+            // TODO actually set last_successfully_deployed_version
+
+            if let Some(rollout_status) = rollout_status {
                 let new_status = DeployerStatus {
-                    deployed_version: version,
-                    rollout_status: RolloutStatus::Clean, // TODO
+                    deployed_version: HashWrapper(version),
+                    last_successfully_deployed_version,
+                    rollout_status,
                 };
-                let mut latest_status = service_state.latest_status.get();
                 Arc::make_mut(&mut latest_status)
                     .deployers
                     .insert(env.to_string(), new_status);
                 service_state.latest_status.set(latest_status);
-
-                info!("Deployed {} up to {:?}", env, version);
-
-                last_version = Some(version); // TODO doesn't this need to be per env?
             }
+            last_version = Some(version); // TODO doesn't this need to be per env?
         }
 
         thread::sleep(Duration::from_millis(1000));

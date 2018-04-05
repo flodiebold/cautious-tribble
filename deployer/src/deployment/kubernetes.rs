@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use failure::{Error, ResultExt, SyncFailure};
 use kubeclient::Kubernetes;
 use kubeclient::clients::ReadClient;
-use failure::{Error, ResultExt, SyncFailure};
 
-use super::{Deployment, VersionHash, Deployer};
+use super::{Deployer, Deployment, VersionHash};
+use RolloutStatus;
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
@@ -26,10 +27,13 @@ pub struct KubernetesDeployer {
     client: Kubernetes,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum DeploymentState {
     NotDeployed,
-    Deployed(VersionHash),
+    Deployed {
+        version: VersionHash,
+        status: RolloutStatus,
+    },
 }
 
 impl KubernetesDeployer {
@@ -76,13 +80,16 @@ impl KubernetesDeployer {
 
             let version = version_annotation.unwrap_or("");
 
+            let rollout_status = determine_rollout_status(&d.name, &kube_deployment);
+
             result.insert(
                 d.name.clone(),
-                DeploymentState::Deployed(
-                    version
+                DeploymentState::Deployed {
+                    version: version
                         .parse()
                         .unwrap_or(VersionHash::from_bytes(&[0; 20]).unwrap()),
-                ),
+                    status: rollout_status,
+                },
             );
         }
 
@@ -125,14 +132,19 @@ impl KubernetesDeployer {
     fn kubectl_apply(&self, data: &str) -> Result<(), Error> {
         // TODO: use kube API instead
         // TODO: configure kubectl correctly with multiple clusters
-        use std::process::{Command, Stdio};
         use std::io::Write;
+        use std::process::{Command, Stdio};
 
         let mut process = Command::new("kubectl")
-            .args(&["apply",
-                    "--namespace", &self.namespace,
-                    "--kubeconfig", &self.kubeconf,
-                    "-f", "-"])
+            .args(&[
+                "apply",
+                "--namespace",
+                &self.namespace,
+                "--kubeconfig",
+                &self.kubeconf,
+                "-f",
+                "-",
+            ])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -178,15 +190,17 @@ impl Deployer for KubernetesDeployer {
         for d in deployments {
             debug!("looking at {}", d.name);
             let deployed_version = if let Some(v) = current_state.get(&d.name) {
-                *v
+                v.clone()
             } else {
                 warn!("no known version for {}, not deploying", d.name);
                 continue;
             };
 
-            if deployed_version == DeploymentState::Deployed(d.version) {
-                info!("same version for {}, not deploying", d.name);
-                continue;
+            if let DeploymentState::Deployed { version, .. } = deployed_version {
+                if version == d.version {
+                    info!("same version for {}, not deploying", d.name);
+                    continue;
+                }
             }
 
             info!(
@@ -209,5 +223,80 @@ impl Deployer for KubernetesDeployer {
         }
 
         Ok(())
+    }
+
+    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<RolloutStatus, Error> {
+        let current_state = self.retrieve_current_state(deployments)?;
+
+        let combined = current_state
+            .into_iter()
+            .map(|(_, v)| v)
+            .map(|d| match d {
+                DeploymentState::NotDeployed => RolloutStatus::InProgress,
+                DeploymentState::Deployed { status, .. } => status,
+            })
+            .fold(RolloutStatus::Clean, RolloutStatus::combine);
+
+        Ok(combined)
+    }
+}
+
+fn determine_rollout_status(
+    name: &str,
+    dep: &::kubeclient::resources::Deployment,
+) -> RolloutStatus {
+    if let &Some(ref status) = &dep.status {
+        if dep.metadata.generation > status.observed_generation {
+            return RolloutStatus::InProgress;
+        }
+
+        let progressing_condition = status
+            .conditions
+            .as_ref()
+            .and_then(|c| c.iter().find(|c| c.type_ == "Progressing"));
+
+        if progressing_condition
+            .as_ref()
+            .and_then(|c| c.reason.as_ref())
+            .map(|r| r == "ProgressDeadlineExceeded")
+            .unwrap_or(false)
+        {
+            return RolloutStatus::Failed {
+                message: format!("Deployment {} exceeded its progress deadline", name),
+            };
+        }
+
+        let updated_replicas = status.updated_replicas.unwrap_or(0);
+
+        if dep.spec
+            .replicas
+            .map(|r| r > updated_replicas)
+            .unwrap_or(false)
+        {
+            // not enough replicas yet
+            return RolloutStatus::InProgress;
+        }
+
+        if status
+            .replicas
+            .map(|r| r > updated_replicas)
+            .unwrap_or(false)
+        {
+            // old replicas remaining
+            return RolloutStatus::InProgress;
+        }
+
+        if status.available_replicas.unwrap_or(0) < updated_replicas {
+            // not all updated replicas available
+            return RolloutStatus::InProgress;
+        }
+
+        info!("Deployment {} is clean: {:?}", name, status);
+
+        RolloutStatus::Clean
+    } else {
+        // TODO maybe instead return that the status could not be determined in these cases?
+        warn!("Deployment {} has no status!", name);
+        RolloutStatus::InProgress
     }
 }

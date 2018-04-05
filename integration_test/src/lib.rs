@@ -3,6 +3,9 @@ extern crate nix;
 extern crate rand;
 pub extern crate reqwest;
 extern crate tempfile;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 
 extern crate common;
 extern crate git_fixture;
@@ -56,7 +59,10 @@ impl IntegrationTest {
             executable_root: root,
             processes: Vec::new(),
             ports,
-            suffix: rng.gen_ascii_chars().take(5).collect::<String>().to_lowercase(),
+            suffix: rng.gen_ascii_chars()
+                .take(5)
+                .collect::<String>()
+                .to_lowercase(),
             created_namespaces: Vec::new(),
         }
     }
@@ -95,6 +101,35 @@ impl IntegrationTest {
         self
     }
 
+    pub fn kubectl_apply(&mut self, namespace: &str, content: &str) -> &mut Self {
+        let namespace = format!("{}{}", namespace, self.suffix);
+        let yaml_path = self.dir.path().join("kubectl_apply.yaml");
+        {
+            let mut file = File::create(&yaml_path).unwrap();
+            file.write_all(content.as_bytes()).unwrap();
+            file.flush().unwrap();
+        }
+        let status = Command::new("kubectl")
+            .args(&[
+                "--kubeconfig",
+                "./kube_config",
+                "--namespace",
+                &namespace,
+                "apply",
+                "-f",
+            ])
+            .arg(yaml_path)
+            .current_dir(self.dir.path())
+            .status()
+            .unwrap();
+
+        if !status.success() {
+            panic!("kubectl apply exited with code {}", namespace);
+        }
+
+        self
+    }
+
     fn get_port(&self, service: TestService) -> u16 {
         *self.ports.get(&service).unwrap()
     }
@@ -119,6 +154,7 @@ impl IntegrationTest {
             .current_dir(self.dir.path())
             .env_clear()
             .env("RUST_LOG", "info")
+            .env("RUST_BACKTRACE", "1")
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -158,21 +194,54 @@ impl IntegrationTest {
             .expect("running minikube");
 
         if !output.status.success() {
-            panic!("minikube exited with code {} and output {}", output.status, String::from_utf8_lossy(&output.stderr));
+            panic!(
+                "minikube exited with code {} and output {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
         }
 
-        eprintln!("minikube stderr: {}", String::from_utf8_lossy(&output.stderr));
+        eprintln!(
+            "minikube stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
 
         String::from_utf8(output.stdout).unwrap().trim().to_owned()
     }
 
     pub fn wait_env_rollout_done(&mut self, env: &str) -> &mut Self {
-        // TODO
-        std::thread::sleep_ms(3000);
-        self
+        std::thread::sleep(std::time::Duration::from_millis(2000));
+        for _ in 0..500 {
+            eprintln!("checking rollout status...");
+
+            if let Ok(status) = get_deployer_status(&format!(
+                "http://127.0.0.1:{}/status",
+                self.get_port(TestService::Deployer)
+            )) {
+                if let Some(env_status) = status.deployers.get(env) {
+                    // TODO check deployed version
+                    if env_status.rollout_status == RolloutStatus::Clean {
+                        eprintln!("rollout status is {:?}!", env_status);
+                        return self;
+                    } else {
+                        eprintln!("rollout status is {:?}...", env_status.rollout_status);
+                    }
+                } else {
+                    eprintln!("env does not exist (yet)...");
+                }
+            } else {
+                eprintln!("status request failed");
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
+        panic!("wait_ready timed out");
     }
 
     pub fn teardown_namespaces(&mut self) {
+        if !should_teardown_namespaces() {
+            return;
+        }
         for namespace in self.created_namespaces.drain(..) {
             let _ = Command::new("kubectl")
                 .args(&[
@@ -211,6 +280,36 @@ impl Drop for IntegrationTest {
             }
         }
     }
+}
+
+// TODO move these to common crate?
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub enum RolloutStatus {
+    InProgress,
+    Clean,
+    Failed { message: String },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeployerStatus {
+    deployed_version: String,
+    last_successfully_deployed_version: Option<String>,
+    rollout_status: RolloutStatus,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AllDeployerStatus {
+    deployers: ::std::collections::BTreeMap<String, DeployerStatus>,
+}
+
+fn get_deployer_status(url: &str) -> Result<AllDeployerStatus, Error> {
+    Ok(reqwest::get(url)?.json()?)
+}
+
+fn should_teardown_namespaces() -> bool {
+    env::var("NAMESPACE_CLEANUP")
+        .map(|v| v != "NoThanks")
+        .unwrap_or(true)
 }
 
 fn check_health(url: &str) -> bool {

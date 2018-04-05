@@ -1,18 +1,5 @@
 commits:
   - files:
-      dev/deployments/s1-service: |
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: s1
-        spec:
-          type: NodePort
-          selector:
-            app: s1
-          ports:
-          - protocol: TCP
-            port: 80
-            targetPort: 80
       dev/deployments/s1: |
         apiVersion: extensions/v1beta1
         kind: Deployment
@@ -33,6 +20,12 @@ commits:
               containers:
               - name: service
                 image: exampleservice:23
+                readinessProbe:
+                  httpGet:
+                    path: /answer
+                    port: 80
+                  initialDelaySeconds: 0
+                  timeoutSeconds: 1
                 ports:
                 - containerPort: 80
     name: head
