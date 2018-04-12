@@ -1,6 +1,6 @@
 common:
   versions_url: "./versions.git"
-  versions_checkout_path: "./versions_checkout"
+  versions_checkout_path: %%versions_checkout_path%%
   api_port: %%api_port%%
 deployers:
   dev:
@@ -11,4 +11,6 @@ deployers:
     type: Kubernetes
     kubeconf: "./kube_config"
     namespace: "prod-%%suffix%%"
-
+transitions:
+  - source: dev
+    target: prod

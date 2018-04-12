@@ -1,10 +1,10 @@
 extern crate failure;
+extern crate git2;
 extern crate nix;
 extern crate rand;
 pub extern crate reqwest;
-extern crate tempfile;
 extern crate serde_json;
-extern crate git2;
+extern crate tempfile;
 
 extern crate common;
 extern crate git_fixture;
@@ -34,6 +34,7 @@ pub struct IntegrationTest {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum TestService {
     Deployer,
+    Transitioner,
 }
 
 impl IntegrationTest {
@@ -47,6 +48,7 @@ impl IntegrationTest {
             root.pop();
         }
         let dir = tempfile::TempDir::new().unwrap();
+        eprintln!("temp dir for test: {:?}", dir.path());
         // copy kube config, ignore errors
         let _ = fs::copy(
             env::home_dir().unwrap().join(".kube/config"),
@@ -55,6 +57,7 @@ impl IntegrationTest {
         let mut rng = rand::thread_rng();
         let mut ports = HashMap::new();
         ports.insert(TestService::Deployer, rng.gen::<u16>() + 1000);
+        ports.insert(TestService::Transitioner, rng.gen::<u16>() + 1000);
         IntegrationTest {
             dir,
             executable_root: root,
@@ -74,9 +77,7 @@ impl IntegrationTest {
 
     pub fn git_fixture(&self, data: &str) -> git_fixture::RepoFixture {
         let template = git_fixture::RepoTemplate::from_string(data).unwrap();
-        template
-            .create_in(&self.versions_repo_path())
-            .unwrap()
+        template.create_in(&self.versions_repo_path()).unwrap()
     }
 
     pub fn create_namespace(&mut self, namespace: &str) -> &mut Self {
@@ -108,22 +109,14 @@ impl IntegrationTest {
     pub fn kubectl(&mut self, namespace: &str, args: &[&str]) -> &mut Self {
         let namespace = format!("{}{}", namespace, self.suffix);
         let status = Command::new("kubectl")
-            .args(&[
-                "--kubeconfig",
-                "./kube_config",
-                "--namespace",
-                &namespace
-            ])
+            .args(&["--kubeconfig", "./kube_config", "--namespace", &namespace])
             .args(args)
             .current_dir(self.dir.path())
             .status()
             .unwrap();
 
         if !status.success() {
-            panic!(
-                "kubectl exited with code {}",
-                status
-            );
+            panic!("kubectl exited with code {}", status);
         }
 
         self
@@ -166,6 +159,7 @@ impl IntegrationTest {
         config
             .replace("%%api_port%%", &self.get_port(service).to_string())
             .replace("%%suffix%%", &self.suffix)
+            .replace("%%versions_checkout_path%%", &format!("./versions_checkout_{:?}", service))
     }
 
     pub fn run_deployer(&mut self, config: &str) -> &mut Self {
@@ -190,14 +184,36 @@ impl IntegrationTest {
         self
     }
 
+    pub fn run_transitioner(&mut self, config: &str) -> &mut Self {
+        let config = self.adapt_config(config, TestService::Transitioner);
+        let config_path = self.dir.path().join("transitioner.yaml");
+        {
+            let mut file = File::create(&config_path).unwrap();
+            file.write_all(config.as_bytes()).unwrap();
+            file.flush().unwrap();
+        }
+        let child = Command::new(self.executable_root.join("transitioner"))
+            .arg("--config")
+            .arg(&config_path)
+            .current_dir(self.dir.path())
+            .env_clear()
+            .env("RUST_LOG", "info")
+            .env("RUST_BACKTRACE", "1")
+            .stdin(Stdio::null())
+            .spawn()
+            .unwrap();
+        self.processes.push((TestService::Transitioner, child));
+        self
+    }
+
     pub fn wait_ready(&mut self) -> &mut Self {
         for _ in 0..50 {
             eprintln!("checking health...");
-            // TODO don't hard-code deployer here
-            if check_health(&format!(
-                "http://127.0.0.1:{}/health",
-                self.get_port(TestService::Deployer)
-            )) {
+            let ok = self.processes
+                .iter()
+                .map(|(k, _)| k)
+                .all(|k| check_health(&format!("http://127.0.0.1:{}/health", self.get_port(*k))));
+            if ok {
                 return self;
             }
             eprintln!("not ok");
@@ -248,17 +264,21 @@ impl IntegrationTest {
     }
 
     pub fn wait_env_rollout_done(&mut self, env: &str) -> &mut Self {
-        let current_hash = self.versions_head_hash();
         for _ in 0..500 {
             eprintln!("checking rollout status...");
+            let current_hash = self.versions_head_hash();
 
             if let Ok(status) = get_deployer_status(&format!(
                 "http://127.0.0.1:{}/status",
                 self.get_port(TestService::Deployer)
             )) {
+                eprintln!("full env status: {:?}", status);
                 if let Some(env_status) = status.deployers.get(env) {
                     if env_status.deployed_version != current_hash.into() {
-                        eprintln!("current version not yet deployed -- expecting {}, got {}", current_hash, env_status.deployed_version);
+                        eprintln!(
+                            "current version not yet deployed -- expecting {}, got {}",
+                            current_hash, env_status.deployed_version
+                        );
                     } else if env_status.rollout_status == RolloutStatus::Clean {
                         eprintln!("rollout status is {:?}!", env_status);
                         return self;
@@ -275,6 +295,26 @@ impl IntegrationTest {
             std::thread::sleep(std::time::Duration::from_millis(200));
         }
         panic!("wait_ready timed out");
+    }
+
+    pub fn wait_transitioner_commit(&mut self) -> &mut Self {
+        let repo = git2::Repository::open(self.versions_repo_path()).unwrap();
+        for _ in 0..500 {
+            let head_id = repo.refname_to_id("refs/heads/master").unwrap();
+            let commit = repo.find_commit(head_id).unwrap();
+
+            if commit.committer().name().unwrap() == "DM Transitioner" {
+                return self;
+            }
+
+            eprintln!(
+                "Newest commit is by {}, waiting for transitioner...",
+                commit.committer().name().unwrap()
+            );
+
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
+        panic!("wait_transitioner_commit timed out");
     }
 
     pub fn teardown_namespaces(&mut self) {
@@ -363,16 +403,16 @@ type ReqwestResult<T> = std::result::Result<T, reqwest::Error>;
 fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
     match result {
         &Ok(_) => false,
-        &Err(ref error) => {
-            match error.get_ref().and_then(|e| e.downcast_ref::<std::io::Error>()).map(|e| e.kind()) {
-                Some(std::io::ErrorKind::BrokenPipe) | Some(std::io::ErrorKind::ConnectionRefused) => {
-                    true
-                }
-                _ => {
-                    false
-                }
+        &Err(ref error) => match error
+            .get_ref()
+            .and_then(|e| e.downcast_ref::<std::io::Error>())
+            .map(|e| e.kind())
+        {
+            Some(std::io::ErrorKind::BrokenPipe) | Some(std::io::ErrorKind::ConnectionRefused) => {
+                true
             }
-        }
+            _ => false,
+        },
     }
 }
 

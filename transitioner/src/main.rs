@@ -3,12 +3,17 @@ extern crate git2;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
 #[macro_use]
 extern crate log;
+extern crate crossbeam;
 extern crate env_logger;
+extern crate gotham;
+extern crate hyper;
+extern crate mime;
 
 extern crate common;
 #[cfg(test)]
@@ -16,6 +21,7 @@ extern crate git_fixture;
 
 use std::path::PathBuf;
 use std::process;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -25,6 +31,7 @@ use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
 
+mod api;
 mod config;
 mod locks;
 
@@ -35,6 +42,10 @@ struct Options {
     /// The location of the configuration file.
     #[structopt(short = "c", long = "config", parse(from_os_str))]
     config: PathBuf,
+}
+
+pub struct ServiceState {
+    config: Config,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,12 +210,13 @@ mod test {
 
     #[test]
     fn test_transition_priority() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/transition_priority.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/transition_priority.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(
+            include_str!("./fixtures/three_envs_config.yaml"),
+            &fixture.repo,
+        ).unwrap();
 
         run_one_transition(&fixture.repo, &config).unwrap();
 
@@ -213,12 +225,13 @@ mod test {
 
     #[test]
     fn test_second_transition_runs() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/second_transition_runs.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/second_transition_runs.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(
+            include_str!("./fixtures/three_envs_config.yaml"),
+            &fixture.repo,
+        ).unwrap();
 
         run_one_transition(&fixture.repo, &config).unwrap();
 
@@ -227,12 +240,12 @@ mod test {
 
     #[test]
     fn test_prod_locked() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/prod_locked.yaml"
-        )).unwrap();
+        let fixture = RepoFixture::from_str(include_str!("./fixtures/prod_locked.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(
+            include_str!("./fixtures/three_envs_config.yaml"),
+            &fixture.repo,
+        ).unwrap();
 
         run_one_transition(&fixture.repo, &config).unwrap();
 
@@ -241,12 +254,12 @@ mod test {
 
     #[test]
     fn test_both_locked() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/both_locked.yaml"
-        )).unwrap();
+        let fixture = RepoFixture::from_str(include_str!("./fixtures/both_locked.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/three_envs_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(
+            include_str!("./fixtures/three_envs_config.yaml"),
+            &fixture.repo,
+        ).unwrap();
 
         run_one_transition(&fixture.repo, &config).unwrap();
 
@@ -263,12 +276,16 @@ fn run() -> Result<(), Error> {
     let config = config::Config::load(&options.config)?;
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
+    let service_state = Arc::new(ServiceState { config });
+
+    api::start(service_state.clone());
+
     info!("Transitioner running.");
 
     loop {
-        git::update(&repo, &config.common.versions_url)?;
+        git::update(&repo, &service_state.config.common.versions_url)?;
 
-        if let Err(error) = run_one_transition(&repo, &config) {
+        if let Err(error) = run_one_transition(&repo, &service_state.config) {
             error!("Transition failed: {}\n{}", error, error.backtrace());
             for cause in error.causes() {
                 error!("caused by: {}", cause);

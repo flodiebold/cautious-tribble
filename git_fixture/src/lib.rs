@@ -36,6 +36,7 @@ impl RepoTemplate {
             dir: Some(dir),
             repo,
             commits,
+            template: self.clone(),
         })
     }
 
@@ -50,6 +51,7 @@ impl RepoTemplate {
             dir: None,
             repo,
             commits,
+            template: self.clone(),
         })
     }
 }
@@ -62,16 +64,20 @@ struct Commit {
 }
 
 impl Commit {
-    fn create(
+    fn create_with_parent(
         &self,
-        repo: &mut git2::Repository,
-        commits: &mut HashMap<String, git2::Oid>,
-        last_commit: Option<git2::Oid>,
+        repo: &git2::Repository,
+        parent: Option<git2::Oid>,
+        base_tree: Option<git2::Tree>,
     ) -> Result<git2::Oid, Error> {
         let mut files: Vec<&Path> = self.files.keys().map(Path::new).collect();
         files.sort_unstable();
         let tree = {
-            let mut zipper = TreeZipper::new(repo);
+            let mut zipper = if let Some(t) = base_tree {
+                TreeZipper::from(repo, t)
+            } else {
+                TreeZipper::new(repo)
+            };
             let mut current_prefix = PathBuf::new();
             for file in files.iter().rev() {
                 let file_dir = if let Some(p) = file.parent() {
@@ -127,11 +133,7 @@ impl Commit {
 
         let signature = git2::Signature::now("Git Fixture", "n/a")?;
 
-        let parent_commit = self.parent
-            .as_ref()
-            .and_then(|name| commits.get(name))
-            .cloned()
-            .or(last_commit)
+        let parent_commit = parent
             .map(|oid| repo.find_commit(oid))
             .map_or(Ok(None), |r| r.map(Some))?;
         let parent_commits = if let Some(c) = parent_commit.as_ref() {
@@ -150,6 +152,20 @@ impl Commit {
             &tree,
             &parent_commits,
         )?;
+        Ok(commit)
+    }
+    fn create(
+        &self,
+        repo: &mut git2::Repository,
+        commits: &mut HashMap<String, git2::Oid>,
+        last_commit: Option<git2::Oid>
+    ) -> Result<git2::Oid, Error> {
+        let parent_commit = self.parent
+            .as_ref()
+            .and_then(|name| commits.get(name))
+            .cloned()
+            .or(last_commit);
+        let commit = self.create_with_parent(repo, parent_commit, None)?;
         if let Some(name) = self.name.as_ref() {
             commits.insert(name.to_string(), commit);
         }
@@ -176,6 +192,7 @@ pub fn test_path_order() {
 pub struct RepoFixture {
     #[allow(dead_code)] // it's there to keep the temp dir alive
     dir: Option<tempfile::TempDir>,
+    template: RepoTemplate,
     pub repo: git2::Repository,
     pub commits: HashMap<String, git2::Oid>,
 }
@@ -187,6 +204,17 @@ impl RepoFixture {
     pub fn set_ref(&self, ref_name: &str, commit_name: &str) -> Result<(), Error> {
         let id = self.get_commit(commit_name)?;
         self.repo.reference(ref_name, id, true, "")?;
+        Ok(())
+    }
+    pub fn apply(&self, ref_name: &str, commit_name: &str) -> Result<(), Error> {
+        let reference = self.repo.find_reference(ref_name)?;
+        let parent = reference.peel_to_commit()?;
+        let tree = reference.peel_to_tree()?;
+        let commit = self.template.commits.iter()
+            .find(|c| c.name.as_ref().map(|s| s == commit_name).unwrap_or(false))
+            .ok_or_else(|| format_err!("named commit not found: {}", commit_name))?
+            .create_with_parent(&self.repo, Some(parent.id()), Some(tree))?;
+        self.repo.reference(ref_name, commit, true, "")?;
         Ok(())
     }
     pub fn get_commit(&self, commit_name: &str) -> Result<git2::Oid, Error> {

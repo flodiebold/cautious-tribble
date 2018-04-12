@@ -33,7 +33,7 @@ use crossbeam::sync::ArcCell;
 use failure::Error;
 use structopt::StructOpt;
 
-use common::deployment::{AllDeployerStatus, RolloutStatus, DeployerStatus};
+use common::deployment::{AllDeployerStatus, DeployerStatus, RolloutStatus};
 use common::git;
 
 mod api;
@@ -66,7 +66,7 @@ fn run() -> Result<(), Error> {
         .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
         .collect::<Result<BTreeMap<_, _>, Error>>()?;
 
-    let mut last_version = None;
+    let mut last_version = HashMap::new();
 
     let service_state = Arc::new(ServiceState {
         latest_status: ArcCell::new(Arc::new(AllDeployerStatus::empty())),
@@ -99,7 +99,7 @@ fn run() -> Result<(), Error> {
                 .get(&*env)
                 .and_then(|d| d.last_successfully_deployed_version);
 
-            if let Some(deployments) = deployment::get_deployments(&repo, env, last_version)? {
+            if let Some(deployments) = deployment::get_deployments(&repo, env, last_version.get(env).cloned())? {
                 info!(
                     "Got a change for {} to version {:?}, now deploying...",
                     env, version
@@ -149,7 +149,7 @@ fn run() -> Result<(), Error> {
                     .insert(env.to_string(), new_status);
                 service_state.latest_status.set(latest_status);
             }
-            last_version = Some(version); // TODO doesn't this need to be per env?
+            last_version.insert(env.clone(), version);
         }
 
         thread::sleep(Duration::from_millis(1000));
