@@ -20,8 +20,13 @@
    CLOSED: [2018-04-01 So 17:14]
 ** DONE add status resource
    CLOSED: [2018-04-01 So 17:14]
+** DONE check actual rollout status for status resource
+   CLOSED: [2018-04-06 Fr 20:03]
 ** TODO integration test
-** TODO check actual rollout status for status resource
+** TODO report more status information in status resource
+ - rollout status per (rolling-out) deployment
+ - rollout status reason per deployment
+ - detailed error information per deployment
 ** TODO support multiple clusters
  - make sure kubectl apply uses same config...
 ** TODO allow running deployment content through filter before applying it
@@ -37,6 +42,9 @@ is that a use case though?
 ** TODO reload config on every loop
 ** TODO support deploying services
 ** TODO support deploying daemonsets
+** TODO make runnable as CLI tool
+** TODO add dry run mode
+** TODO add full diff mode that checks that the configuration is really what's expected
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -59,9 +67,14 @@ is that a use case though?
 ** TODO add jenkins checks
 ** TODO add k8s job checks
 ** TODO add health & status resources
+ - report time of last actual run for each transition
+ - report time and status of last check for each transition
 ** TODO fix signal handling
 ** TODO handle remote callbacks during push and use push_update_reference
+ - and handle push conficts
 ** TODO reload config on every loop
+** TODO make runnable as CLI tool
+** TODO add dry run mode
 * integration tests
 ** DONE fix hard-coded ports and namespaces, so the tests can run in parallel
    CLOSED: [2018-04-01 So 19:22]
@@ -73,8 +86,15 @@ is that a use case though?
    CLOSED: [2018-04-01 So 19:48]
 ** DONE add script that handles minikube setup & teardown
    CLOSED: [2018-04-05 Do 23:09]
-** TODO fix sometimes failing integration test
+** DONE fix sometimes failing integration test
+   CLOSED: [2018-04-12 Do 18:57]
+ - retry 'connection refused' because apparently the nodeport sometimes takes a while to open
 ** TODO check deployed version
+** TODO improve output
+ - save service logs to files
+ - save stderr of run commands to files
+ - just output some nice progress info, + error logs
+ - omit progress logs when nothing changes when waiting for something
 ** TODO fix signal handling
 ** test cases
 *** deployer

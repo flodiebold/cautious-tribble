@@ -74,9 +74,8 @@ impl IntegrationTest {
             .unwrap()
     }
 
-    pub fn create_namespace(&mut self, name: &str) -> &mut Self {
-        let mut namespace = name.to_owned();
-        namespace.push_str(&self.suffix);
+    pub fn create_namespace(&mut self, namespace: &str) -> &mut Self {
+        let namespace = format!("{}{}", namespace, self.suffix);
         let status = Command::new("kubectl")
             .args(&[
                 "--kubeconfig",
@@ -97,6 +96,30 @@ impl IntegrationTest {
         }
 
         self.created_namespaces.push(namespace);
+
+        self
+    }
+
+    pub fn kubectl(&mut self, namespace: &str, args: &[&str]) -> &mut Self {
+        let namespace = format!("{}{}", namespace, self.suffix);
+        let status = Command::new("kubectl")
+            .args(&[
+                "--kubeconfig",
+                "./kube_config",
+                "--namespace",
+                &namespace
+            ])
+            .args(args)
+            .current_dir(self.dir.path())
+            .status()
+            .unwrap();
+
+        if !status.success() {
+            panic!(
+                "kubectl exited with code {}",
+                status
+            );
+        }
 
         self
     }
@@ -189,7 +212,17 @@ impl IntegrationTest {
         let mut namespace = namespace.to_owned();
         namespace.push_str(&self.suffix);
         let output = Command::new("minikube")
-            .args(&["service", "--url", "-n", &namespace, svc])
+            .args(&[
+                "service",
+                "--url",
+                "--interval",
+                "1",
+                "--wait",
+                "60",
+                "-n",
+                &namespace,
+                svc,
+            ])
             .output()
             .expect("running minikube");
 
@@ -332,4 +365,33 @@ fn terminate_child(child: &Child) -> Result<(), Error> {
         pid,
         nix::sys::signal::Signal::SIGTERM,
     )?)
+}
+
+type ReqwestResult<T> = std::result::Result<T, reqwest::Error>;
+
+fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
+    match result {
+        &Ok(_) => false,
+        &Err(ref error) => {
+            match error.get_ref().and_then(|e| e.downcast_ref::<std::io::Error>()).map(|e| e.kind()) {
+                Some(std::io::ErrorKind::BrokenPipe) | Some(std::io::ErrorKind::ConnectionRefused) => {
+                    true
+                }
+                _ => {
+                    false
+                }
+            }
+        }
+    }
+}
+
+pub fn retrying_request<T, F: Fn() -> ReqwestResult<T>>(f: F) -> ReqwestResult<T> {
+    let mut result = f();
+    let mut retries = 0;
+    // retry connection refuseds and broken pipes
+    while should_retry(&result) && retries < 10 {
+        result = f();
+        retries += 1;
+    }
+    result
 }

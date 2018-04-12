@@ -14,8 +14,9 @@ fn deploy_k8s() {
         .wait_env_rollout_done("dev");
     let url = format!("{}/answer", test.get_service_url("dev-", "s1"));
     eprintln!("Requesting {}...", url);
-    let response = reqwest::get(&url).unwrap()
-        .text().unwrap();
+    let response = retrying_request(|| reqwest::get(&url))
+        .and_then(|mut r| r.text())
+        .unwrap();
     assert_eq!("23", response.trim());
     test.finish()
 }
