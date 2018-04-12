@@ -22,6 +22,7 @@ extern crate common;
 extern crate git_fixture;
 
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
@@ -37,8 +38,11 @@ use common::git;
 mod api;
 mod config;
 mod deployment;
+mod git_hash;
 
 use config::Config;
+use deployment::DeploymentState;
+use git_hash::VersionHash;
 
 #[derive(Debug, StructOpt)]
 struct Options {
@@ -51,7 +55,7 @@ struct Options {
 pub enum RolloutStatus {
     InProgress,
     Clean,
-    Failed { message: String },
+    Failed,
 }
 
 impl RolloutStatus {
@@ -61,37 +65,19 @@ impl RolloutStatus {
             Clean => other,
             InProgress => match other {
                 Clean | InProgress => InProgress,
-                Failed { message } => Failed { message },
+                Failed => Failed,
             },
-            Failed { mut message } => match other {
-                Clean | InProgress => Failed { message },
-                Failed { message: other_message } => {
-                    message.push_str("\n");
-                    message.push_str(&other_message);
-                    Failed { message }
-                }
-            }
+            Failed => Failed,
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct HashWrapper(deployment::VersionHash);
-
-impl serde::Serialize for HashWrapper {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.0))
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DeployerStatus {
-    deployed_version: HashWrapper,
-    last_successfully_deployed_version: Option<HashWrapper>,
+    deployed_version: VersionHash,
+    last_successfully_deployed_version: Option<VersionHash>,
     rollout_status: RolloutStatus,
+    status_by_deployment: HashMap<String, DeploymentState>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -137,7 +123,7 @@ fn run() -> Result<(), Error> {
         git::update(&repo, &service_state.config.common.versions_url)?;
 
         for (env, deployer) in deployers.iter_mut() {
-            let version = git::get_head_commit(&repo)?.id();
+            let version = git::get_head_commit(&repo)?.id().into();
 
             let mut latest_status = service_state.latest_status.get();
 
@@ -145,6 +131,12 @@ fn run() -> Result<(), Error> {
                 .deployers
                 .get(&*env)
                 .map(|d| d.rollout_status.clone());
+
+            let mut status_by_deployment = latest_status
+                .deployers
+                .get(&*env)
+                .map(|d| d.status_by_deployment.clone())
+                .unwrap_or_else(HashMap::new);
 
             let mut last_successfully_deployed_version = latest_status
                 .deployers
@@ -174,12 +166,14 @@ fn run() -> Result<(), Error> {
 
             if rollout_status == Some(RolloutStatus::InProgress) {
                 if let Some(deployments) =
-                    deployment::get_deployments(&repo, env, last_successfully_deployed_version.map(|v| v.0))?
+                    deployment::get_deployments(&repo, env, last_successfully_deployed_version)?
                 {
-                    rollout_status = Some(deployer.check_rollout_status(&deployments.deployments)?);
+                    let (new_rollout_status, new_status_by_deployment) = deployer.check_rollout_status(&deployments.deployments)?;
+                    rollout_status = Some(new_rollout_status);
+                    status_by_deployment.extend(new_status_by_deployment.into_iter());
 
                     if rollout_status == Some(RolloutStatus::Clean) {
-                        last_successfully_deployed_version = Some(HashWrapper(version));
+                        last_successfully_deployed_version = Some(version);
                     }
                 }
             }
@@ -188,9 +182,10 @@ fn run() -> Result<(), Error> {
 
             if let Some(rollout_status) = rollout_status {
                 let new_status = DeployerStatus {
-                    deployed_version: HashWrapper(version),
+                    deployed_version: version,
                     last_successfully_deployed_version,
                     rollout_status,
+                    status_by_deployment,
                 };
                 Arc::make_mut(&mut latest_status)
                     .deployers

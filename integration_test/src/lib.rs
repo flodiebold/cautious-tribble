@@ -257,7 +257,7 @@ impl IntegrationTest {
                         eprintln!("rollout status is {:?}!", env_status);
                         return self;
                     } else {
-                        eprintln!("rollout status is {:?}...", env_status.rollout_status);
+                        eprintln!("rollout status is {:?}...", env_status);
                     }
                 } else {
                     eprintln!("env does not exist (yet)...");
@@ -320,7 +320,27 @@ impl Drop for IntegrationTest {
 pub enum RolloutStatus {
     InProgress,
     Clean,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub enum RolloutStatusReason {
+    Clean,
     Failed { message: String },
+    NotYetObserved,
+    NotAllUpdated { expected: i32, updated: i32 },
+    OldReplicasPending { number: i32 },
+    UpdatedUnavailable { updated: i32, available: i32 },
+    NoStatus,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum DeploymentState {
+    NotDeployed,
+    Deployed {
+        version: String,
+        status: RolloutStatusReason,
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -328,6 +348,7 @@ pub struct DeployerStatus {
     deployed_version: String,
     last_successfully_deployed_version: Option<String>,
     rollout_status: RolloutStatus,
+    status_by_deployment: HashMap<String, DeploymentState>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

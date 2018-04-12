@@ -28,4 +28,34 @@ commits:
                   timeoutSeconds: 1
                 ports:
                 - containerPort: 80
-    name: head
+    name: head1
+  - files:
+      dev/deployments/s1: |
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: s1
+          labels:
+            app: s1
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: s1
+          template:
+            metadata:
+              labels:
+                app: s1
+            spec:
+              containers:
+              - name: service
+                image: exampleservice:42
+                readinessProbe:
+                  httpGet:
+                    path: /answer
+                    port: 80
+                  initialDelaySeconds: 0
+                  timeoutSeconds: 1
+                ports:
+                - containerPort: 80
+    name: head2

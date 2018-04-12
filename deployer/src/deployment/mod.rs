@@ -4,10 +4,11 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 use failure::Error;
-use git2::{self, ErrorCode, Repository};
+use git2::{ErrorCode, Repository};
 
 use ::RolloutStatus;
-use git::{self, TreeZipper};
+use git_hash::VersionHash;
+use common::git::{self, TreeZipper};
 
 pub mod dummy;
 pub mod kubernetes;
@@ -15,11 +16,42 @@ pub mod kubernetes;
 pub trait Deployer {
     fn deploy(&mut self, deployments: &[Deployment]) -> Result<(), Error>;
 
-    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<RolloutStatus, Error>;
+    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error>;
 }
 
-/// The hash of a commit in the versions repo
-pub type VersionHash = git2::Oid;
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum RolloutStatusReason {
+    Clean,
+    Failed { message: String },
+    NotYetObserved,
+    NotAllUpdated { expected: i32, updated: i32 },
+    OldReplicasPending { number: i32 },
+    UpdatedUnavailable { updated: i32, available: i32 },
+    NoStatus,
+}
+
+impl From<RolloutStatusReason> for RolloutStatus {
+    fn from(r: RolloutStatusReason) -> RolloutStatus {
+        match r {
+            RolloutStatusReason::Clean => RolloutStatus::Clean,
+            RolloutStatusReason::Failed { .. } => RolloutStatus::Failed,
+            RolloutStatusReason::NotYetObserved
+            | RolloutStatusReason::NotAllUpdated { .. }
+            | RolloutStatusReason::OldReplicasPending { .. }
+            | RolloutStatusReason::UpdatedUnavailable { .. }
+            | RolloutStatusReason::NoStatus { .. } => RolloutStatus::InProgress,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum DeploymentState {
+    NotDeployed,
+    Deployed {
+        version: VersionHash,
+        status: RolloutStatusReason,
+    },
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deployment {
@@ -47,7 +79,7 @@ pub fn get_deployments(
     let head_commit = git::get_head_commit(repo)?;
 
     if last_version
-        .map(|id| id == head_commit.id())
+        .map(|id| id == head_commit.id().into())
         .unwrap_or(false)
     {
         return Ok(None);
@@ -79,7 +111,7 @@ pub fn get_deployments(
                 name: name.clone(),
                 file_name,
                 content,
-                version: head_commit.id(),
+                version: head_commit.id().into(),
                 message: head_commit
                     .message()
                     .unwrap_or("[invalid utf8]")
@@ -125,7 +157,7 @@ pub fn get_deployments(
             };
 
             if tree_entry.id() == blob_id {
-                deployment.version = commit.id();
+                deployment.version = commit.id().into();
                 deployment.message = commit.message().unwrap_or("[invalid utf8]").to_string();
             } else {
                 // remove to stop looking at changes for this one

@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use failure::Error;
 
 use ::RolloutStatus;
-use super::{Deployer, Deployment};
+use super::{Deployer, Deployment, DeploymentState};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config;
@@ -19,7 +20,7 @@ impl Deployer for DummyDeployer {
         Ok(())
     }
 
-    fn check_rollout_status(&mut self, _deployments: &[Deployment]) -> Result<RolloutStatus, Error> {
-        Ok(RolloutStatus::Clean)
+    fn check_rollout_status(&mut self, _deployments: &[Deployment]) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
+        Ok((RolloutStatus::Clean, HashMap::new()))
     }
 }

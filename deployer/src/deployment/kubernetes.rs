@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use failure::{Error, ResultExt, SyncFailure};
-use kubeclient::Kubernetes;
 use kubeclient::clients::ReadClient;
+use kubeclient::Kubernetes;
 
-use super::{Deployer, Deployment, VersionHash};
+use super::{Deployer, Deployment, VersionHash, DeploymentState, RolloutStatusReason};
 use RolloutStatus;
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
@@ -25,15 +25,6 @@ pub struct KubernetesDeployer {
     kubeconf: String,
     namespace: String,
     client: Kubernetes,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum DeploymentState {
-    NotDeployed,
-    Deployed {
-        version: VersionHash,
-        status: RolloutStatus,
-    },
 }
 
 impl KubernetesDeployer {
@@ -225,29 +216,29 @@ impl Deployer for KubernetesDeployer {
         Ok(())
     }
 
-    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<RolloutStatus, Error> {
+    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
         let current_state = self.retrieve_current_state(deployments)?;
 
         let combined = current_state
-            .into_iter()
+            .iter()
             .map(|(_, v)| v)
             .map(|d| match d {
                 DeploymentState::NotDeployed => RolloutStatus::InProgress,
-                DeploymentState::Deployed { status, .. } => status,
+                DeploymentState::Deployed { status, .. } => status.clone().into(),
             })
             .fold(RolloutStatus::Clean, RolloutStatus::combine);
 
-        Ok(combined)
+        Ok((combined, current_state))
     }
 }
 
 fn determine_rollout_status(
     name: &str,
     dep: &::kubeclient::resources::Deployment,
-) -> RolloutStatus {
+) -> RolloutStatusReason {
     if let &Some(ref status) = &dep.status {
         if dep.metadata.generation > status.observed_generation {
-            return RolloutStatus::InProgress;
+            return RolloutStatusReason::NotYetObserved;
         }
 
         let progressing_condition = status
@@ -261,7 +252,7 @@ fn determine_rollout_status(
             .map(|r| r == "ProgressDeadlineExceeded")
             .unwrap_or(false)
         {
-            return RolloutStatus::Failed {
+            return RolloutStatusReason::Failed {
                 message: format!("Deployment {} exceeded its progress deadline", name),
             };
         }
@@ -274,7 +265,10 @@ fn determine_rollout_status(
             .unwrap_or(false)
         {
             // not enough replicas yet
-            return RolloutStatus::InProgress;
+            return RolloutStatusReason::NotAllUpdated {
+                expected: dep.spec.replicas.unwrap(),
+                updated: updated_replicas,
+            };
         }
 
         if status
@@ -283,20 +277,25 @@ fn determine_rollout_status(
             .unwrap_or(false)
         {
             // old replicas remaining
-            return RolloutStatus::InProgress;
+            return RolloutStatusReason::OldReplicasPending {
+                number: status.replicas.unwrap() - updated_replicas,
+            };
         }
 
         if status.available_replicas.unwrap_or(0) < updated_replicas {
             // not all updated replicas available
-            return RolloutStatus::InProgress;
+            return RolloutStatusReason::UpdatedUnavailable {
+                updated: updated_replicas,
+                available: status.available_replicas.unwrap_or(0),
+            };
         }
 
         info!("Deployment {} is clean: {:?}", name, status);
 
-        RolloutStatus::Clean
+        RolloutStatusReason::Clean
     } else {
         // TODO maybe instead return that the status could not be determined in these cases?
         warn!("Deployment {} has no status!", name);
-        RolloutStatus::InProgress
+        RolloutStatusReason::NoStatus
     }
 }
