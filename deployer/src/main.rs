@@ -33,64 +33,20 @@ use crossbeam::sync::ArcCell;
 use failure::Error;
 use structopt::StructOpt;
 
+use common::deployment::{AllDeployerStatus, RolloutStatus, DeployerStatus};
 use common::git;
 
 mod api;
 mod config;
 mod deployment;
-mod git_hash;
 
 use config::Config;
-use deployment::DeploymentState;
-use git_hash::VersionHash;
 
 #[derive(Debug, StructOpt)]
 struct Options {
     /// The location of the configuration file.
     #[structopt(short = "c", long = "config", parse(from_os_str))]
     config: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub enum RolloutStatus {
-    InProgress,
-    Clean,
-    Failed,
-}
-
-impl RolloutStatus {
-    pub fn combine(self, other: RolloutStatus) -> RolloutStatus {
-        use RolloutStatus::*;
-        match self {
-            Clean => other,
-            InProgress => match other {
-                Clean | InProgress => InProgress,
-                Failed => Failed,
-            },
-            Failed => Failed,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct DeployerStatus {
-    deployed_version: VersionHash,
-    last_successfully_deployed_version: Option<VersionHash>,
-    rollout_status: RolloutStatus,
-    status_by_deployment: HashMap<String, DeploymentState>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct AllDeployerStatus {
-    deployers: BTreeMap<String, DeployerStatus>,
-}
-
-impl AllDeployerStatus {
-    pub fn empty() -> AllDeployerStatus {
-        AllDeployerStatus {
-            deployers: BTreeMap::new(),
-        }
-    }
 }
 
 pub struct ServiceState {
@@ -168,7 +124,8 @@ fn run() -> Result<(), Error> {
                 if let Some(deployments) =
                     deployment::get_deployments(&repo, env, last_successfully_deployed_version)?
                 {
-                    let (new_rollout_status, new_status_by_deployment) = deployer.check_rollout_status(&deployments.deployments)?;
+                    let (new_rollout_status, new_status_by_deployment) =
+                        deployer.check_rollout_status(&deployments.deployments)?;
                     rollout_status = Some(new_rollout_status);
                     status_by_deployment.extend(new_status_by_deployment.into_iter());
 

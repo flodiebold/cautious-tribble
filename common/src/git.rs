@@ -1,6 +1,9 @@
+use std::fmt;
 use std::path::Path;
+use std::str::FromStr;
 
-use git2::{Blob, Commit, Repository, Tree, TreeBuilder};
+use serde;
+use git2::{Blob, Commit, Repository, Tree, TreeBuilder, Oid};
 use failure::{Error, ResultExt};
 
 pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
@@ -152,5 +155,67 @@ impl<'repo> TreeZipper<'repo> {
         Ok(Some(obj.into_blob().or_else(|_| {
             Err(format_err!("expected blob in {}", name))
         })?))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VersionHash(Oid);
+
+impl VersionHash {
+    pub fn from_bytes(bytes: &[u8]) -> Result<VersionHash, Error> {
+        Ok(VersionHash(Oid::from_bytes(bytes)?))
+    }
+}
+
+impl serde::Serialize for VersionHash {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for VersionHash {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        d.deserialize_str(VersionHashVisitor)
+    }
+}
+
+struct VersionHashVisitor;
+
+impl<'de> serde::de::Visitor<'de> for VersionHashVisitor {
+    type Value = VersionHash;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a hex-formatted git hash")
+    }
+
+    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        VersionHash::from_str(v).map_err(|e| E::custom(e))
+    }
+
+    fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
+        VersionHash::from_str(&v).map_err(|e| E::custom(e))
+    }
+}
+
+impl From<Oid> for VersionHash {
+    fn from(oid: Oid) -> VersionHash {
+        VersionHash(oid)
+    }
+}
+
+impl fmt::Display for VersionHash {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0.fmt(fmt)
+    }
+}
+
+impl FromStr for VersionHash {
+    type Err = <Oid as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<VersionHash, Self::Err> {
+        Oid::from_str(s).map(VersionHash)
     }
 }

@@ -3,8 +3,6 @@ extern crate nix;
 extern crate rand;
 pub extern crate reqwest;
 extern crate tempfile;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 extern crate git2;
 
@@ -21,6 +19,8 @@ use std::process::{Child, Command, Stdio};
 
 use failure::Error;
 use rand::Rng;
+
+use common::deployment::{AllDeployerStatus, RolloutStatus};
 
 pub struct IntegrationTest {
     executable_root: PathBuf,
@@ -257,7 +257,7 @@ impl IntegrationTest {
                 self.get_port(TestService::Deployer)
             )) {
                 if let Some(env_status) = status.deployers.get(env) {
-                    if env_status.deployed_version != current_hash {
+                    if env_status.deployed_version != current_hash.into() {
                         eprintln!("current version not yet deployed -- expecting {}, got {}", current_hash, env_status.deployed_version);
                     } else if env_status.rollout_status == RolloutStatus::Clean {
                         eprintln!("rollout status is {:?}!", env_status);
@@ -295,9 +295,9 @@ impl IntegrationTest {
         }
     }
 
-    fn versions_head_hash(&self) -> String {
+    fn versions_head_hash(&self) -> git2::Oid {
         let repo = git2::Repository::open(self.versions_repo_path()).unwrap();
-        repo.refname_to_id("refs/heads/master").unwrap().to_string()
+        repo.refname_to_id("refs/heads/master").unwrap()
     }
 
     pub fn finish(mut self) {
@@ -324,47 +324,6 @@ impl Drop for IntegrationTest {
             }
         }
     }
-}
-
-// TODO move these to common crate?
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
-pub enum RolloutStatus {
-    InProgress,
-    Clean,
-    Failed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub enum RolloutStatusReason {
-    Clean,
-    Failed { message: String },
-    NotYetObserved,
-    NotAllUpdated { expected: i32, updated: i32 },
-    OldReplicasPending { number: i32 },
-    UpdatedUnavailable { updated: i32, available: i32 },
-    NoStatus,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub enum DeploymentState {
-    NotDeployed,
-    Deployed {
-        version: String,
-        status: RolloutStatusReason,
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct DeployerStatus {
-    deployed_version: String,
-    last_successfully_deployed_version: Option<String>,
-    rollout_status: RolloutStatus,
-    status_by_deployment: HashMap<String, DeploymentState>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct AllDeployerStatus {
-    deployers: ::std::collections::BTreeMap<String, DeployerStatus>,
 }
 
 fn get_deployer_status(url: &str) -> Result<AllDeployerStatus, Error> {

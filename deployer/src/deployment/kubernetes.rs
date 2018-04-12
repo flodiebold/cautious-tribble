@@ -4,8 +4,10 @@ use failure::{Error, ResultExt, SyncFailure};
 use kubeclient::clients::ReadClient;
 use kubeclient::Kubernetes;
 
-use super::{Deployer, Deployment, VersionHash, DeploymentState, RolloutStatusReason};
-use RolloutStatus;
+use common::deployment::{DeploymentState, RolloutStatus, RolloutStatusReason};
+use common::git::VersionHash;
+
+use super::{Deployer, Deployment};
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
@@ -216,7 +218,10 @@ impl Deployer for KubernetesDeployer {
         Ok(())
     }
 
-    fn check_rollout_status(&mut self, deployments: &[Deployment]) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
+    fn check_rollout_status(
+        &mut self,
+        deployments: &[Deployment],
+    ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
         let current_state = self.retrieve_current_state(deployments)?;
 
         let combined = current_state
