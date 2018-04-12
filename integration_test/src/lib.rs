@@ -6,6 +6,7 @@ extern crate tempfile;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate git2;
 
 extern crate common;
 extern crate git_fixture;
@@ -53,7 +54,7 @@ impl IntegrationTest {
         );
         let mut rng = rand::thread_rng();
         let mut ports = HashMap::new();
-        ports.insert(TestService::Deployer, rng.gen());
+        ports.insert(TestService::Deployer, rng.gen::<u16>() + 1000);
         IntegrationTest {
             dir,
             executable_root: root,
@@ -67,10 +68,14 @@ impl IntegrationTest {
         }
     }
 
+    fn versions_repo_path(&self) -> PathBuf {
+        self.dir.path().join("versions.git")
+    }
+
     pub fn git_fixture(&self, data: &str) -> git_fixture::RepoFixture {
         let template = git_fixture::RepoTemplate::from_string(data).unwrap();
         template
-            .create_in(&self.dir.path().join("versions.git"))
+            .create_in(&self.versions_repo_path())
             .unwrap()
     }
 
@@ -243,7 +248,7 @@ impl IntegrationTest {
     }
 
     pub fn wait_env_rollout_done(&mut self, env: &str) -> &mut Self {
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let current_hash = self.versions_head_hash();
         for _ in 0..500 {
             eprintln!("checking rollout status...");
 
@@ -252,8 +257,9 @@ impl IntegrationTest {
                 self.get_port(TestService::Deployer)
             )) {
                 if let Some(env_status) = status.deployers.get(env) {
-                    // TODO check deployed version
-                    if env_status.rollout_status == RolloutStatus::Clean {
+                    if env_status.deployed_version != current_hash {
+                        eprintln!("current version not yet deployed -- expecting {}, got {}", current_hash, env_status.deployed_version);
+                    } else if env_status.rollout_status == RolloutStatus::Clean {
                         eprintln!("rollout status is {:?}!", env_status);
                         return self;
                     } else {
@@ -287,6 +293,11 @@ impl IntegrationTest {
                 .current_dir(self.dir.path())
                 .status();
         }
+    }
+
+    fn versions_head_hash(&self) -> String {
+        let repo = git2::Repository::open(self.versions_repo_path()).unwrap();
+        repo.refname_to_id("refs/heads/master").unwrap().to_string()
     }
 
     pub fn finish(mut self) {

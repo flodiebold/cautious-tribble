@@ -22,8 +22,10 @@
    CLOSED: [2018-04-01 So 17:14]
 ** DONE check actual rollout status for status resource
    CLOSED: [2018-04-06 Fr 20:03]
-** TODO integration test
-** TODO report more status information in status resource
+** DONE integration test
+   CLOSED: [2018-04-12 Do 20:18]
+** DONE report more status information in status resource
+   CLOSED: [2018-04-12 Do 20:18]
  - rollout status per (rolling-out) deployment
  - rollout status reason per deployment
  - detailed error information per deployment
@@ -89,7 +91,8 @@ is that a use case though?
 ** DONE fix sometimes failing integration test
    CLOSED: [2018-04-12 Do 18:57]
  - retry 'connection refused' because apparently the nodeport sometimes takes a while to open
-** TODO check deployed version
+** DONE check deployed version
+   CLOSED: [2018-04-12 Do 20:18]
 ** TODO improve output
  - save service logs to files
  - save stderr of run commands to files
