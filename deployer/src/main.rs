@@ -34,7 +34,7 @@ use failure::Error;
 use structopt::StructOpt;
 
 use common::deployment::{AllDeployerStatus, DeployerStatus, RolloutStatus};
-use common::git;
+use common::git::{self, VersionHash};
 
 mod api;
 mod config;
@@ -52,6 +52,15 @@ struct Options {
 pub struct ServiceState {
     latest_status: ArcCell<AllDeployerStatus>,
     config: config::Config,
+}
+
+fn new_deployer_status(version: VersionHash) -> DeployerStatus {
+    DeployerStatus {
+        deployed_version: version,
+        last_successfully_deployed_version: None,
+        rollout_status: RolloutStatus::InProgress,
+        status_by_deployment: HashMap::new(),
+    }
 }
 
 fn run() -> Result<(), Error> {
@@ -83,30 +92,23 @@ fn run() -> Result<(), Error> {
 
             let mut latest_status = service_state.latest_status.get();
 
-            let mut rollout_status = latest_status
+            let mut env_status = latest_status
                 .deployers
                 .get(&*env)
-                .map(|d| d.rollout_status.clone());
+                .cloned()
+                .unwrap_or_else(|| new_deployer_status(version));
 
-            let mut status_by_deployment = latest_status
-                .deployers
-                .get(&*env)
-                .map(|d| d.status_by_deployment.clone())
-                .unwrap_or_else(HashMap::new);
-
-            let mut last_successfully_deployed_version = latest_status
-                .deployers
-                .get(&*env)
-                .and_then(|d| d.last_successfully_deployed_version);
-
-            if let Some(deployments) = deployment::get_deployments(&repo, env, last_version.get(env).cloned())? {
+            if let Some(deployments) =
+                deployment::get_deployments(&repo, env, last_version.get(env).cloned())?
+            {
                 info!(
                     "Got a change for {} to version {:?}, now deploying...",
                     env, version
                 );
                 let result = deployer.deploy(&deployments.deployments);
 
-                rollout_status = Some(RolloutStatus::InProgress);
+                env_status.deployed_version = version;
+                env_status.rollout_status = RolloutStatus::InProgress;
 
                 if let Err(e) = result {
                     error!("Deployment failed: {}\n{}", e, e.backtrace());
@@ -120,35 +122,29 @@ fn run() -> Result<(), Error> {
                 info!("Deployed {} up to {:?}", env, version);
             }
 
-            if rollout_status == Some(RolloutStatus::InProgress) {
-                if let Some(deployments) =
-                    deployment::get_deployments(&repo, env, last_successfully_deployed_version)?
-                {
+            if env_status.rollout_status == RolloutStatus::InProgress {
+                if let Some(deployments) = deployment::get_deployments(
+                    &repo,
+                    env,
+                    env_status.last_successfully_deployed_version,
+                )? {
                     let (new_rollout_status, new_status_by_deployment) =
                         deployer.check_rollout_status(&deployments.deployments)?;
-                    rollout_status = Some(new_rollout_status);
-                    status_by_deployment.extend(new_status_by_deployment.into_iter());
-
-                    if rollout_status == Some(RolloutStatus::Clean) {
-                        last_successfully_deployed_version = Some(version);
-                    }
+                    env_status.rollout_status = new_rollout_status;
+                    env_status
+                        .status_by_deployment
+                        .extend(new_status_by_deployment.into_iter());
                 }
             }
 
-            // TODO actually set last_successfully_deployed_version
-
-            if let Some(rollout_status) = rollout_status {
-                let new_status = DeployerStatus {
-                    deployed_version: version,
-                    last_successfully_deployed_version,
-                    rollout_status,
-                    status_by_deployment,
-                };
-                Arc::make_mut(&mut latest_status)
-                    .deployers
-                    .insert(env.to_string(), new_status);
-                service_state.latest_status.set(latest_status);
+            if env_status.rollout_status == RolloutStatus::Clean {
+                env_status.last_successfully_deployed_version = Some(version);
             }
+
+            Arc::make_mut(&mut latest_status)
+                .deployers
+                .insert(env.to_string(), env_status);
+            service_state.latest_status.set(latest_status);
             last_version.insert(env.clone(), version);
         }
 
