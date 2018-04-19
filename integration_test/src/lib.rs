@@ -158,6 +158,7 @@ impl IntegrationTest {
     fn adapt_config(&self, config: &str, service: TestService) -> String {
         config
             .replace("%%api_port%%", &self.get_port(service).to_string())
+            .replace("%%deployer_port%%", &self.get_port(TestService::Deployer).to_string())
             .replace("%%suffix%%", &self.suffix)
             .replace("%%versions_checkout_path%%", &format!("./versions_checkout_{:?}", service))
     }

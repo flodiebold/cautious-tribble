@@ -10,6 +10,7 @@ use common;
 pub struct Config {
     pub common: common::Config,
     pub transitions: Vec<super::Transition>,
+    pub deployer_url: Option<String>,
 }
 
 impl Config {

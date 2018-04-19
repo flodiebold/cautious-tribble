@@ -14,3 +14,6 @@ deployers:
 transitions:
   - source: dev
     target: prod
+    preconditions:
+      - SourceClean
+deployer_url: "http://localhost:%%deployer_port%%"

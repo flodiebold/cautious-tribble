@@ -1,15 +1,12 @@
 use std::thread;
-use std::io;
 use std::sync::Arc;
 
 use gotham;
-use gotham::handler::{HandlerFuture, Handler, IntoHandlerFuture, NewHandler};
 use gotham::http::response;
 use gotham::router::{Router, builder::{build_simple_router, DefineSingleRoute, DrawRoutes}};
 use gotham::state::State;
 use hyper::{Response, StatusCode};
 use mime;
-use serde_json;
 
 use super::ServiceState;
 

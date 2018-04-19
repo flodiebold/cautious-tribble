@@ -14,6 +14,7 @@ extern crate env_logger;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
+extern crate reqwest;
 
 extern crate common;
 #[cfg(test)]
@@ -29,13 +30,15 @@ use failure::Error;
 use git2::{ObjectType, Repository, Signature};
 use structopt::StructOpt;
 
-use common::git::{self, TreeZipper};
+use common::git::{self, TreeZipper, VersionHash};
 
 mod api;
 mod config;
 mod locks;
+mod precondition;
 
 use config::Config;
+use precondition::{Precondition, PreconditionResult};
 
 #[derive(Debug, StructOpt)]
 struct Options {
@@ -46,12 +49,15 @@ struct Options {
 
 pub struct ServiceState {
     config: Config,
+    client: reqwest::Client,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transition {
     source: String,
     target: String,
+    #[serde(default)]
+    preconditions: Vec<Precondition>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -67,10 +73,17 @@ enum TransitionResult {
     CheckFailed,
 }
 
+#[derive(Debug)]
+pub struct PendingTransitionInfo {
+    source: String,
+    target: String,
+    current_version: VersionHash,
+}
+
 fn run_transition(
     transition: &Transition,
     repo: &Repository,
-    config: &Config,
+    service_state: &ServiceState,
 ) -> Result<TransitionResult, Error> {
     let target_locks = locks::load_locks(repo, &transition.target)?;
     if target_locks.env_lock.is_locked() {
@@ -78,6 +91,12 @@ fn run_transition(
     }
 
     let head_commit = git::get_head_commit(repo)?;
+
+    let pending_transition = PendingTransitionInfo {
+        source: transition.source.clone(),
+        target: transition.target.clone(),
+        current_version: head_commit.id().into(),
+    };
 
     let tree = head_commit.tree()?;
     let mut source = TreeZipper::from(repo, tree.clone());
@@ -114,6 +133,18 @@ fn run_transition(
         return Ok(TransitionResult::Skipped);
     }
 
+    for precondition in &transition.preconditions {
+        match precondition::check_precondition(&pending_transition, precondition, service_state)? {
+            PreconditionResult::Blocked => {
+                return Ok(TransitionResult::Blocked);
+            }
+            PreconditionResult::Failed => {
+                return Ok(TransitionResult::CheckFailed);
+            }
+            PreconditionResult::Success => {}
+        }
+    }
+
     let signature = Signature::now("DM Transitioner", "n/a")?;
 
     let commit = repo.commit(
@@ -130,16 +161,16 @@ fn run_transition(
         commit, transition.source, transition.target
     );
 
-    git::push(repo, &config.common.versions_url)?;
+    git::push(repo, &service_state.config.common.versions_url)?;
 
     info!("Pushed.");
 
     Ok(TransitionResult::Success)
 }
 
-fn run_one_transition(repo: &Repository, config: &Config) -> Result<(), Error> {
-    for transition in config.transitions.iter() {
-        match run_transition(&transition, &repo, &config)? {
+fn run_one_transition(repo: &Repository, service_state: &ServiceState) -> Result<(), Error> {
+    for transition in service_state.config.transitions.iter() {
+        match run_transition(&transition, &repo, service_state)? {
             TransitionResult::Success => break,
             TransitionResult::Skipped => continue,
             // TODO we could instead just block transitions that touch the source env
@@ -170,8 +201,10 @@ mod test {
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        let result = run_transition(&config.transitions[0], &fixture.repo, &config).unwrap();
+        let result = run_transition(&state.config.transitions[0], &fixture.repo, &state).unwrap();
 
         assert_eq!(result, TransitionResult::Skipped);
         assert_eq!(
@@ -188,8 +221,10 @@ mod test {
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &config).unwrap();
+        run_one_transition(&fixture.repo, &state).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -202,8 +237,10 @@ mod test {
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &config).unwrap();
+        run_one_transition(&fixture.repo, &state).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -217,8 +254,10 @@ mod test {
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
         ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &config).unwrap();
+        run_one_transition(&fixture.repo, &state).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -232,8 +271,10 @@ mod test {
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
         ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &config).unwrap();
+        run_one_transition(&fixture.repo, &state).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -246,8 +287,10 @@ mod test {
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
         ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &config).unwrap();
+        run_one_transition(&fixture.repo, &state).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -260,8 +303,10 @@ mod test {
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
         ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &config).unwrap();
+        run_one_transition(&fixture.repo, &state).unwrap();
 
         assert_eq!(
             fixture.repo.refname_to_id("refs/dm_head").unwrap(),
@@ -276,7 +321,8 @@ fn run() -> Result<(), Error> {
     let config = config::Config::load(&options.config)?;
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
-    let service_state = Arc::new(ServiceState { config });
+    let client = reqwest::Client::new();
+    let service_state = Arc::new(ServiceState { config, client });
 
     api::start(service_state.clone());
 
@@ -285,7 +331,7 @@ fn run() -> Result<(), Error> {
     loop {
         git::update(&repo, &service_state.config.common.versions_url)?;
 
-        if let Err(error) = run_one_transition(&repo, &service_state.config) {
+        if let Err(error) = run_one_transition(&repo, &service_state) {
             error!("Transition failed: {}\n{}", error, error.backtrace());
             for cause in error.causes() {
                 error!("caused by: {}", cause);
