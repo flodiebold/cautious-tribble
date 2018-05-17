@@ -1,9 +1,11 @@
-use std::thread;
 use std::sync::Arc;
+use std::thread;
 
 use gotham;
 use gotham::http::response;
-use gotham::router::{Router, builder::{build_simple_router, DefineSingleRoute, DrawRoutes}};
+use gotham::router::{
+    builder::{build_simple_router, DefineSingleRoute, DrawRoutes}, Router,
+};
 use gotham::state::State;
 use hyper::{Response, StatusCode};
 use mime;

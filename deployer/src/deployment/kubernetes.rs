@@ -47,8 +47,10 @@ impl KubernetesDeployer {
         let mut result = HashMap::with_capacity(deployments.len());
 
         for d in deployments {
-            // TODO don't need to do exists, just do proper error handling in kubeclient and handle 404
-            let exists = self.client
+            // TODO don't need to do exists, just do proper error handling in
+            // kubeclient and handle 404
+            let exists = self
+                .client
                 .deployments()
                 .exists(&d.name)
                 .map_err(SyncFailure::new)?;
@@ -59,7 +61,8 @@ impl KubernetesDeployer {
                 continue;
             }
 
-            let kube_deployment = self.client
+            let kube_deployment = self
+                .client
                 .deployments()
                 .get(&d.name)
                 .map_err(SyncFailure::new)?;
@@ -92,10 +95,12 @@ impl KubernetesDeployer {
     fn do_deploy(&mut self, deployment: &Deployment) -> Result<(), Error> {
         use serde_yaml::{self, Mapping, Value};
         let mut data: Value = serde_yaml::from_slice(&deployment.content)?;
-        let root = data.as_mapping_mut()
+        let root = data
+            .as_mapping_mut()
             .ok_or_else(|| format_err!("bad deployment yaml: root not a mapping"))?;
         {
-            let metadata = root.get_mut(&Value::String("metadata".to_owned()))
+            let metadata = root
+                .get_mut(&Value::String("metadata".to_owned()))
                 .ok_or_else(|| format_err!("bad deployment yaml: no metadata"))?
                 .as_mapping_mut()
                 .ok_or_else(|| format_err!("bad deployment yaml: metadata not a mapping"))?;
@@ -206,7 +211,8 @@ impl Deployer for KubernetesDeployer {
             match self.do_deploy(d) {
                 Ok(()) => {}
                 Err(e) => {
-                    // TODO: maybe instead mark the service as failing to deploy and don't try again?
+                    // TODO: maybe instead mark the service as failing to deploy
+                    // and don't try again?
                     error!("Deployment for {} failed: {}\n{}", d.name, e, e.backtrace());
                     for cause in e.causes() {
                         error!("caused by: {}", cause);
@@ -264,7 +270,8 @@ fn determine_rollout_status(
 
         let updated_replicas = status.updated_replicas.unwrap_or(0);
 
-        if dep.spec
+        if dep
+            .spec
             .replicas
             .map(|r| r > updated_replicas)
             .unwrap_or(false)

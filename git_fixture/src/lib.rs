@@ -158,9 +158,10 @@ impl Commit {
         &self,
         repo: &mut git2::Repository,
         commits: &mut HashMap<String, git2::Oid>,
-        last_commit: Option<git2::Oid>
+        last_commit: Option<git2::Oid>,
     ) -> Result<git2::Oid, Error> {
-        let parent_commit = self.parent
+        let parent_commit = self
+            .parent
             .as_ref()
             .and_then(|name| commits.get(name))
             .cloned()
@@ -210,7 +211,10 @@ impl RepoFixture {
         let reference = self.repo.find_reference(ref_name)?;
         let parent = reference.peel_to_commit()?;
         let tree = reference.peel_to_tree()?;
-        let commit = self.template.commits.iter()
+        let commit = self
+            .template
+            .commits
+            .iter()
             .find(|c| c.name.as_ref().map(|s| s == commit_name).unwrap_or(false))
             .ok_or_else(|| format_err!("named commit not found: {}", commit_name))?
             .create_with_parent(&self.repo, Some(parent.id()), Some(tree))?;
@@ -218,7 +222,8 @@ impl RepoFixture {
         Ok(())
     }
     pub fn get_commit(&self, commit_name: &str) -> Result<git2::Oid, Error> {
-        Ok(self.commits
+        Ok(self
+            .commits
             .get(commit_name)
             .ok_or_else(|| format_err!("named commit not found: {}", commit_name))?
             .clone())
@@ -228,7 +233,8 @@ impl RepoFixture {
         use std::process::Command;
         let commit_id = self.repo.refname_to_id(ref_name).unwrap();
         let actual_commit = self.repo.find_commit(commit_id).unwrap();
-        let expected_commit = self.repo
+        let expected_commit = self
+            .repo
             .find_commit(self.get_commit(commit_name).unwrap())
             .unwrap();
 

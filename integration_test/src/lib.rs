@@ -63,7 +63,8 @@ impl IntegrationTest {
             executable_root: root,
             processes: Vec::new(),
             ports,
-            suffix: rng.gen_ascii_chars()
+            suffix: rng
+                .gen_ascii_chars()
                 .take(5)
                 .collect::<String>()
                 .to_lowercase(),
@@ -158,9 +159,15 @@ impl IntegrationTest {
     fn adapt_config(&self, config: &str, service: TestService) -> String {
         config
             .replace("%%api_port%%", &self.get_port(service).to_string())
-            .replace("%%deployer_port%%", &self.get_port(TestService::Deployer).to_string())
+            .replace(
+                "%%deployer_port%%",
+                &self.get_port(TestService::Deployer).to_string(),
+            )
             .replace("%%suffix%%", &self.suffix)
-            .replace("%%versions_checkout_path%%", &format!("./versions_checkout_{:?}", service))
+            .replace(
+                "%%versions_checkout_path%%",
+                &format!("./versions_checkout_{:?}", service),
+            )
     }
 
     pub fn run_deployer(&mut self, config: &str) -> &mut Self {
@@ -210,10 +217,10 @@ impl IntegrationTest {
     pub fn wait_ready(&mut self) -> &mut Self {
         for _ in 0..50 {
             eprintln!("checking health...");
-            let ok = self.processes
-                .iter()
-                .map(|(k, _)| k)
-                .all(|k| check_health(&format!("http://127.0.0.1:{}/health", self.get_port(*k))));
+            let ok =
+                self.processes.iter().map(|(k, _)| k).all(|k| {
+                    check_health(&format!("http://127.0.0.1:{}/health", self.get_port(*k)))
+                });
             if ok {
                 return self;
             }

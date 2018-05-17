@@ -2,12 +2,13 @@ use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
 
-use serde;
-use git2::{Blob, Commit, Repository, Tree, TreeBuilder, Oid};
 use failure::{Error, ResultExt};
+use git2::{Blob, Commit, Oid, Repository, Tree, TreeBuilder};
+use serde;
 
 pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
-    let mut remote = repo.remote_anonymous(url)
+    let mut remote = repo
+        .remote_anonymous(url)
         .context("creating remote failed")?;
 
     remote
@@ -18,7 +19,8 @@ pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
 }
 
 pub fn push(repo: &Repository, url: &str) -> Result<(), Error> {
-    let mut remote = repo.remote_anonymous(url)
+    let mut remote = repo
+        .remote_anonymous(url)
         .context("creating remote failed")?;
 
     // TODO according to git2 documentation: Note that you'll likely want to use
@@ -42,7 +44,8 @@ pub fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
 }
 
 pub fn get_head_commit<'repo>(repo: &'repo Repository) -> Result<Commit<'repo>, Error> {
-    let head = repo.find_reference("refs/dm_head")
+    let head = repo
+        .find_reference("refs/dm_head")
         .context("refs/dm_head not found")?;
     Ok(head.peel_to_commit()?)
 }
@@ -76,7 +79,8 @@ impl<'repo> TreeZipper<'repo> {
 
     pub fn descend(&mut self, name: &str) -> Result<(), Error> {
         let next = if let Some(t) = self.current.as_ref().and_then(|t| t.get_name(name)) {
-            let tree = t.to_object(self.repo)?
+            let tree = t
+                .to_object(self.repo)?
                 .into_tree()
                 .or_else(|_| Err(format_err!("expected tree in {}", name)))?;
             Some(tree)

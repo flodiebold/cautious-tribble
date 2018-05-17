@@ -1,5 +1,5 @@
-use git2::Repository;
 use failure::{Error, ResultExt};
+use git2::Repository;
 use serde_yaml;
 
 use common::git::{self, TreeZipper};

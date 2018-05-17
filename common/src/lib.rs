@@ -5,8 +5,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-pub mod git;
-pub mod deployment;
 mod config;
+pub mod deployment;
+pub mod git;
 
-pub use config::{Config as Config};
+pub use config::Config;

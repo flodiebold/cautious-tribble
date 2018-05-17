@@ -1,6 +1,6 @@
-use std::path::Path;
-use std::fs::File;
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::path::Path;
 
 use failure::Error;
 use serde_yaml;
@@ -21,7 +21,7 @@ impl Deployer {
         use self::Deployer::*;
         Ok(match *self {
             Kubernetes(ref conf) => Box::new(conf.create()?),
-            Dummy(ref conf) => Box::new(conf.create())
+            Dummy(ref conf) => Box::new(conf.create()),
         })
     }
 }
