@@ -62,7 +62,8 @@ is that a use case though?
  - versions repo checkout path
  - transitions
  - specify config path on command line
-** TODO add deployer status condition
+** DONE add deployer status condition
+   CLOSED: [2018-04-19 Do 22:28]
 ** TODO add scheduled transitions
 ** TODO add per-service locks
 ** TODO add unlock after transition
