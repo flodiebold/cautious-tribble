@@ -56,8 +56,8 @@ impl IntegrationTest {
         );
         let mut rng = rand::thread_rng();
         let mut ports = HashMap::new();
-        ports.insert(TestService::Deployer, rng.gen::<u16>() + 1000);
-        ports.insert(TestService::Transitioner, rng.gen::<u16>() + 1000);
+        ports.insert(TestService::Deployer, rng.gen_range(1024, std::u16::MAX));
+        ports.insert(TestService::Transitioner, rng.gen_range(1024, std::u16::MAX));
         IntegrationTest {
             dir,
             executable_root: root,
@@ -410,8 +410,8 @@ type ReqwestResult<T> = std::result::Result<T, reqwest::Error>;
 
 fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
     match result {
-        &Ok(_) => false,
-        &Err(ref error) => match error
+        Ok(_) => false,
+        Err(error) => match error
             .get_ref()
             .and_then(|e| e.downcast_ref::<std::io::Error>())
             .map(|e| e.kind())
@@ -428,9 +428,10 @@ pub fn retrying_request<T, F: Fn() -> ReqwestResult<T>>(f: F) -> ReqwestResult<T
     let mut result = f();
     let mut retries = 0;
     // retry connection refuseds and broken pipes
-    while should_retry(&result) && retries < 10 {
+    while should_retry(&result) && retries < 50 {
         result = f();
         retries += 1;
+        std::thread::sleep(std::time::Duration::from_millis(200));
     }
     result
 }

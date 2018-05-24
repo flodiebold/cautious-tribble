@@ -42,11 +42,14 @@ is that a use case though?
 ** TODO fix signal handling
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
+** TODO support deploying configmaps
+** TODO support deploying secrets
 ** TODO support deploying services
 ** TODO support deploying daemonsets
 ** TODO make runnable as CLI tool
 ** TODO add dry run mode
 ** TODO add full diff mode that checks that the configuration is really what's expected
+** TODO allow arbitrary subdirs in versions repo
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -69,13 +72,15 @@ is that a use case though?
 ** TODO add unlock after transition
 ** TODO add jenkins checks
 ** TODO add k8s job checks
-** TODO add health & status resources
+** TODO add status resource
  - report time of last actual run for each transition
  - report time and status of last check for each transition
 ** TODO fix signal handling
 ** TODO handle remote callbacks during push and use push_update_reference
  - and handle push conficts
 ** TODO reload config on every loop
+** TODO allow arbitrary subdirs in versions repo
+** TODO allow restricting transitions to subdirs
 ** TODO make runnable as CLI tool
 ** TODO add dry run mode
 * integration tests
@@ -123,6 +128,7 @@ is that a use case though?
 ** TODO set up rustfmt
 ** TODO add structured logging
 ** TODO slack integration
+** TODO datadog integration (events when deploying / transitioning, ...)
 ** TODO set up CI
 ** TODO test coverage
 ** TODO build static binaries
