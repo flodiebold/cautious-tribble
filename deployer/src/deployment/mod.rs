@@ -13,16 +13,16 @@ pub mod dummy;
 pub mod kubernetes;
 
 pub trait Deployer {
-    fn deploy(&mut self, deployments: &[Deployment]) -> Result<(), Error>;
+    fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error>;
 
     fn check_rollout_status(
         &mut self,
-        deployments: &[Deployment],
+        deployables: &[Deployable],
     ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error>;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Deployment {
+pub struct Deployable {
     pub name: String,
     pub file_name: PathBuf,
     pub content: Vec<u8>,
@@ -32,7 +32,7 @@ pub struct Deployment {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct DeploymentsInfo {
-    pub deployments: Vec<Deployment>,
+    pub deployments: Vec<Deployable>,
 }
 
 pub fn get_deployments(
@@ -41,7 +41,7 @@ pub fn get_deployments(
     last_version: Option<VersionHash>,
 ) -> Result<Option<DeploymentsInfo>, Error> {
     let mut blob_id_by_deployment = HashMap::new();
-    let mut deployments = HashMap::<String, Deployment>::new();
+    let mut deployments = HashMap::<String, Deployable>::new();
 
     // collect current versions of all deployments
     let head_commit = git::get_head_commit(repo)?;
@@ -75,7 +75,7 @@ pub fn get_deployments(
                 .and_then(|s| s.to_str())
                 .ok_or_else(|| format_err!("Invalid file name {:?}", file_name))?
                 .to_string();
-            let deployment = Deployment {
+            let deployment = Deployable {
                 name: name.clone(),
                 file_name,
                 content,
@@ -175,7 +175,7 @@ mod test {
         assert_eq!(info.deployments[0].content, "blubb".as_bytes());
         assert_eq!(
             info.deployments[0].version,
-            fixture.get_commit("head").unwrap()
+            fixture.get_commit("head").unwrap().into()
         )
     }
 
@@ -195,14 +195,14 @@ mod test {
         assert_eq!(info.deployments[0].content, "xx".as_bytes());
         assert_eq!(
             info.deployments[0].version,
-            fixture.get_commit("head").unwrap()
+            fixture.get_commit("head").unwrap().into()
         );
         assert_eq!(info.deployments[1].name, "foo");
         assert_eq!(info.deployments[1].file_name, Path::new("foo"));
         assert_eq!(info.deployments[1].content, "blubb".as_bytes());
         assert_eq!(
             info.deployments[1].version,
-            fixture.get_commit("head").unwrap()
+            fixture.get_commit("head").unwrap().into()
         );
     }
 
@@ -215,7 +215,7 @@ mod test {
         let result = get_deployments(
             &fixture.repo,
             "available",
-            fixture.commits.get("first").cloned(),
+            fixture.commits.get("first").cloned().map(VersionHash::from),
         ).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
@@ -225,12 +225,12 @@ mod test {
         assert_eq!(info.deployments[0].content, "yy".as_bytes());
         assert_eq!(
             info.deployments[0].version,
-            fixture.get_commit("head").unwrap()
+            fixture.get_commit("head").unwrap().into()
         );
         assert_eq!(info.deployments[1].name, "foo");
         assert_eq!(
             info.deployments[1].version,
-            fixture.get_commit("first").unwrap()
+            fixture.get_commit("first").unwrap().into()
         );
     }
 
@@ -243,7 +243,7 @@ mod test {
         let result = get_deployments(
             &fixture.repo,
             "available",
-            fixture.commits.get("first").cloned(),
+            fixture.commits.get("first").cloned().map(VersionHash::from),
         ).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
@@ -253,12 +253,12 @@ mod test {
         assert_eq!(info.deployments[0].content, "yy".as_bytes());
         assert_eq!(
             info.deployments[0].version,
-            fixture.get_commit("head").unwrap()
+            fixture.get_commit("head").unwrap().into()
         );
         assert_eq!(info.deployments[1].name, "foo");
         assert_eq!(
             info.deployments[1].version,
-            fixture.get_commit("first").unwrap()
+            fixture.get_commit("first").unwrap().into()
         );
     }
 }

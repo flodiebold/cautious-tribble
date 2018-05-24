@@ -7,7 +7,7 @@ use kubeclient::Kubernetes;
 use common::deployment::{DeploymentState, RolloutStatus, RolloutStatusReason};
 use common::git::VersionHash;
 
-use super::{Deployer, Deployment};
+use super::{Deployer, Deployable};
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
@@ -42,7 +42,7 @@ impl KubernetesDeployer {
 
     fn retrieve_current_state(
         &mut self,
-        deployments: &[Deployment],
+        deployments: &[Deployable],
     ) -> Result<HashMap<String, DeploymentState>, Error> {
         let mut result = HashMap::with_capacity(deployments.len());
 
@@ -92,7 +92,7 @@ impl KubernetesDeployer {
         Ok(result)
     }
 
-    fn do_deploy(&mut self, deployment: &Deployment) -> Result<(), Error> {
+    fn do_deploy(&mut self, deployment: &Deployable) -> Result<(), Error> {
         use serde_yaml::{self, Mapping, Value};
         let mut data: Value = serde_yaml::from_slice(&deployment.content)?;
         let root = data
@@ -129,7 +129,6 @@ impl KubernetesDeployer {
 
     fn kubectl_apply(&self, data: &str) -> Result<(), Error> {
         // TODO: use kube API instead
-        // TODO: configure kubectl correctly with multiple clusters
         use std::io::Write;
         use std::process::{Command, Stdio};
 
@@ -182,7 +181,7 @@ impl KubernetesDeployer {
 }
 
 impl Deployer for KubernetesDeployer {
-    fn deploy(&mut self, deployments: &[Deployment]) -> Result<(), Error> {
+    fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error> {
         let current_state = self.retrieve_current_state(deployments)?;
 
         for d in deployments {
@@ -213,7 +212,7 @@ impl Deployer for KubernetesDeployer {
                 Err(e) => {
                     // TODO: maybe instead mark the service as failing to deploy
                     // and don't try again?
-                    error!("Deployment for {} failed: {}\n{}", d.name, e, e.backtrace());
+                    error!("Deployment of {} failed: {}\n{}", d.name, e, e.backtrace());
                     for cause in e.causes() {
                         error!("caused by: {}", cause);
                     }
@@ -226,7 +225,7 @@ impl Deployer for KubernetesDeployer {
 
     fn check_rollout_status(
         &mut self,
-        deployments: &[Deployment],
+        deployments: &[Deployable],
     ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
         let current_state = self.retrieve_current_state(deployments)?;
 
