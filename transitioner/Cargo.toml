@@ -22,6 +22,11 @@ crossbeam = "0.3"
 log = "0.4.1"
 env_logger = "0.5.4"
 
+indexmap = { version = "1", features = ["serde-1"] }
+
+chrono = { version = "0.4", features = ["serde"] }
+cron = "0.4"
+
 common = { path = "../common" }
 
 [dev-dependencies]

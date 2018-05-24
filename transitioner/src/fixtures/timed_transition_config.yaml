@@ -3,8 +3,6 @@ common:
   versions_checkout_path: ""
 transitions:
   prod:
-    source: pp
-    target: prod
-  pp:
     source: available
-    target: pp
+    target: prod
+    schedule: 0 0 0 * * * *

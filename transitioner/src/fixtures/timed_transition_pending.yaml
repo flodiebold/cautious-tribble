@@ -1,0 +1,16 @@
+commits:
+  - files:
+      transitions.yaml: |
+        ---
+        prod:
+          scheduled: "2018-01-01T00:00:00Z"
+      available/deployments/foo: x
+    name: head
+  - files:
+      transitions.yaml: |
+        ---
+        prod:
+          scheduled: "2018-01-02T00:00:00Z"
+      available/deployments/foo: x
+      prod/deployments/foo: x
+    name: expected

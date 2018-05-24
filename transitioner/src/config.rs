@@ -3,13 +3,14 @@ use std::path::Path;
 
 use failure::Error;
 use serde_yaml;
+use indexmap::IndexMap;
 
 use common;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub common: common::Config,
-    pub transitions: Vec<super::Transition>,
+    pub transitions: IndexMap<String, super::Transition>,
     pub deployer_url: Option<String>,
 }
 

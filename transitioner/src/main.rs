@@ -9,10 +9,13 @@ extern crate serde_yaml;
 extern crate structopt;
 #[macro_use]
 extern crate log;
+extern crate chrono;
+extern crate cron;
 extern crate crossbeam;
 extern crate env_logger;
 extern crate gotham;
 extern crate hyper;
+extern crate indexmap;
 extern crate mime;
 extern crate reqwest;
 
@@ -22,10 +25,13 @@ extern crate git_fixture;
 
 use std::path::PathBuf;
 use std::process;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
+use cron::Schedule;
 use failure::Error;
 use git2::{ObjectType, Repository, Signature};
 use structopt::StructOpt;
@@ -36,9 +42,11 @@ mod api;
 mod config;
 mod locks;
 mod precondition;
+mod transition_state;
 
 use config::Config;
 use precondition::{Precondition, PreconditionResult};
+use transition_state::{TransitionState, TransitionStates};
 
 #[derive(Debug, StructOpt)]
 struct Options {
@@ -52,12 +60,30 @@ pub struct ServiceState {
     client: reqwest::Client,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Transition {
     source: String,
     target: String,
     #[serde(default)]
     preconditions: Vec<Precondition>,
+    schedule: Option<String>,
+}
+
+impl Transition {
+    fn next_scheduled_time(&self, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
+        let schedule_str = self.schedule.as_ref()?;
+        let schedule = match Schedule::from_str(&schedule_str) {
+            Ok(s) => s,
+            Err(e) => {
+                error!(
+                    "Could not parse schedule definition {:?}: {}",
+                    schedule_str, e
+                );
+                return None;
+            }
+        };
+        schedule.after(&now).next()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -81,10 +107,23 @@ pub struct PendingTransitionInfo {
 }
 
 fn run_transition(
+    name: &str,
     transition: &Transition,
     repo: &Repository,
     service_state: &ServiceState,
+    now: DateTime<Utc>,
 ) -> Result<TransitionResult, Error> {
+    let mut transition_states = TransitionStates::load(repo)?;
+    let transition_state = transition_states.0.get(name).cloned().unwrap_or_default();
+    if transition_state
+        .scheduled
+        .map(|t| t >= now)
+        .unwrap_or(false)
+    {
+        // before scheduled time
+        return Ok(TransitionResult::Skipped);
+    }
+
     let target_locks = locks::load_locks(repo, &transition.target)?;
     if target_locks.env_lock.is_locked() {
         return Ok(TransitionResult::Skipped);
@@ -97,6 +136,12 @@ fn run_transition(
         target: transition.target.clone(),
         current_version: head_commit.id().into(),
     };
+
+    let new_state = TransitionState {
+        scheduled: transition.next_scheduled_time(now),
+    };
+
+    transition_states.insert(name, new_state);
 
     let tree = head_commit.tree()?;
     let mut source = TreeZipper::from(repo, tree.clone());
@@ -125,6 +170,8 @@ fn run_transition(
 
     target.ascend()?;
     target.ascend()?;
+
+    target.rebuild(|b| transition_states.save(repo, b))?;
 
     let new_tree = target.into_inner().expect("new tree should not be None");
 
@@ -168,9 +215,13 @@ fn run_transition(
     Ok(TransitionResult::Success)
 }
 
-fn run_one_transition(repo: &Repository, service_state: &ServiceState) -> Result<(), Error> {
-    for transition in service_state.config.transitions.iter() {
-        match run_transition(&transition, &repo, service_state)? {
+fn run_one_transition(
+    repo: &Repository,
+    service_state: &ServiceState,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    for (name, transition) in service_state.config.transitions.iter() {
+        match run_transition(name, transition, &repo, service_state, now)? {
             TransitionResult::Success => break,
             TransitionResult::Skipped => continue,
             // TODO we could instead just block transitions that touch the source env
@@ -193,6 +244,10 @@ mod test {
         Ok(c)
     }
 
+    fn test_time() -> DateTime<Utc> {
+        "2018-01-01T00:00:00.000Z".parse().unwrap()
+    }
+
     #[test]
     fn test_transition_source_missing() {
         let fixture = RepoFixture::from_str(include_str!(
@@ -204,7 +259,13 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        let result = run_transition(&state.config.transitions[0], &fixture.repo, &state).unwrap();
+        let result = run_transition(
+            "prod",
+            &state.config.transitions.get("prod").unwrap(),
+            &fixture.repo,
+            &state,
+            test_time(),
+        ).unwrap();
 
         assert_eq!(result, TransitionResult::Skipped);
         assert_eq!(
@@ -224,7 +285,7 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &state).unwrap();
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -240,7 +301,7 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &state).unwrap();
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -257,7 +318,7 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &state).unwrap();
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -274,7 +335,7 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &state).unwrap();
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -290,7 +351,7 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &state).unwrap();
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -306,12 +367,84 @@ mod test {
         let client = reqwest::Client::new();
         let state = ServiceState { config, client };
 
-        run_one_transition(&fixture.repo, &state).unwrap();
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
         assert_eq!(
             fixture.repo.refname_to_id("refs/dm_head").unwrap(),
             fixture.get_commit("head").unwrap()
         );
+    }
+
+    #[test]
+    fn test_timed_transition_pending() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/timed_transition_pending.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config = make_config(
+            include_str!("./fixtures/timed_transition_config.yaml"),
+            &fixture.repo,
+        ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
+
+        let result = run_transition(
+            "prod",
+            &state.config.transitions.get("prod").unwrap(),
+            &fixture.repo,
+            &state,
+            "2018-01-01T00:00:00Z".parse().unwrap(),
+        ).unwrap();
+
+        assert_eq!(result, TransitionResult::Skipped);
+        assert_eq!(
+            fixture.repo.refname_to_id("refs/dm_head").unwrap(),
+            fixture.get_commit("head").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_timed_transition_runs() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/timed_transition_pending.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config = make_config(
+            include_str!("./fixtures/timed_transition_config.yaml"),
+            &fixture.repo,
+        ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
+
+        run_one_transition(
+            &fixture.repo,
+            &state,
+            "2018-01-01T00:00:01Z".parse().unwrap(),
+        ).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_timed_transition_without_schedule() {
+        let fixture = RepoFixture::from_str(include_str!(
+            "./fixtures/timed_transition_pending_no_schedule.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config = make_config(
+            include_str!("./fixtures/timed_transition_config_no_schedule.yaml"),
+            &fixture.repo,
+        ).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
+
+        run_one_transition(
+            &fixture.repo,
+            &state,
+            "2018-01-01T00:00:01Z".parse().unwrap(),
+        ).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
     }
 }
 
@@ -331,7 +464,7 @@ fn run() -> Result<(), Error> {
     loop {
         git::update(&repo, &service_state.config.common.versions_url)?;
 
-        if let Err(error) = run_one_transition(&repo, &service_state) {
+        if let Err(error) = run_one_transition(&repo, &service_state, Utc::now()) {
             error!("Transition failed: {}\n{}", error, error.backtrace());
             for cause in error.causes() {
                 error!("caused by: {}", cause);

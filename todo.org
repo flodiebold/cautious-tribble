@@ -48,6 +48,7 @@ is that a use case though?
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
 ** TODO make runnable as CLI tool
+** TODO validate yamls before deploying
 ** TODO add dry run mode
 ** TODO add full diff mode that checks that the configuration is really what's expected
 ** TODO allow arbitrary subdirs in versions repo
@@ -68,7 +69,8 @@ is that a use case though?
  - specify config path on command line
 ** DONE add deployer status condition
    CLOSED: [2018-04-19 Do 22:28]
-** TODO add scheduled transitions
+** DONE add scheduled transitions
+   CLOSED: [2018-05-31 Do 19:39]
 ** TODO add per-service locks
 ** TODO add unlock after transition
 ** TODO add jenkins checks
