@@ -36,11 +36,17 @@
   - command `serve` to run as service
   - command `check` to do dry run
   - command `deploy` to deploy
+** TODO add dry run mode (default for CLI)
+** TODO add full diff mode that checks that the configuration is really what's expected
+ - in CLI mode, show diffs using treediff crate
+ - fall back automatically to this for deployables that don't have an annotation
+** TODO allow reading from file system instead of git in CLI mode
+** TODO allow running deployable content through filter before applying it
 ** TODO support deploying configmaps
 ** TODO support deploying secrets
 ** TODO support deploying services
 ** TODO support deploying daemonsets
-** TODO allow running deployment content through filter before applying it
+** TODO support deploying ingresses
 ** TODO handle missing namespace
 create or ignore?
 ** TODO just use blob OIDs instead of earliest commit?
@@ -52,8 +58,6 @@ is that a use case though?
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
 ** TODO validate yamls before deploying
-** TODO add dry run mode
-** TODO add full diff mode that checks that the configuration is really what's expected
 ** TODO allow arbitrary subdirs in versions repo
 * transition manager
 ** DONE pull from versions repo regularly
@@ -134,15 +138,23 @@ is that a use case though?
 ** TODO set up rustfmt
 ** TODO add structured logging
 ** TODO slack integration
+ - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
+ - slack bot that can deploy and lock
 ** TODO datadog integration (events when deploying / transitioning, ...)
 ** TODO set up CI
 ** TODO test coverage
-** TODO build static binaries
+** TODO build static binaries & docker images
 ** TODO fork cron library
  - make it build on stable
  - add Clone
  - add Deserialize
+* later
+** Canaries, Staging namespaces / overlays
 * refactoring
 ** DONE factor out some common git helpers?
    CLOSED: [2018-02-25 So 00:16]
  - nice "zipper" interface for tree building / walking?
+** TODO switch to result-in-main / exitfailure
+** TODO use thunder?
+** TODO switch to actix-web?
+** TODO use fail in testing?
