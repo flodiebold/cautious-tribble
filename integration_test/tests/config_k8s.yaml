@@ -12,7 +12,8 @@ deployers:
     kubeconf: "./kube_config"
     namespace: "prod-%%suffix%%"
 transitions:
-  - source: dev
+  prod:
+    source: dev
     target: prod
     preconditions:
       - SourceClean
