@@ -3,10 +3,11 @@ use std::collections::HashMap;
 
 use git::VersionHash;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RolloutStatus {
     InProgress,
     Clean,
+    Outdated,
     Failed,
 }
 
@@ -16,7 +17,12 @@ impl RolloutStatus {
         match self {
             Clean => other,
             InProgress => match other {
-                Clean | InProgress => InProgress,
+                Clean | InProgress | Outdated => InProgress,
+                Failed => Failed,
+            },
+            Outdated => match other {
+                Clean | Outdated => Outdated,
+                InProgress => InProgress,
                 Failed => Failed,
             },
             Failed => Failed,
@@ -29,6 +35,7 @@ pub struct DeployerStatus {
     pub deployed_version: VersionHash,
     pub last_successfully_deployed_version: Option<VersionHash>,
     pub rollout_status: RolloutStatus,
+    // TODO rename to by_deployable
     pub status_by_deployment: HashMap<String, DeploymentState>,
 }
 
@@ -70,11 +77,13 @@ impl From<RolloutStatusReason> for RolloutStatus {
     }
 }
 
+// TODO rename to DeployableState
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentState {
     NotDeployed,
     Deployed {
         version: VersionHash,
+        expected_version: VersionHash,
         status: RolloutStatusReason,
     },
 }

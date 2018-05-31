@@ -67,6 +67,10 @@ fn check_source_clean(
             info!("Transition blocked: Rollout still in progress");
             Ok(PreconditionResult::Blocked)
         }
+        RolloutStatus::Outdated => {
+            info!("Transition blocked: Changes pending");
+            Ok(PreconditionResult::Blocked)
+        }
         RolloutStatus::Clean => {
             info!("SourceClean check ok");
             Ok(PreconditionResult::Success)

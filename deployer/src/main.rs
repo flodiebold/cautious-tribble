@@ -47,6 +47,21 @@ struct Options {
     /// The location of the configuration file.
     #[structopt(short = "c", long = "config", parse(from_os_str))]
     config: PathBuf,
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, StructOpt)]
+enum Command {
+    #[structopt(name = "serve")]
+    /// Run the deployer as a server, constantly checking for updates.
+    Serve,
+    #[structopt(name = "check")]
+    /// Compare the current state of the cluster to the intended state.
+    Check,
+    #[structopt(name = "deploy")]
+    /// Deploy the intended state to the cluster.
+    Deploy,
 }
 
 pub struct ServiceState {
@@ -63,10 +78,49 @@ fn new_deployer_status(version: VersionHash) -> DeployerStatus {
     }
 }
 
-fn run() -> Result<(), Error> {
-    env_logger::init();
-    let options = Options::from_args();
-    let config = Config::load(&options.config)?;
+fn deploy_env(
+    version: VersionHash,
+    deployer: &mut dyn deployment::Deployer,
+    repo: &git2::Repository,
+    env: &str,
+    last_version: Option<VersionHash>,
+    last_status: Option<DeployerStatus>,
+) -> Result<DeployerStatus, Error> {
+    let mut env_status = last_status.unwrap_or_else(|| new_deployer_status(version));
+    if let Some(deployments) = deployment::get_deployments(repo, env, last_version)? {
+        info!(
+            "Got a change for {} to version {:?}, now deploying...",
+            env, version
+        );
+        deployer.deploy(&deployments.deployments)?;
+
+        env_status.deployed_version = version;
+        env_status.rollout_status = RolloutStatus::InProgress;
+
+        info!("Deployed {} up to {:?}", env, version);
+    }
+
+    if env_status.rollout_status == RolloutStatus::InProgress {
+        if let Some(deployments) =
+            deployment::get_deployments(&repo, env, env_status.last_successfully_deployed_version)?
+        {
+            let (new_rollout_status, new_status_by_deployment) =
+                deployer.check_rollout_status(&deployments.deployments)?;
+            env_status.rollout_status = new_rollout_status;
+            env_status
+                .status_by_deployment
+                .extend(new_status_by_deployment.into_iter());
+        }
+    }
+
+    if env_status.rollout_status == RolloutStatus::Clean {
+        env_status.last_successfully_deployed_version = Some(version);
+    }
+
+    Ok(env_status)
+}
+
+fn serve(config: Config) -> Result<(), Error> {
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
     let mut deployers = config
@@ -75,14 +129,14 @@ fn run() -> Result<(), Error> {
         .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
         .collect::<Result<BTreeMap<_, _>, Error>>()?;
 
-    let mut last_version = HashMap::new();
-
     let service_state = Arc::new(ServiceState {
         latest_status: ArcCell::new(Arc::new(AllDeployerStatus::empty())),
         config,
     });
 
     api::start(service_state.clone());
+
+    let mut last_version = HashMap::new();
 
     loop {
         git::update(&repo, &service_state.config.common.versions_url)?;
@@ -92,25 +146,18 @@ fn run() -> Result<(), Error> {
 
             let mut latest_status = service_state.latest_status.get();
 
-            let mut env_status = latest_status
-                .deployers
-                .get(&*env)
-                .cloned()
-                .unwrap_or_else(|| new_deployer_status(version));
+            let env_status = latest_status.deployers.get(&*env).cloned();
 
-            if let Some(deployments) =
-                deployment::get_deployments(&repo, env, last_version.get(env).cloned())?
-            {
-                info!(
-                    "Got a change for {} to version {:?}, now deploying...",
-                    env, version
-                );
-                let result = deployer.deploy(&deployments.deployments);
-
-                env_status.deployed_version = version;
-                env_status.rollout_status = RolloutStatus::InProgress;
-
-                if let Err(e) = result {
+            let env_status = match deploy_env(
+                version,
+                deployer.as_mut(),
+                &repo,
+                env,
+                last_version.get(env).cloned(),
+                env_status,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
                     error!("Deployment failed: {}\n{}", e, e.backtrace());
                     for cause in e.causes() {
                         error!("caused by: {}", cause);
@@ -118,28 +165,7 @@ fn run() -> Result<(), Error> {
 
                     continue;
                 }
-
-                info!("Deployed {} up to {:?}", env, version);
-            }
-
-            if env_status.rollout_status == RolloutStatus::InProgress {
-                if let Some(deployments) = deployment::get_deployments(
-                    &repo,
-                    env,
-                    env_status.last_successfully_deployed_version,
-                )? {
-                    let (new_rollout_status, new_status_by_deployment) =
-                        deployer.check_rollout_status(&deployments.deployments)?;
-                    env_status.rollout_status = new_rollout_status;
-                    env_status
-                        .status_by_deployment
-                        .extend(new_status_by_deployment.into_iter());
-                }
-            }
-
-            if env_status.rollout_status == RolloutStatus::Clean {
-                env_status.last_successfully_deployed_version = Some(version);
-            }
+            };
 
             Arc::make_mut(&mut latest_status)
                 .deployers
@@ -149,6 +175,72 @@ fn run() -> Result<(), Error> {
         }
 
         thread::sleep(Duration::from_millis(1000));
+    }
+}
+
+fn deploy(config: Config) -> Result<(), Error> {
+    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+
+    let mut deployers = config
+        .deployers
+        .iter()
+        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
+        .collect::<Result<BTreeMap<_, _>, Error>>()?;
+
+    git::update(&repo, &config.common.versions_url)?;
+
+    for (env, deployer) in deployers.iter_mut() {
+        let version = git::get_head_commit(&repo)?.id().into();
+
+        let env_status = deploy_env(version, deployer.as_mut(), &repo, env, None, None)?;
+
+        println!("Status of {}: {:?}", env, env_status);
+    }
+
+    Ok(())
+}
+
+fn check(config: Config) -> Result<(), Error> {
+    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+
+    let mut deployers = config
+        .deployers
+        .iter()
+        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
+        .collect::<Result<BTreeMap<_, _>, Error>>()?;
+
+    git::update(&repo, &config.common.versions_url)?;
+
+    for (env, deployer) in deployers.iter_mut() {
+        let version = git::get_head_commit(&repo)?.id().into();
+
+        let mut env_status = new_deployer_status(version);
+
+        if let Some(deployments) = deployment::get_deployments(&repo, env, None)? {
+            let (new_rollout_status, new_status_by_deployment) =
+                deployer.check_rollout_status(&deployments.deployments)?;
+
+            env_status.rollout_status = new_rollout_status;
+            env_status
+                .status_by_deployment
+                .extend(new_status_by_deployment.into_iter());
+        }
+
+        println!("Status of {}: {:?}", env, env_status);
+    }
+
+    Ok(())
+}
+
+fn run() -> Result<(), Error> {
+    env_logger::init();
+    let options = Options::from_args();
+    let config = Config::load(&options.config)?;
+
+    match options.command {
+        Command::Serve => serve(config),
+        Command::Check => check(config),
+        Command::Deploy => deploy(config),
     }
 }
 

@@ -184,6 +184,7 @@ impl IntegrationTest {
         let child = Command::new(self.executable_root.join("deployer"))
             .arg("--config")
             .arg(&config_path)
+            .arg("serve")
             .current_dir(self.dir.path())
             .env_clear()
             .env("RUST_LOG", "info")

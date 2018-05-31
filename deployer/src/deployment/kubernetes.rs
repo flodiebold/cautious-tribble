@@ -84,6 +84,7 @@ impl KubernetesDeployer {
                     version: version
                         .parse()
                         .unwrap_or(VersionHash::from_bytes(&[0; 20]).unwrap()),
+                    expected_version: d.version,
                     status: rollout_status,
                 },
             );
@@ -233,8 +234,9 @@ impl Deployer for KubernetesDeployer {
             .iter()
             .map(|(_, v)| v)
             .map(|d| match d {
-                DeploymentState::NotDeployed => RolloutStatus::InProgress,
-                DeploymentState::Deployed { status, .. } => status.clone().into(),
+                DeploymentState::NotDeployed => RolloutStatus::Outdated,
+                DeploymentState::Deployed { status, version, expected_version } if version == expected_version => status.clone().into(),
+                DeploymentState::Deployed { status, .. } => RolloutStatus::Outdated.combine(status.clone().into()),
             })
             .fold(RolloutStatus::Clean, RolloutStatus::combine);
 

@@ -32,6 +32,10 @@
 ** DONE support multiple clusters
    CLOSED: [2018-05-24 Do 20:19]
  - make sure kubectl apply uses same config...
+** TODO make runnable as CLI tool
+  - command `serve` to run as service
+  - command `check` to do dry run
+  - command `deploy` to deploy
 ** TODO support deploying configmaps
 ** TODO support deploying secrets
 ** TODO support deploying services
@@ -47,7 +51,6 @@ is that a use case though?
 ** TODO fix signal handling
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
-** TODO make runnable as CLI tool
 ** TODO validate yamls before deploying
 ** TODO add dry run mode
 ** TODO add full diff mode that checks that the configuration is really what's expected
