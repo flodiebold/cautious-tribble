@@ -7,7 +7,7 @@ use kubeclient::Kubernetes;
 use common::deployment::{DeploymentState, RolloutStatus, RolloutStatusReason};
 use common::git::VersionHash;
 
-use super::{Deployer, Deployable};
+use super::{Deployable, Deployer};
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 

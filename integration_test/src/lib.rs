@@ -57,7 +57,10 @@ impl IntegrationTest {
         let mut rng = rand::thread_rng();
         let mut ports = HashMap::new();
         ports.insert(TestService::Deployer, rng.gen_range(1024, std::u16::MAX));
-        ports.insert(TestService::Transitioner, rng.gen_range(1024, std::u16::MAX));
+        ports.insert(
+            TestService::Transitioner,
+            rng.gen_range(1024, std::u16::MAX),
+        );
         IntegrationTest {
             dir,
             executable_root: root,

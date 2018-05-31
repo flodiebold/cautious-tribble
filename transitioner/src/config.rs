@@ -2,8 +2,8 @@ use std::fs::File;
 use std::path::Path;
 
 use failure::Error;
-use serde_yaml;
 use indexmap::IndexMap;
+use serde_yaml;
 
 use common;
 

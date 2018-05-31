@@ -1,7 +1,7 @@
 use failure::Error;
 use std::collections::HashMap;
 
-use super::{Deployer, Deployable, DeploymentState};
+use super::{Deployable, Deployer, DeploymentState};
 use RolloutStatus;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
