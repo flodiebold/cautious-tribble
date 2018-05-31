@@ -135,6 +135,10 @@ is that a use case though?
 ** TODO set up CI
 ** TODO test coverage
 ** TODO build static binaries
+** TODO fork cron library
+ - make it build on stable
+ - add Clone
+ - add Deserialize
 * refactoring
 ** DONE factor out some common git helpers?
    CLOSED: [2018-02-25 So 00:16]

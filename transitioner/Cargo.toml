@@ -25,7 +25,7 @@ env_logger = "0.5.4"
 indexmap = { version = "1", features = ["serde-1"] }
 
 chrono = { version = "0.4", features = ["serde"] }
-cron = "0.4"
+cron = { git = "https://github.com/lholden/cron", rev = "28e8ea81c2bcb121716aaa514bfa0954d638c2d3" }
 
 common = { path = "../common" }
 
