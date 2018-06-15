@@ -47,12 +47,21 @@
 ** TODO support deploying services
 ** TODO support deploying daemonsets
 ** TODO support deploying ingresses
+** TODO allow running deployment content through filter before applying it
+** TODO add a simple filter that just sets the image tag?
 ** TODO handle missing namespace
 create or ignore?
 ** TODO just use blob OIDs instead of earliest commit?
 ** TODO handle undeploying something
 is that a use case though?
 ** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
+** TODO do resource patching without kubectl?
+ - makes diffs more reliable
+ - API support in https://github.com/kubernetes/features/issues/555
+
+See also:
+kubectl diff -- https://github.com/kubernetes/features/issues/491
+current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
 ** TODO improve error handling
 ** TODO fix signal handling
 ** TODO use k8s api instead of relying on kubectl for deployment
