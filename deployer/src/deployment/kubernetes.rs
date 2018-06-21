@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use failure::{Error, ResultExt, SyncFailure};
+use failure::{Error, ResultExt};
 use kubeclient::clients::ReadClient;
 use kubeclient::Kubernetes;
+
 
 use common::deployment::{DeploymentState, RolloutStatus, RolloutStatusReason};
 use common::git::VersionHash;
@@ -34,26 +35,24 @@ impl KubernetesDeployer {
         Ok(KubernetesDeployer {
             kubeconf: config.kubeconf.clone(),
             namespace: config.namespace.clone(),
-            client: Kubernetes::load_conf(&config.kubeconf)
-                .map_err(SyncFailure::new)?
+            client: Kubernetes::load_conf(&config.kubeconf)?
                 .namespace(&config.namespace),
         })
     }
 
     fn retrieve_current_state(
         &mut self,
-        deployments: &[Deployable],
+        deployables: &[Deployable],
     ) -> Result<HashMap<String, DeploymentState>, Error> {
-        let mut result = HashMap::with_capacity(deployments.len());
+        let mut result = HashMap::with_capacity(deployables.len());
 
-        for d in deployments {
+        for d in deployables {
             // TODO don't need to do exists, just do proper error handling in
             // kubeclient and handle 404
             let exists = self
                 .client
                 .deployments()
-                .exists(&d.name)
-                .map_err(SyncFailure::new)?;
+                .exists(&d.name)?;
 
             if !exists {
                 warn!("Deployment {} does not exist", d.name);
@@ -64,8 +63,7 @@ impl KubernetesDeployer {
             let kube_deployment = self
                 .client
                 .deployments()
-                .get(&d.name)
-                .map_err(SyncFailure::new)?;
+                .get(&d.name)?;
 
             let version_annotation = kube_deployment
                 .metadata

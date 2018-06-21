@@ -3,6 +3,7 @@ extern crate env_logger;
 extern crate failure;
 extern crate git2;
 extern crate kubeclient;
+extern crate k8s_openapi;
 #[macro_use]
 extern crate log;
 extern crate serde;

@@ -22,7 +22,8 @@ log = "0.4.1"
 env_logger = "0.5.4"
 
 # kubeclient = "0.1"
-kubeclient = { git = "https://github.com/anowell/kubeclient-rs.git" }
+kubeclient = { git = "https://github.com/flodiebold/kubeclient-rs.git" }
+k8s-openapi = { git = "https://github.com/Arnavion/k8s-openapi-codegen", branch = "master", features = ["v1_10"] }
 
 common = { path = "../common" }
 
