@@ -32,6 +32,12 @@
 ** DONE support multiple clusters
    CLOSED: [2018-05-24 Do 20:19]
  - make sure kubectl apply uses same config...
+** DONE support deploying services
+   CLOSED: [2018-06-24 So 16:47]
+** DONE support deploying configmaps
+   CLOSED: [2018-06-24 So 16:47]
+** DONE support deploying secrets
+   CLOSED: [2018-06-24 So 16:47]
 ** TODO make runnable as CLI tool
   - command `serve` to run as service
   - command `check` to do dry run
@@ -42,9 +48,8 @@
  - fall back automatically to this for deployables that don't have an annotation
 ** TODO allow reading from file system instead of git in CLI mode
 ** TODO allow running deployable content through filter before applying it
-** TODO support deploying configmaps
-** TODO support deploying secrets
-** TODO support deploying services
+** TODO integration-test configmap deployment
+** TODO check rollout status of configmap to all nodes
 ** TODO support deploying daemonsets
 ** TODO support deploying ingresses
 ** TODO allow running deployment content through filter before applying it
