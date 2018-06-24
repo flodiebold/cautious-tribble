@@ -48,9 +48,10 @@
  - fall back automatically to this for deployables that don't have an annotation
 ** TODO allow reading from file system instead of git in CLI mode
 ** TODO allow running deployable content through filter before applying it
-** TODO integration-test configmap deployment
+** TODO integration-test configmap & secret deployment
 ** TODO check rollout status of configmap to all nodes
 ** TODO support deploying daemonsets
+ - restart pods?
 ** TODO support deploying ingresses
 ** TODO allow running deployment content through filter before applying it
 ** TODO add a simple filter that just sets the image tag?

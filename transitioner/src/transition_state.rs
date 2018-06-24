@@ -26,7 +26,6 @@ impl TransitionStates {
         let locks_blob = if let Some(blob) = zipper.get_blob("transitions.yaml")? {
             blob
         } else {
-            eprintln!("transitions.yaml not found");
             return Ok(TransitionStates::default());
         };
 
