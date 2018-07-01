@@ -28,6 +28,7 @@ impl Deployer {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(flatten)]
     pub common: common::Config,
     pub deployers: BTreeMap<String, Deployer>,
 }

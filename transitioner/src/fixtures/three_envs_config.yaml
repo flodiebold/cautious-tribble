@@ -1,6 +1,5 @@
-common:
-  versions_url: ""
-  versions_checkout_path: ""
+versions_url: ""
+versions_checkout_path: ""
 transitions:
   prod:
     source: pp
