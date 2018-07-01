@@ -13,7 +13,7 @@ use serde_yaml;
 use common::deployment::{DeploymentState, RolloutStatus, RolloutStatusReason};
 use common::git::VersionHash;
 
-use super::{Deployable, Deployer};
+use super::Deployable;
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
@@ -164,10 +164,8 @@ impl KubernetesDeployer {
 
         Ok(())
     }
-}
 
-impl Deployer for KubernetesDeployer {
-    fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error> {
+    pub fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error> {
         let current_state = self.retrieve_current_state(deployments)?;
 
         for d in deployments {
@@ -209,7 +207,7 @@ impl Deployer for KubernetesDeployer {
         Ok(())
     }
 
-    fn check_rollout_status(
+    pub fn check_rollout_status(
         &mut self,
         deployments: &[Deployable],
     ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {

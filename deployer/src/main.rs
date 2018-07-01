@@ -81,7 +81,7 @@ fn new_deployer_status(version: VersionHash) -> DeployerStatus {
 
 fn deploy_env(
     version: VersionHash,
-    deployer: &mut dyn deployment::Deployer,
+    deployer: &mut deployment::kubernetes::KubernetesDeployer,
     repo: &git2::Repository,
     env: &str,
     last_version: Option<VersionHash>,
@@ -151,7 +151,7 @@ fn serve(config: Config) -> Result<(), Error> {
 
             let env_status = match deploy_env(
                 version,
-                deployer.as_mut(),
+                deployer,
                 &repo,
                 env,
                 last_version.get(env).cloned(),
@@ -193,7 +193,7 @@ fn deploy(config: Config) -> Result<(), Error> {
     for (env, deployer) in deployers.iter_mut() {
         let version = git::get_head_commit(&repo)?.id().into();
 
-        let env_status = deploy_env(version, deployer.as_mut(), &repo, env, None, None)?;
+        let env_status = deploy_env(version, deployer, &repo, env, None, None)?;
 
         println!("Status of {}: {:?}", env, env_status);
     }

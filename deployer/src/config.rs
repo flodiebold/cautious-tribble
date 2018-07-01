@@ -7,30 +7,13 @@ use serde_yaml;
 
 use common;
 
-use deployment::{self, dummy, kubernetes};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum Deployer {
-    Kubernetes(kubernetes::Config),
-    Dummy(dummy::Config),
-}
-
-impl Deployer {
-    pub fn create(&self) -> Result<Box<deployment::Deployer>, Error> {
-        use self::Deployer::*;
-        Ok(match *self {
-            Kubernetes(ref conf) => Box::new(conf.create()?),
-            Dummy(ref conf) => Box::new(conf.create()),
-        })
-    }
-}
+use deployment::kubernetes;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(flatten)]
     pub common: common::Config,
-    pub deployers: BTreeMap<String, Deployer>,
+    pub deployers: BTreeMap<String, kubernetes::Config>,
 }
 
 impl Config {

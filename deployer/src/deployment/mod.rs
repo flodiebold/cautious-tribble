@@ -6,20 +6,9 @@ use std::path::{Path, PathBuf};
 use failure::Error;
 use git2::{ErrorCode, Repository};
 
-use common::deployment::{DeploymentState, RolloutStatus};
 use common::git::{self, TreeZipper, VersionHash};
 
-pub mod dummy;
 pub mod kubernetes;
-
-pub trait Deployer {
-    fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error>;
-
-    fn check_rollout_status(
-        &mut self,
-        deployables: &[Deployable],
-    ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error>;
-}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deployable {
