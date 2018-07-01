@@ -40,25 +40,35 @@
    CLOSED: [2018-06-24 So 16:47]
 ** DONE allow arbitrary subdirs in versions repo
    CLOSED: [2018-07-12 Do 22:25]
-** TODO make runnable as CLI tool
+** DONE make runnable as CLI tool
+   CLOSED: [2018-05-31 Thu 23:29]
   - command `serve` to run as service
   - command `check` to do dry run
   - command `deploy` to deploy
 ** TODO add dry run mode (default for CLI)
-** TODO add full diff mode that checks that the configuration is really what's expected
+** TODO add full diff mode that compares all deployables with what would be deployed
  - in CLI mode, show diffs using treediff crate
  - fall back automatically to this for deployables that don't have an annotation
+ - don't deploy if the diff contains nothing
+** TODO cli: add nicer output
+ - json output with -o json
+ - table otherwise
+ - expect only one env by default, all envs with option
+ - show commit message of the deployed / to deploy commit for each deployable
 ** TODO allow reading from file system instead of git in CLI mode
 ** TODO allow running deployable content through filter before applying it
+** TODO add a simple filter that just sets the image tag?
 ** TODO integration-test configmap & secret deployment
 ** TODO check rollout status of configmap to all nodes
+** TODO allow running deployment content through filter before applying it
+** TODO add a simple filter that just sets the image tag?
 ** TODO support deploying daemonsets
  - restart pods?
 ** TODO support deploying ingresses
-** TODO allow running deployment content through filter before applying it
-** TODO add a simple filter that just sets the image tag?
+** TODO support deploying cron jobs
 ** TODO support deploying namespaces
  - create before other stuff
+** TODO roll deployments when configmaps change?
 ** TODO just use blob OIDs instead of earliest commit?
 ** TODO handle undeploying something
 is that a use case though?
@@ -72,6 +82,7 @@ kubectl diff -- https://github.com/kubernetes/features/issues/491
 current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
 ** TODO improve error handling
 ** TODO fix signal handling
+use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
 ** TODO validate yamls before deploying
@@ -133,6 +144,7 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
  - just output some nice progress info, + error logs
  - omit progress logs when nothing changes when waiting for something
 ** TODO fix signal handling
+** TODO deploy the deployer & transitioner into the test cluster?
 ** test cases
 *** deployer
 **** when I add a service in dev, the deployer deploys it
@@ -146,11 +158,12 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
 *** deployer + transitioner
 **** when I change a service in available, it first gets deployed to dev. Then, when the deployment was successful, it gets deployed to pp
 **** when a deployment to dev is not successful, it is not mirrored to pp
+**** I can have the deployer redeploy itself and the transitioner
 * aggregator
 ** TODO fetch commit histories from repos
 ** TODO get current k8s state
 ** TODO watch for changes in versions repo
-** TODO notify about changes via websocket
+** TODO notify about changes via websocket / h2
 * ui
 * general
 ** TODO set up rustfmt
@@ -158,11 +171,12 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
+ - this could be its own service that watches the aggregator change feed
 ** TODO datadog integration (events when deploying / transitioning, ...)
 ** TODO set up CI
 ** TODO test coverage
 ** TODO build static binaries & docker images
-** TODO fork cron library
+** TODO fork / contribute to cron library
  - make it build on stable
  - add Clone
  - add Deserialize
