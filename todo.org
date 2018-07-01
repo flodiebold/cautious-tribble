@@ -55,8 +55,8 @@
 ** TODO support deploying ingresses
 ** TODO allow running deployment content through filter before applying it
 ** TODO add a simple filter that just sets the image tag?
-** TODO handle missing namespace
-create or ignore?
+** TODO support deploying namespaces
+ - create before other stuff
 ** TODO just use blob OIDs instead of earliest commit?
 ** TODO handle undeploying something
 is that a use case though?
