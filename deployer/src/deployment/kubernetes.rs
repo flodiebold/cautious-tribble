@@ -21,6 +21,7 @@ const VERSION_ANNOTATION: &str = "new-dm/version";
 pub struct Config {
     kubeconf: String,
     namespace: String,
+    glob: Option<String>,
 }
 
 impl Config {

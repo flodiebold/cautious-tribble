@@ -88,7 +88,8 @@ fn deploy_env(
     last_status: Option<DeployerStatus>,
 ) -> Result<DeployerStatus, Error> {
     let mut env_status = last_status.unwrap_or_else(|| new_deployer_status(version));
-    if let Some(deployments) = deployment::get_deployments(repo, env, last_version)? {
+    if let Some(deployments) = deployment::get_deployments(repo, env, last_version)?
+    {
         info!(
             "Got a change for {} to version {:?}, now deploying...",
             env, version
@@ -102,9 +103,11 @@ fn deploy_env(
     }
 
     if env_status.rollout_status == RolloutStatus::InProgress {
-        if let Some(deployments) =
-            deployment::get_deployments(&repo, env, env_status.last_successfully_deployed_version)?
-        {
+        if let Some(deployments) = deployment::get_deployments(
+            &repo,
+            env,
+            env_status.last_successfully_deployed_version,
+        )? {
             let (new_rollout_status, new_status_by_deployment) =
                 deployer.check_rollout_status(&deployments.deployments)?;
             env_status.rollout_status = new_rollout_status;

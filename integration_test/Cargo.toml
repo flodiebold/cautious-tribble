@@ -12,7 +12,7 @@ rand = "0.4"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-git2 = "0.6"
+git2 = "0.7"
 
 common = { path = "../common" }
 git_fixture = { path = "../git_fixture" }

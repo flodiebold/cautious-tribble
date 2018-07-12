@@ -1,9 +1,12 @@
+use std::ffi::OsStr;
 use std::fmt;
-use std::path::Path;
+use std::ops::Range;
+use std::os::unix::ffi::OsStrExt;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use failure::{Error, ResultExt};
-use git2::{Blob, Commit, Oid, Repository, Tree, TreeBuilder};
+use git2::{Blob, Commit, ObjectType, Oid, Repository, Tree, TreeBuilder, TreeEntry};
 use serde;
 
 pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
@@ -71,6 +74,10 @@ impl<'repo> TreeZipper<'repo> {
             current: None,
             stack: Vec::new(),
         }
+    }
+
+    pub fn exists(&self) -> bool {
+        self.current.is_some()
     }
 
     pub fn into_inner(self) -> Option<Tree<'repo>> {
@@ -159,6 +166,72 @@ impl<'repo> TreeZipper<'repo> {
         Ok(Some(obj.into_blob().or_else(|_| {
             Err(format_err!("expected blob in {}", name))
         })?))
+    }
+
+    pub fn walk(&self) -> impl Iterator<Item = (PathBuf, TreeEntry<'static>)> + 'repo {
+        if let Some(tree) = self.current.clone() {
+            TreeWalk {
+                path: PathBuf::new(),
+                repo: self.repo,
+                stack: vec![(0..tree.len(), tree)],
+            }
+        } else {
+            TreeWalk {
+                path: PathBuf::new(),
+                repo: self.repo,
+                stack: Vec::new(),
+            }
+        }
+    }
+}
+
+pub struct TreeWalk<'tree> {
+    path: PathBuf,
+    repo: &'tree Repository,
+    stack: Vec<(Range<usize>, Tree<'tree>)>,
+}
+
+impl<'tree> Iterator for TreeWalk<'tree> {
+    type Item = (PathBuf, TreeEntry<'static>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.stack.is_empty() {
+                return None;
+            }
+
+            let tree = {
+                let &mut (ref mut range, ref tree) = self.stack.last_mut().unwrap();
+                let i = range.next();
+                match i.and_then(|i| tree.get(i)) {
+                    None => {
+                        self.path.pop();
+                        None
+                    }
+                    Some(entry) => match entry.kind() {
+                        Some(ObjectType::Tree) => {
+                            self.path.push(OsStr::from_bytes(entry.name_bytes()));
+                            let tree = entry
+                                .to_object(self.repo)
+                                .unwrap() // FIXME
+                                .into_tree()
+                                .expect("checked object type");
+                            Some((0..tree.len(), tree))
+                        }
+                        _ => {
+                            let mut path = self.path.clone();
+                            path.push(OsStr::from_bytes(entry.name_bytes()));
+                            return Some((path, entry.to_owned()))
+                        },
+                    },
+                }
+            };
+            if let Some(tree) = tree {
+                self.stack.push(tree);
+            } else {
+                self.stack.pop();
+            }
+        }
     }
 }
 

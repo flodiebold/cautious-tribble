@@ -46,19 +46,16 @@ pub fn get_deployments(
     let mut zipper = TreeZipper::from(repo, tree);
     zipper.descend(env)?;
     zipper.descend("deployments")?;
-    let deployments_tree = if let Some(t) = zipper.into_inner() {
-        t
-    } else {
-        // deployments folder does not exist
-        return Ok(None);
-    };
 
-    for entry in deployments_tree.iter() {
+    if !zipper.exists() {
+        return Ok(None);
+    }
+
+    for (file_name, entry) in zipper.walk() {
         let obj = entry.to_object(&repo)?;
 
         if let Some(blob) = obj.as_blob() {
             let content = blob.content().to_owned();
-            let file_name = Path::new(OsStr::from_bytes(entry.name_bytes())).to_path_buf();
             let name = file_name
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -193,6 +190,25 @@ mod test {
             info.deployments[1].version,
             fixture.get_commit("head").unwrap().into()
         );
+    }
+
+    #[test]
+    fn test_get_deployments_subdir() {
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_deployments_glob.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let result = get_deployments(&fixture.repo, "available", None).unwrap();
+        assert!(result.is_some());
+        let mut info = result.unwrap();
+        info.deployments.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.deployments.len(), 3);
+        assert_eq!(info.deployments[0].name, "bar");
+        assert_eq!(info.deployments[0].file_name, Path::new("bar"));
+        assert_eq!(info.deployments[1].name, "baz");
+        assert_eq!(info.deployments[1].file_name, Path::new("subdir/baz"));
+        assert_eq!(info.deployments[2].name, "blub");
+        assert_eq!(info.deployments[2].file_name, Path::new("othersubdir/blub"));
     }
 
     #[test]

@@ -169,6 +169,7 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
 ** DONE factor out some common git helpers?
    CLOSED: [2018-02-25 So 00:16]
  - nice "zipper" interface for tree building / walking?
+** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
 ** TODO use thunder?
 ** TODO use fail in testing?
