@@ -223,7 +223,8 @@ impl KubernetesDeployer {
                     status,
                     version,
                     expected_version,
-                } if version == expected_version =>
+                }
+                    if version == expected_version =>
                 {
                     status.clone().into()
                 }

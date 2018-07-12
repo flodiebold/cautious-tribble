@@ -221,8 +221,8 @@ impl<'tree> Iterator for TreeWalk<'tree> {
                         _ => {
                             let mut path = self.path.clone();
                             path.push(OsStr::from_bytes(entry.name_bytes()));
-                            return Some((path, entry.to_owned()))
-                        },
+                            return Some((path, entry.to_owned()));
+                        }
                     },
                 }
             };
