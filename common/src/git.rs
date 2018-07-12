@@ -168,18 +168,23 @@ impl<'repo> TreeZipper<'repo> {
         })?))
     }
 
-    pub fn walk(&self) -> impl Iterator<Item = (PathBuf, TreeEntry<'static>)> + 'repo {
+    pub fn walk(
+        &self,
+        include_dirs: bool,
+    ) -> impl Iterator<Item = (PathBuf, TreeEntry<'static>)> + 'repo {
         if let Some(tree) = self.current.clone() {
             TreeWalk {
                 path: PathBuf::new(),
                 repo: self.repo,
                 stack: vec![(0..tree.len(), tree)],
+                include_dirs,
             }
         } else {
             TreeWalk {
                 path: PathBuf::new(),
                 repo: self.repo,
                 stack: Vec::new(),
+                include_dirs,
             }
         }
     }
@@ -189,6 +194,7 @@ pub struct TreeWalk<'tree> {
     path: PathBuf,
     repo: &'tree Repository,
     stack: Vec<(Range<usize>, Tree<'tree>)>,
+    include_dirs: bool,
 }
 
 impl<'tree> Iterator for TreeWalk<'tree> {
@@ -216,7 +222,7 @@ impl<'tree> Iterator for TreeWalk<'tree> {
                                 .unwrap() // FIXME
                                 .into_tree()
                                 .expect("checked object type");
-                            Some((0..tree.len(), tree))
+                            Some((0..tree.len(), tree, entry.to_owned()))
                         }
                         _ => {
                             let mut path = self.path.clone();
@@ -226,8 +232,11 @@ impl<'tree> Iterator for TreeWalk<'tree> {
                     },
                 }
             };
-            if let Some(tree) = tree {
-                self.stack.push(tree);
+            if let Some((range, tree, entry)) = tree {
+                self.stack.push((range, tree));
+                if self.include_dirs {
+                    return Some((self.path.clone(), entry));
+                }
             } else {
                 self.stack.pop();
             }

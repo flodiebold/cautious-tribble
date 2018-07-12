@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate failure;
 extern crate git2;
 extern crate serde;
@@ -147,9 +148,7 @@ fn run_transition(
     let mut source = TreeZipper::from(repo, tree.clone());
     source.descend(&transition.source)?;
     source.descend("deployments")?;
-    let source_deployments = if let Some(t) = source.into_inner() {
-        t
-    } else {
+    if !source.exists() {
         return Ok(TransitionResult::Skipped);
     };
 
@@ -157,16 +156,43 @@ fn run_transition(
     target.descend(&transition.target)?;
     target.descend("deployments")?;
 
-    target.rebuild(|b| {
-        // copy over blob references
-        for entry in source_deployments.iter() {
-            if entry.kind() == Some(ObjectType::Blob) {
-                // find corresponding entry in target deployments
+    let mut last_path = PathBuf::new();
+    for (path, entry) in source.walk(true) {
+        if entry.kind() == Some(ObjectType::Blob) {
+            target.rebuild(|b| {
                 b.insert(entry.name_bytes(), entry.id(), entry.filemode())?;
+                Ok(())
+            })?;
+        } else if entry.kind() == Some(ObjectType::Tree) {
+            while !path.starts_with(&last_path) {
+                last_path.pop();
+                target.ascend()?;
             }
+            for component in path
+                .strip_prefix(&last_path)
+                .expect("should be a prefix")
+                .components()
+            {
+                match component {
+                    ::std::path::Component::Normal(part) => {
+                        if let Some(part) = part.to_str() {
+                            target.descend(part)?;
+                        } else {
+                            bail!("Non-utf8 path in env {}: {:?}", name, path);
+                        }
+                    }
+                    _ => {
+                        panic!("unexpected path component in file name: {:?}", component);
+                    }
+                }
+            }
+            last_path.clone_from(&path);
         }
-        Ok(())
-    })?;
+    }
+
+    for _ in last_path.components() {
+        target.ascend()?;
+    }
 
     target.ascend()?;
     target.ascend()?;
@@ -295,6 +321,21 @@ mod test {
         let fixture = RepoFixture::from_str(include_str!(
             "./fixtures/transition_target_changed.yaml"
         )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config =
+            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let client = reqwest::Client::new();
+        let state = ServiceState { config, client };
+
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_transition_subdirs() {
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/transition_subdirs.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();

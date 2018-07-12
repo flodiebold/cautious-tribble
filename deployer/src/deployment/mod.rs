@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use failure::Error;
 use git2::{ErrorCode, Repository};
@@ -51,7 +49,7 @@ pub fn get_deployments(
         return Ok(None);
     }
 
-    for (file_name, entry) in zipper.walk() {
+    for (file_name, entry) in zipper.walk(true) {
         let obj = entry.to_object(&repo)?;
 
         if let Some(blob) = obj.as_blob() {
@@ -134,6 +132,7 @@ pub fn get_deployments(
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::path::Path;
     use git_fixture;
 
     #[test]

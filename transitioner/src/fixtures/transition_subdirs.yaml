@@ -1,0 +1,17 @@
+commits:
+  - files:
+      available/deployments/foo: x
+      available/deployments/subdir/baz: x
+      available/deployments/othersubdir/deep/baz: x
+      prod/deployments/subdir/baz: y
+      prod/deployments/subdir/donottouch: y
+    name: head
+  - files:
+      available/deployments/foo: x
+      available/deployments/subdir/baz: x
+      available/deployments/othersubdir/deep/baz: x
+      prod/deployments/foo: x
+      prod/deployments/subdir/baz: x
+      prod/deployments/subdir/donottouch: y
+      prod/deployments/othersubdir/deep/baz: x
+    name: expected
