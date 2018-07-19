@@ -132,8 +132,8 @@ pub fn get_deployments(
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::path::Path;
     use git_fixture;
+    use std::path::Path;
 
     #[test]
     fn test_get_deployments_no_deployments() {

@@ -189,6 +189,7 @@ impl IntegrationTest {
             .env_clear()
             .env("RUST_LOG", "warn,deployer=debug")
             .env("RUST_BACKTRACE", "1")
+            .env("PATH", std::env::var("PATH").unwrap_or(String::new()))
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -211,6 +212,7 @@ impl IntegrationTest {
             .env_clear()
             .env("RUST_LOG", "warn,transitioner=debug")
             .env("RUST_BACKTRACE", "1")
+            .env("PATH", std::env::var("PATH").unwrap_or(String::new()))
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -413,6 +415,7 @@ fn terminate_child(child: &Child) -> Result<(), Error> {
 type ReqwestResult<T> = std::result::Result<T, reqwest::Error>;
 
 fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
+    use std::io::ErrorKind::*;
     match result {
         Ok(_) => false,
         Err(error) => match error
@@ -420,12 +423,18 @@ fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
             .and_then(|e| e.downcast_ref::<std::io::Error>())
             .map(|e| e.kind())
         {
-            Some(std::io::ErrorKind::BrokenPipe) | Some(std::io::ErrorKind::ConnectionRefused) => {
-                true
-            }
+            Some(BrokenPipe) | Some(ConnectionRefused) | Some(WouldBlock) => true,
             _ => false,
         },
     }
+}
+
+pub fn get<T: reqwest::IntoUrl>(url: T) -> ReqwestResult<reqwest::Response> {
+    reqwest::ClientBuilder::new()
+        .timeout(std::time::Duration::from_millis(1000))
+        .build()?
+        .get(url)
+        .send()
 }
 
 pub fn retrying_request<T, F: Fn() -> ReqwestResult<T>>(f: F) -> ReqwestResult<T> {

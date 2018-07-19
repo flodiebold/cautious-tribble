@@ -2,7 +2,7 @@
 
 set -e
 
-eval "$(minikube docker-env)"
+eval "$(minikube docker-env)" || echo "minikube docker-env failed (not needed with vm-driver=none)"
 
 echo "Building services..."
 (cd deployer && cargo build)
