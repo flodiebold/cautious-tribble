@@ -18,7 +18,7 @@ mime = "0.3"
 
 crossbeam = "0.3"
 
-log = "0.4.1"
+log = "0.4.3"
 env_logger = "0.5.4"
 
 # kubeclient = "0.1"
