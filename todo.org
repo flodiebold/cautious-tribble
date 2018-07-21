@@ -166,16 +166,20 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO notify about changes via websocket / h2
 * ui
 * general
-** TODO set up rustfmt
+** DONE set up rustfmt
+   CLOSED: [2018-07-21 Sa 14:55]
+** DONE set up CI
+   CLOSED: [2018-07-21 Sa 14:54]
+** TODO set up bors
+https://bors.tech/
+** TODO build static binaries & docker images
+** TODO test coverage
 ** TODO add structured logging
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
  - this could be its own service that watches the aggregator change feed
 ** TODO datadog integration (events when deploying / transitioning, ...)
-** TODO set up CI
-** TODO test coverage
-** TODO build static binaries & docker images
 ** TODO fork / contribute to cron library
  - make it build on stable
  - add Clone

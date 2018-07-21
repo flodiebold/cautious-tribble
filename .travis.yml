@@ -1,16 +1,38 @@
 language: rust
 sudo: required
-env:
-  - CHANGE_MINIKUBE_NONE_USER=true
-rust:
-  - nightly
-before_script:
-  - rustup component add rustfmt-preview
-  - curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-  - curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.28.1/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
-  - sudo minikube start --vm-driver=none --kubernetes-version=v1.10.0 --bootstrapper=localkube
-  - minikube update-context
-  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done
-script:
-  - cargo fmt --all -- --check
-  - ./test-integration-existing-minikube.sh
+matrix:
+  include:
+    # warnings check, currently disabled
+  # - env: RUSTFLAGS="-D warnings"
+  #   rust: nightly
+  #   script:
+  #     - cargo check --tests
+  - env: RUSTFMT
+    rust: 1.27.2  # `stable`: Locking down for consistent behavior
+    install:
+      - rustup component add rustfmt-preview
+    script:
+      - cargo fmt --all -- --write-mode=diff
+    # clippy, currently disabled
+  # - env: CLIPPY
+  #   rust: nightly
+  #   install:
+  #     - rustup component add clippy-preview
+  #   script:
+  #     - cargo clippy --all-features -- -D clippy
+  - env:
+      - CHANGE_MINIKUBE_NONE_USER=true
+    rust: nightly
+    install:
+      - rustc -Vv
+      - cargo -V
+    before_script:
+      - curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.28.1/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+      - sudo minikube start --vm-driver=none --kubernetes-version=v1.10.0 --bootstrapper=localkube
+      - minikube update-context
+      - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done
+    script:
+      - ./test-integration-existing-minikube.sh
+cache:
+  cargo: true
