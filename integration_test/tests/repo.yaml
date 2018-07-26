@@ -6,7 +6,7 @@ commits:
         metadata:
           name: s1-service
         spec:
-          type: NodePort
+          type: LoadBalancer
           selector:
             app: s1
           ports:
@@ -49,7 +49,7 @@ commits:
         metadata:
           name: s1-service
         spec:
-          type: NodePort
+          type: LoadBalancer
           selector:
             app: s1
           ports:
