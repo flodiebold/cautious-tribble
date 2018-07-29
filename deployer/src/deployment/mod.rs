@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use failure::Error;
 use git2::{ErrorCode, Repository};
+use regex;
+use serde_yaml;
 
 use common::git::{self, TreeZipper, VersionHash};
 
@@ -11,8 +13,10 @@ pub mod kubernetes;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Deployable {
     pub name: String,
-    pub file_name: PathBuf,
-    pub content: Vec<u8>,
+    pub base_file_name: PathBuf,
+    pub version_file_name: Option<PathBuf>,
+    pub version_content: serde_yaml::Mapping,
+    pub merged_content: serde_yaml::Value,
     pub version: VersionHash,
     pub message: String,
 }
@@ -43,17 +47,15 @@ pub fn get_deployments(
     let tree = head_commit.tree()?;
     let mut zipper = TreeZipper::from(repo, tree);
     zipper.descend(env)?;
-    zipper.descend("deployments")?;
-
-    if !zipper.exists() {
-        return Ok(None);
-    }
+    zipper.descend("deployable")?;
 
     for (file_name, entry) in zipper.walk(true) {
         let obj = entry.to_object(&repo)?;
 
         if let Some(blob) = obj.as_blob() {
-            let content = blob.content().to_owned();
+            let content = serde_yaml::from_slice(blob.content())?;
+            // FIXME don't fail everything if content is invalid, report the
+            // deployable as errored
             let name = file_name
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -61,8 +63,10 @@ pub fn get_deployments(
                 .to_string();
             let deployment = Deployable {
                 name: name.clone(),
-                file_name,
-                content,
+                base_file_name: PathBuf::from("deployable").join(file_name),
+                merged_content: content,
+                version_content: serde_yaml::Mapping::new(),
+                version_file_name: None,
                 version: head_commit.id().into(),
                 message: head_commit
                     .message()
@@ -75,7 +79,76 @@ pub fn get_deployments(
         }
     }
 
+    zipper.ascend()?;
+    let mut base_zipper = zipper.clone();
+    base_zipper.descend("base")?;
+
+    zipper.descend("version")?;
+
+    if let Some(base_tree) = base_zipper.into_inner() {
+        for (file_name, entry) in zipper.walk(true) {
+            let obj = entry.to_object(&repo)?;
+
+            if let Some(blob) = obj.as_blob() {
+                // FIXME don't fail everything if content is invalid
+                let content = if let serde_yaml::Value::Mapping(m) =
+                    serde_yaml::from_slice(blob.content())?
+                {
+                    m
+                } else {
+                    // FIXME report error
+                    eprintln!("error: versions file not a mapping");
+                    continue;
+                };
+                let name = file_name
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .ok_or_else(|| format_err!("Invalid file name {:?}", file_name))?
+                    .to_string();
+                let base_file_name = PathBuf::from("base").join(&file_name);
+                let base_file = match base_tree.get_path(&file_name) {
+                    Ok(tree_entry) => {
+                        let obj = tree_entry.to_object(&repo)?;
+                        if let Some(blob) = obj.as_blob() {
+                            blob.clone()
+                        } else {
+                            // FIXME report error (base file not a file)
+                            eprintln!("error: base file not a file");
+                            continue;
+                        }
+                    }
+                    Err(ref e) if e.code() == ErrorCode::NotFound => {
+                        // FIXME report error (base file not found)
+                        eprintln!("error: base file {:?} not found", base_file_name);
+                        continue;
+                    }
+                    Err(e) => bail!(e),
+                };
+                let base_file_content = serde_yaml::from_slice(base_file.content())?;
+                let deployment = Deployable {
+                    name: name.clone(),
+                    base_file_name: base_file_name,
+                    merged_content: merge_deployable(base_file_content, &content),
+                    version_content: content,
+                    version_file_name: Some(PathBuf::from("version").join(&file_name)),
+                    version: head_commit.id().into(),
+                    message: head_commit
+                        .message()
+                        .unwrap_or("[invalid utf8]")
+                        .to_string(),
+                };
+
+                blob_id_by_deployment.insert(name.clone(), blob.id());
+                deployments.insert(name, deployment);
+            }
+        }
+    }
+
+    zipper.ascend()?;
+
     // now walk back to find the oldest revision that contains each deployment
+    // TODO: abstract this into a separate function that just takes a list of
+    // files and returns when they last changed
     let mut revwalk = repo.revwalk()?;
 
     revwalk.push(head_commit.id())?;
@@ -88,7 +161,6 @@ pub fn get_deployments(
 
         let mut zipper = TreeZipper::from(repo, tree);
         zipper.descend(env)?;
-        zipper.descend("deployments")?;
         let deployments_tree = if let Some(t) = zipper.into_inner() {
             t
         } else {
@@ -102,7 +174,7 @@ pub fn get_deployments(
                 continue;
             };
 
-            let tree_entry = match deployments_tree.get_path(&deployment.file_name) {
+            let tree_entry = match deployments_tree.get_path(&deployment.base_file_name) {
                 Ok(f) => f,
                 Err(ref e) if e.code() == ErrorCode::NotFound => continue,
                 Err(e) => Err(e)?,
@@ -129,10 +201,51 @@ pub fn get_deployments(
     Ok(Some(result))
 }
 
+fn merge_deployable(
+    mut base: serde_yaml::Value,
+    version_content: &serde_yaml::Mapping,
+) -> serde_yaml::Value {
+    use serde_yaml::*;
+    // TODO rewrite everything about this
+    fn merge_mut(base: &mut Value, version_content: &Mapping) {
+        match base {
+            Value::String(s) => {
+                let regex = regex::Regex::new("\\$version").unwrap();
+                let replaced = regex
+                    .replace_all(&s, move |_cap: &regex::Captures<'_>| {
+                        let version = version_content
+                            .get(&Value::String("version".to_owned()))
+                            .unwrap(); // FIXME
+                        match version {
+                            Value::String(s) => s.clone(),
+                            Value::Number(n) => n.to_string(),
+                            _ => String::new(),
+                        }
+                    }).into_owned();
+                *s = replaced;
+            }
+            Value::Sequence(s) => {
+                for element in s {
+                    merge_mut(element, version_content);
+                }
+            }
+            Value::Mapping(m) => {
+                for (_, value) in m {
+                    merge_mut(value, version_content);
+                }
+            }
+            Value::Null | Value::Bool(_) | Value::Number(_) => {}
+        }
+    }
+    merge_mut(&mut base, version_content);
+    base
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use git_fixture;
+    use serde_yaml::Value;
     use std::path::Path;
 
     #[test]
@@ -142,22 +255,29 @@ mod test {
         )).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let result = get_deployments(&fixture.repo, "available", None).unwrap();
-        assert_eq!(result, None);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().deployments.len(), 0);
     }
 
     #[test]
     fn test_get_deployments_1() {
-        let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_1.yaml"
-        )).unwrap();
+        let fixture =
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_deployments_1.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let result = get_deployments(&fixture.repo, "available", None).unwrap();
         assert!(result.is_some());
         let info = result.unwrap();
         assert_eq!(info.deployments.len(), 1);
         assert_eq!(info.deployments[0].name, "foo");
-        assert_eq!(info.deployments[0].file_name, Path::new("foo"));
-        assert_eq!(info.deployments[0].content, "blubb".as_bytes());
+        assert_eq!(
+            info.deployments[0].base_file_name,
+            Path::new("deployable/foo")
+        );
+        assert_eq!(
+            info.deployments[0].merged_content,
+            Value::String("blubb".to_owned())
+        );
         assert_eq!(
             info.deployments[0].version,
             fixture.get_commit("head").unwrap().into()
@@ -166,9 +286,9 @@ mod test {
 
     #[test]
     fn test_get_deployments_2() {
-        let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_2.yaml"
-        )).unwrap();
+        let fixture =
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_deployments_2.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let result = get_deployments(&fixture.repo, "available", None).unwrap();
         assert!(result.is_some());
@@ -176,15 +296,79 @@ mod test {
         info.deployments.sort_by_key(|d| d.name.clone());
         assert_eq!(info.deployments.len(), 2);
         assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(info.deployments[0].file_name, Path::new("bar"));
-        assert_eq!(info.deployments[0].content, "xx".as_bytes());
+        assert_eq!(
+            info.deployments[0].base_file_name,
+            Path::new("deployable/bar")
+        );
+        assert_eq!(
+            info.deployments[0].merged_content,
+            Value::String("xx".to_owned())
+        );
         assert_eq!(
             info.deployments[0].version,
             fixture.get_commit("head").unwrap().into()
         );
         assert_eq!(info.deployments[1].name, "foo");
-        assert_eq!(info.deployments[1].file_name, Path::new("foo"));
-        assert_eq!(info.deployments[1].content, "blubb".as_bytes());
+        assert_eq!(
+            info.deployments[1].base_file_name,
+            Path::new("deployable/foo")
+        );
+        assert_eq!(
+            info.deployments[1].merged_content,
+            Value::String("blubb".to_owned())
+        );
+        assert_eq!(
+            info.deployments[1].version,
+            fixture.get_commit("head").unwrap().into()
+        );
+    }
+
+    #[test]
+    fn test_get_deployments_separated() {
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_deployments_separated.yaml"
+        )).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let result = get_deployments(&fixture.repo, "available", None).unwrap();
+        assert!(result.is_some());
+        let mut info = result.unwrap();
+        info.deployments.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.deployments.len(), 2);
+        assert_eq!(info.deployments[0].name, "nothing");
+        assert_eq!(
+            info.deployments[0].base_file_name,
+            Path::new("base/nothing")
+        );
+        assert_eq!(
+            info.deployments[0].version_file_name,
+            Some(PathBuf::from("version/nothing"))
+        );
+        assert_eq!(
+            info.deployments[0].merged_content,
+            Value::String("blubb".to_owned())
+        );
+        assert_eq!(
+            info.deployments[0].version,
+            fixture.get_commit("head").unwrap().into()
+        );
+        assert_eq!(info.deployments[1].name, "simple");
+        assert_eq!(info.deployments[1].base_file_name, Path::new("base/simple"));
+        assert_eq!(
+            info.deployments[1].version_file_name,
+            Some(PathBuf::from("version/simple"))
+        );
+        assert_eq!(
+            info.deployments[1].merged_content,
+            Value::Mapping(
+                [(
+                    Value::String("the_version_is".to_owned()),
+                    Value::String("blubb".to_owned())
+                )]
+                    .iter()
+                    .cloned()
+                    .collect()
+            )
+        );
         assert_eq!(
             info.deployments[1].version,
             fixture.get_commit("head").unwrap().into()
@@ -203,11 +387,20 @@ mod test {
         info.deployments.sort_by_key(|d| d.name.clone());
         assert_eq!(info.deployments.len(), 3);
         assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(info.deployments[0].file_name, Path::new("bar"));
+        assert_eq!(
+            info.deployments[0].base_file_name,
+            Path::new("deployable/bar")
+        );
         assert_eq!(info.deployments[1].name, "baz");
-        assert_eq!(info.deployments[1].file_name, Path::new("subdir/baz"));
+        assert_eq!(
+            info.deployments[1].base_file_name,
+            Path::new("deployable/subdir/baz")
+        );
         assert_eq!(info.deployments[2].name, "blub");
-        assert_eq!(info.deployments[2].file_name, Path::new("othersubdir/blub"));
+        assert_eq!(
+            info.deployments[2].base_file_name,
+            Path::new("deployable/othersubdir/blub")
+        );
     }
 
     #[test]
@@ -226,7 +419,10 @@ mod test {
         info.deployments.sort_by_key(|d| d.name.clone());
         assert_eq!(info.deployments.len(), 2);
         assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(info.deployments[0].content, "yy".as_bytes());
+        assert_eq!(
+            info.deployments[0].merged_content,
+            Value::String("yy".to_owned())
+        );
         assert_eq!(
             info.deployments[0].version,
             fixture.get_commit("head").unwrap().into()
@@ -254,7 +450,10 @@ mod test {
         info.deployments.sort_by_key(|d| d.name.clone());
         assert_eq!(info.deployments.len(), 2);
         assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(info.deployments[0].content, "yy".as_bytes());
+        assert_eq!(
+            info.deployments[0].merged_content,
+            Value::String("yy".to_owned())
+        );
         assert_eq!(
             info.deployments[0].version,
             fixture.get_commit("head").unwrap().into()

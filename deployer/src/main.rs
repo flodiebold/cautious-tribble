@@ -15,6 +15,7 @@ extern crate serde_yaml;
 extern crate structopt;
 extern crate crossbeam;
 extern crate warp;
+extern crate regex;
 
 extern crate common;
 #[cfg(test)]

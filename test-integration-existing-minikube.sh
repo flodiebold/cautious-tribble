@@ -19,4 +19,4 @@ echo "Building test images..."
 )
 
 echo "Running tests..."
-cargo test
+cargo test "$@"

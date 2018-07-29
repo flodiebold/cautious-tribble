@@ -1,5 +1,5 @@
 commits:
   - files:
-      available/deployments/bar: xx
-      available/deployments/foo: blubb
+      available/deployable/bar: xx
+      available/deployable/foo: blubb
     name: head

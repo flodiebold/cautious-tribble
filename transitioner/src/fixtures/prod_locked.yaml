@@ -4,16 +4,16 @@ commits:
         env_lock:
           reasons:
             - testing
-      available/deployments/foo: x
-      pp/deployments/foo: y
-      prod/deployments/foo: z
+      available/version/foo: x
+      pp/version/foo: y
+      prod/version/foo: z
     name: head
   - files:
       prod/locks.yaml: |
         env_lock:
           reasons:
             - testing
-      available/deployments/foo: x
-      pp/deployments/foo: x
-      prod/deployments/foo: z
+      available/version/foo: x
+      pp/version/foo: x
+      prod/version/foo: z
     name: expected

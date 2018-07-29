@@ -1,8 +1,8 @@
 commits:
   - files:
-      available/deployments/foo: blubb
+      available/deployable/foo: blubb
     name: first
   - files:
-      available/deployments/bar: yy
-      available/deployments/foo: blubb
+      available/deployable/bar: yy
+      available/deployable/foo: blubb
     name: head

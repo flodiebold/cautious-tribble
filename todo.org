@@ -45,6 +45,8 @@
   - command `serve` to run as service
   - command `check` to do dry run
   - command `deploy` to deploy
+** DONE implement separated version files
+   CLOSED: [2018-08-04 Sa 20:45]
 ** TODO add dry run mode (default for CLI)
 ** TODO add full diff mode that compares all deployables with what would be deployed
  - in CLI mode, show diffs using treediff crate
@@ -56,12 +58,9 @@
  - expect only one env by default, all envs with option
  - show commit message of the deployed / to deploy commit for each deployable
 ** TODO allow reading from file system instead of git in CLI mode
-** TODO allow running deployable content through filter before applying it
-** TODO add a simple filter that just sets the image tag?
 ** TODO integration-test configmap & secret deployment
 ** TODO check rollout status of configmap to all nodes
-** TODO allow running deployment content through filter before applying it
-** TODO add a simple filter that just sets the image tag?
+ - somehow?
 ** TODO support deploying daemonsets
  - restart pods?
 ** TODO support deploying ingresses
@@ -73,6 +72,7 @@
 ** TODO handle undeploying something
 is that a use case though?
 ** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
+ - that means more state though... maybe just rely on validation
 ** TODO do resource patching without kubectl?
  - makes diffs more reliable
  - API support in https://github.com/kubernetes/features/issues/555
@@ -81,11 +81,15 @@ See also:
 kubectl diff -- https://github.com/kubernetes/features/issues/491
 current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
 ** TODO improve error handling
+ - per-deployment errors should be reported in the deployment status, but not stop other deployments
 ** TODO fix signal handling
 use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO use k8s api instead of relying on kubectl for deployment
 ** TODO reload config on every loop
 ** TODO validate yamls before deploying
+ - allow disabling validation by yaml
+ - detect k8s version automatically?
+** TODO validate & report validation status for envs that aren't actually deployed (i.e. 'latest')
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -107,12 +111,14 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
    CLOSED: [2018-05-31 Do 19:39]
 ** DONE allow arbitrary subdirs in versions repo
    CLOSED: [2018-07-12 Do 22:25]
+** TODO switch to cron master, build on stable again
 ** TODO add per-service locks
 ** TODO add unlock after transition
 ** TODO add jenkins checks
 ** TODO add k8s job checks
 ** TODO add status resource
  - report time of last actual run for each transition
+ - report commit ID of last actual run for each transition
  - report time and status of last check for each transition
 ** TODO fix signal handling
 ** TODO handle remote callbacks during push and use push_update_reference
@@ -122,6 +128,10 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO make runnable as CLI tool
 ** TODO add dry run mode
 ** TODO don't log stack traces for connection failures etc.
+ - log error on info level
+ - keep last error for transition status info
+** TODO allow specifying that a check should only prevent the problematic resources from being transitioned
+i.e. validation failures in latest should prevent only those services from being deployed
 * integration tests
 ** DONE fix hard-coded ports and namespaces, so the tests can run in parallel
    CLOSED: [2018-04-01 So 19:22]
@@ -145,6 +155,7 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
  - omit progress logs when nothing changes when waiting for something
 ** TODO fix signal handling
 ** TODO deploy the deployer & transitioner into the test cluster?
+** TODO test with different k8s versions
 ** test cases
 *** deployer
 **** when I add a service in dev, the deployer deploys it
@@ -160,11 +171,23 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
 **** when a deployment to dev is not successful, it is not mirrored to pp
 **** I can have the deployer redeploy itself and the transitioner
 * aggregator
+** TODO get current deployer state
+** TODO get current versions repo state & watch for changes
+** TODO aggregate transition status from versions repo & transitioner status
 ** TODO fetch commit histories from repos
-** TODO get current k8s state
-** TODO watch for changes in versions repo
 ** TODO notify about changes via websocket / h2
+** TODO serve ui
 * ui
+** TODO show list of resources
+** TODO show deployment status of each resource
+** TODO show deployment status details (e.g. error messages)
+** TODO show relevant version repo commits for each resource
+** TODO show git histories for resources with versions
+** TODO allow reverting resources to a previous version
+** TODO show transition status
+ - including detailed check status
+** TODO allow locking environments
+** TODO allow locking services
 * general
 ** DONE set up rustfmt
    CLOSED: [2018-07-21 Sa 14:55]
@@ -172,6 +195,7 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
    CLOSED: [2018-07-21 Sa 14:54]
 ** TODO set up bors
 https://bors.tech/
+** TODO update rustfmt
 ** TODO build static binaries & docker images
 ** TODO test coverage
 ** TODO add structured logging
@@ -180,16 +204,28 @@ https://bors.tech/
  - slack bot that can deploy and lock
  - this could be its own service that watches the aggregator change feed
 ** TODO datadog integration (events when deploying / transitioning, ...)
-** TODO fork / contribute to cron library
- - make it build on stable
+** TODO contribute to cron library
  - add Clone
  - add Deserialize
+** TODO add cli option to write version update (for use in push job)
+ - include commit messages since the last version
 * later
-** Canaries, Staging namespaces / overlays
+** Allow scaling down & locking deployments temporarily
+** Canaries
+ - automatically deploy new versions as canaries if so configured
+ - show canary status in UI
+ - allow deploying certain versions as canary manually
+ - allow setting canary status manually
+ - integrate kayenta
+** Staging namespaces / overlays
 * refactoring
 ** DONE factor out some common git helpers?
    CLOSED: [2018-02-25 So 00:16]
  - nice "zipper" interface for tree building / walking?
+** TODO clean up naming
+ - deployable / deployment -> resource
+** TODO use json data structures instead of yaml (convert immediately when reading yaml)
+** TODO abstract out the git stuff more
 ** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
 ** TODO use thunder?

@@ -1,4 +1,4 @@
 commits:
   - files:
-      available/deployments/foo: blubb
+      available/deployable/foo: blubb
     name: head

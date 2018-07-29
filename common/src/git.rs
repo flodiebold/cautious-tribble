@@ -53,6 +53,7 @@ pub fn get_head_commit<'repo>(repo: &'repo Repository) -> Result<Commit<'repo>, 
     Ok(head.peel_to_commit()?)
 }
 
+#[derive(Clone)]
 pub struct TreeZipper<'repo> {
     repo: &'repo Repository,
     current: Option<Tree<'repo>>,

@@ -1,6 +1,6 @@
 commits:
   - files:
-      dev/deployments/s1-service: |
+      dev/deployable/s1-service.yaml: |
         apiVersion: v1
         kind: Service
         metadata:
@@ -13,7 +13,24 @@ commits:
           - protocol: TCP
             port: 80
             targetPort: 80
-      dev/deployments/s1: |
+      prod/deployable/s1-service.yaml: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: s1-service
+        spec:
+          type: LoadBalancer
+          selector:
+            app: s1
+          ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+      dev/version/s1.yaml: |
+        version: 23
+        repo: git://repo
+        image: exampleservice:23
+      dev/base/s1.yaml: |
         apiVersion: extensions/v1beta1
         kind: Deployment
         metadata:
@@ -32,7 +49,35 @@ commits:
             spec:
               containers:
               - name: service
-                image: exampleservice:23
+                image: exampleservice:$version
+                readinessProbe:
+                  httpGet:
+                    path: /answer
+                    port: 80
+                  initialDelaySeconds: 0
+                  timeoutSeconds: 1
+                ports:
+                - containerPort: 80
+      prod/base/s1.yaml: |
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: s1
+          labels:
+            app: s1
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: s1
+          template:
+            metadata:
+              labels:
+                app: s1
+            spec:
+              containers:
+              - name: service
+                image: exampleservice:$version
                 readinessProbe:
                   httpGet:
                     path: /answer
@@ -43,20 +88,37 @@ commits:
                 - containerPort: 80
     name: head1
   - files:
-      dev/deployments/s1-service: |
+      dev/deployable/s1-service.yaml: |
         apiVersion: v1
         kind: Service
         metadata:
           name: s1-service
         spec:
-          type: LoadBalancer
+          type: NodePort
           selector:
             app: s1
           ports:
           - protocol: TCP
             port: 80
             targetPort: 80
-      dev/deployments/s1: |
+      prod/deployable/s1-service.yaml: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: s1-service
+        spec:
+          type: NodePort
+          selector:
+            app: s1
+          ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+      dev/version/s1.yaml: |
+        version: 42
+        repo: git://repo
+        image: exampleservice:42
+      dev/base/s1.yaml: |
         apiVersion: extensions/v1beta1
         kind: Deployment
         metadata:
@@ -75,7 +137,35 @@ commits:
             spec:
               containers:
               - name: service
-                image: exampleservice:42
+                image: exampleservice:$version
+                readinessProbe:
+                  httpGet:
+                    path: /answer
+                    port: 80
+                  initialDelaySeconds: 0
+                  timeoutSeconds: 1
+                ports:
+                - containerPort: 80
+      prod/base/s1.yaml: |
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: s1
+          labels:
+            app: s1
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: s1
+          template:
+            metadata:
+              labels:
+                app: s1
+            spec:
+              containers:
+              - name: service
+                image: exampleservice:$version
                 readinessProbe:
                   httpGet:
                     path: /answer

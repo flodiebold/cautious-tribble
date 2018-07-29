@@ -145,14 +145,14 @@ fn run_transition(
     let tree = head_commit.tree()?;
     let mut source = TreeZipper::from(repo, tree.clone());
     source.descend(&transition.source)?;
-    source.descend("deployments")?;
+    source.descend("version")?;
     if !source.exists() {
         return Ok(TransitionResult::Skipped);
     };
 
     let mut target = TreeZipper::from(repo, tree.clone());
     target.descend(&transition.target)?;
-    target.descend("deployments")?;
+    target.descend("version")?;
 
     let mut last_path = PathBuf::new();
     for (path, entry) in source.walk(true) {

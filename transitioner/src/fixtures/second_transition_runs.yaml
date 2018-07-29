@@ -1,11 +1,11 @@
 commits:
   - files:
-      available/deployments/foo: x
-      pp/deployments/foo: y
-      prod/deployments/foo: y
+      available/version/foo: x
+      pp/version/foo: y
+      prod/version/foo: y
     name: head
   - files:
-      available/deployments/foo: x
-      pp/deployments/foo: x
-      prod/deployments/foo: y
+      available/version/foo: x
+      pp/version/foo: x
+      prod/version/foo: y
     name: expected

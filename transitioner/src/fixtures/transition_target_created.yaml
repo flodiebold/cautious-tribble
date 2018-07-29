@@ -1,8 +1,8 @@
 commits:
   - files:
-      available/deployments/foo: x
+      available/version/foo: x
     name: head
   - files:
-      available/deployments/foo: x
-      prod/deployments/foo: x
+      available/version/foo: x
+      prod/version/foo: x
     name: expected

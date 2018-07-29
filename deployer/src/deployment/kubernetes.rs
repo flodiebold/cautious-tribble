@@ -52,7 +52,7 @@ impl KubernetesDeployer {
         let mut result = HashMap::with_capacity(deployables.len());
 
         for d in deployables {
-            let kind = determine_kind(&d.content)?;
+            let kind = determine_kind(&d.merged_content)?;
 
             let state = match kind {
                 Kind::Deployment => get_deployment_state(self.client.deployments(), d)?,
@@ -81,7 +81,7 @@ impl KubernetesDeployer {
 
     fn do_deploy(&mut self, deployment: &Deployable) -> Result<(), Error> {
         use serde_yaml::{self, Mapping, Value};
-        let mut data: Value = serde_yaml::from_slice(&deployment.content)?;
+        let mut data: Value = deployment.merged_content.clone(); // TODO
         let root = data
             .as_mapping_mut()
             .ok_or_else(|| format_err!("bad deployment yaml: root not a mapping"))?;
@@ -166,6 +166,7 @@ impl KubernetesDeployer {
         Ok(())
     }
 
+    // TODO not k8s-specific, move to deployment module
     pub fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error> {
         let current_state = self.retrieve_current_state(deployments)?;
 
@@ -189,7 +190,7 @@ impl KubernetesDeployer {
                 "Deploying {} version {} with content {}",
                 d.name,
                 d.version,
-                ::std::str::from_utf8(&d.content)?
+                serde_yaml::to_string(&d.merged_content).unwrap_or(String::new()) // FIXME
             );
 
             match self.do_deploy(d) {
@@ -208,6 +209,7 @@ impl KubernetesDeployer {
         Ok(())
     }
 
+    // TODO not k8s-specific, move to deployment module
     pub fn check_rollout_status(
         &mut self,
         deployments: &[Deployable],
@@ -242,7 +244,7 @@ fn determine_rollout_status(
     name: &str,
     dep: &::kubeclient::resources::Deployment,
 ) -> RolloutStatusReason {
-    if let &Some(ref status) = &dep.status {
+    if let Some(status) = &dep.status {
         if dep.metadata.generation > status.observed_generation {
             return RolloutStatusReason::NotYetObserved;
         }
@@ -311,7 +313,7 @@ fn get_deployment_state(
     client: KubeClient<Deployment>,
     d: &Deployable,
 ) -> Result<Option<DeploymentState>, Error> {
-    let kube_deployment = get_resource(client, &d.name)?;
+    let kube_deployment = get_kubernetes_resource(client, &d.name)?;
 
     let kube_deployment = if let Some(k) = kube_deployment {
         k
@@ -330,7 +332,7 @@ fn get_simple_deployable_state<T: Resource>(
     client: KubeClient<T>,
     d: &Deployable,
 ) -> Result<Option<DeploymentState>, Error> {
-    let resource = get_resource(client, &d.name)?;
+    let resource = get_kubernetes_resource(client, &d.name)?;
 
     let resource = if let Some(k) = resource {
         k
@@ -368,8 +370,7 @@ fn to_deployable_state<T: Resource>(
     state
 }
 
-fn get_resource<T: Resource>(client: KubeClient<T>, name: &str) -> Result<Option<T>, Error> {
-    // TODO return None if not found here
+fn get_kubernetes_resource<T: Resource>(client: KubeClient<T>, name: &str) -> Result<Option<T>, Error> {
     let result = match client.get(name) {
         Ok(r) => r,
         Err(ref e) if e.http_status() == Some(404) => return Ok(None),
@@ -386,7 +387,8 @@ struct MinimalResource {
     metadata: ObjectMeta,
 }
 
-fn determine_kind(data: &[u8]) -> Result<Kind, Error> {
-    let resource: MinimalResource = serde_yaml::from_slice(data)?;
+fn determine_kind(data: &serde_yaml::Value) -> Result<Kind, Error> {
+    // TODO: it should be possible to do this without cloning
+    let resource: MinimalResource = serde_yaml::from_value(data.clone())?;
     Ok(resource.kind)
 }

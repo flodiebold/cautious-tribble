@@ -1,0 +1,9 @@
+commits:
+  - files:
+      available/version/nothing: "{}"
+      available/base/nothing: blubb
+      available/version/simple: |
+        version: blubb
+      available/base/simple: |
+        the_version_is: $version
+    name: head
