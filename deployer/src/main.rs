@@ -30,7 +30,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use crossbeam::sync::ArcCell;
+use crossbeam::atomic::ArcCell;
 use failure::Error;
 use structopt::StructOpt;
 
