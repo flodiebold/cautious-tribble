@@ -1,70 +1,30 @@
-use std::io;
 use std::sync::Arc;
 use std::thread;
 
-use gotham;
-use gotham::handler::{Handler, HandlerFuture, IntoHandlerFuture, NewHandler};
-use gotham::http::response;
-use gotham::router::{
-    builder::{build_simple_router, DefineSingleRoute, DrawRoutes},
-    Router,
-};
-use gotham::state::State;
-use hyper::{Response, StatusCode};
-use mime;
-use serde_json;
+use warp::{self, Filter};
 
 use super::ServiceState;
 
-fn health(state: State) -> (State, Response) {
-    let res = response::create_response(
-        &state,
-        StatusCode::Ok,
-        Some((String::from("{}").into_bytes(), mime::APPLICATION_JSON)),
-    );
-    (state, res)
+fn health(_state: Arc<ServiceState>) -> impl warp::Reply {
+    warp::reply::json(&())
 }
 
-#[derive(Clone)]
-struct StatusResource(Arc<ServiceState>);
-
-impl NewHandler for StatusResource {
-    type Instance = Self;
-
-    fn new_handler(&self) -> io::Result<Self> {
-        Ok(self.clone())
-    }
-}
-
-impl Handler for StatusResource {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
-        let latest_status = self.0.latest_status.get();
-        let res = response::create_response(
-            &state,
-            StatusCode::Ok,
-            Some((
-                serde_json::to_string(&*latest_status)
-                    .expect("serialized status")
-                    .into_bytes(),
-                mime::APPLICATION_JSON,
-            )),
-        );
-        (state, res).into_handler_future()
-    }
-}
-
-fn router(service_state: Arc<ServiceState>) -> Router {
-    build_simple_router(|route| {
-        route.get("/health").to(health);
-        route
-            .get("/status")
-            .to_new_handler(StatusResource(service_state.clone()));
-    })
+fn status(state: Arc<ServiceState>) -> impl warp::Reply {
+    let latest_status = state.latest_status.get();
+    warp::reply::json(&*latest_status)
 }
 
 pub fn start(service_state: Arc<ServiceState>) {
     thread::spawn(move || {
         let port = service_state.config.common.api_port.unwrap_or(9001);
-        gotham::start(("0.0.0.0", port), router(service_state));
+        let state = warp::any().map(move || service_state.clone());
+        let health = warp::get(warp::path("health").and(warp::index()))
+            .and(state.clone())
+            .map(health);
+        let status = warp::get(warp::path("status").and(warp::index()))
+            .and(state)
+            .map(status);
+        let routes = health.or(status);
+        warp::serve(routes).run(([0, 0, 0, 0], port));
     });
 }

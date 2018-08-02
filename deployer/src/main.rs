@@ -14,9 +14,7 @@ extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
 extern crate crossbeam;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
+extern crate warp;
 
 extern crate common;
 #[cfg(test)]

@@ -14,11 +14,9 @@ extern crate chrono;
 extern crate cron;
 extern crate crossbeam;
 extern crate env_logger;
-extern crate gotham;
-extern crate hyper;
 extern crate indexmap;
-extern crate mime;
 extern crate reqwest;
+extern crate warp;
 
 extern crate common;
 #[cfg(test)]
