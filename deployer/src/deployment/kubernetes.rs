@@ -55,14 +55,14 @@ impl KubernetesDeployer {
             let kind = determine_kind(&d.merged_content)?;
 
             let state = match kind {
-                Kind::Deployment => get_deployment_state(self.client.deployments(), d)?,
+                Kind::Deployment => get_deployment_state(&self.client.deployments(), d)?,
                 // TODO these should work
                 Kind::DaemonSet => bail!("Unsupported deployable type: {:?}", kind),
                 Kind::Pod => bail!("Unsupported deployable type: {:?}", kind),
 
-                Kind::Service => get_simple_deployable_state(self.client.services(), d)?,
-                Kind::ConfigMap => get_simple_deployable_state(self.client.config_maps(), d)?,
-                Kind::Secret => get_simple_deployable_state(self.client.secrets(), d)?,
+                Kind::Service => get_simple_deployable_state(&self.client.services(), d)?,
+                Kind::ConfigMap => get_simple_deployable_state(&self.client.config_maps(), d)?,
+                Kind::Secret => get_simple_deployable_state(&self.client.secrets(), d)?,
                 Kind::NetworkPolicy | Kind::Node => {
                     bail!("Unsupported deployable type: {:?}", kind);
                 }
@@ -189,7 +189,7 @@ impl KubernetesDeployer {
                 "Deploying {} version {} with content {}",
                 d.name,
                 d.version,
-                serde_yaml::to_string(&d.merged_content).unwrap_or(String::new()) // FIXME
+                serde_yaml::to_string(&d.merged_content).unwrap_or_default() // FIXME
             );
 
             match self.do_deploy(d) {
@@ -308,7 +308,7 @@ fn determine_rollout_status(
 }
 
 fn get_deployment_state(
-    client: KubeClient<Deployment>,
+    client: &KubeClient<Deployment>,
     d: &Deployable,
 ) -> Result<Option<DeploymentState>, Error> {
     let kube_deployment = get_kubernetes_resource(client, &d.name)?;
@@ -327,10 +327,10 @@ fn get_deployment_state(
 }
 
 fn get_simple_deployable_state<T: Resource>(
-    client: KubeClient<T>,
+    client: &KubeClient<T>,
     d: &Deployable,
 ) -> Result<Option<DeploymentState>, Error> {
-    let resource = get_kubernetes_resource(client, &d.name)?;
+    let resource = get_kubernetes_resource(&client, &d.name)?;
 
     let resource = if let Some(k) = resource {
         k
@@ -357,19 +357,17 @@ fn to_deployable_state<T: Resource>(
 
     let version = version_annotation.unwrap_or("");
 
-    let state = DeploymentState::Deployed {
+    DeploymentState::Deployed {
         version: version
             .parse()
-            .unwrap_or(VersionHash::from_bytes(&[0; 20]).unwrap()),
+            .unwrap_or_else(|_| VersionHash::from_bytes(&[0; 20]).unwrap()),
         expected_version: deployable.version,
         status: rollout_status,
-    };
-
-    state
+    }
 }
 
 fn get_kubernetes_resource<T: Resource>(
-    client: KubeClient<T>,
+    client: &KubeClient<T>,
     name: &str,
 ) -> Result<Option<T>, Error> {
     let result = match client.get(name) {

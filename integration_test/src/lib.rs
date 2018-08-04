@@ -155,7 +155,7 @@ impl IntegrationTest {
     }
 
     fn get_port(&self, service: TestService) -> u16 {
-        *self.ports.get(&service).unwrap()
+        self.ports[&service]
     }
 
     fn adapt_config(&self, config: &str, service: TestService) -> String {
@@ -187,7 +187,7 @@ impl IntegrationTest {
             .env_clear()
             .env("RUST_LOG", "warn,deployer=debug")
             .env("RUST_BACKTRACE", "1")
-            .env("PATH", std::env::var("PATH").unwrap_or(String::new()))
+            .env("PATH", std::env::var("PATH").unwrap_or_default())
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -210,7 +210,7 @@ impl IntegrationTest {
             .env_clear()
             .env("RUST_LOG", "warn,transitioner=debug")
             .env("RUST_BACKTRACE", "1")
-            .env("PATH", std::env::var("PATH").unwrap_or(String::new()))
+            .env("PATH", std::env::var("PATH").unwrap_or_default())
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -230,7 +230,7 @@ impl IntegrationTest {
             }
             eprintln!("not ok");
 
-            for &mut (ref name, ref mut child) in self.processes.iter_mut() {
+            for (name, child) in &mut self.processes {
                 if let Some(status) = child.try_wait().unwrap() {
                     panic!("Process {:?} exited with code {}", name, status);
                 }
@@ -402,10 +402,8 @@ fn check_health(url: &str) -> bool {
 
 fn terminate_child(child: &Child) -> Result<(), Error> {
     let pid = nix::unistd::Pid::from_raw(child.id() as i32);
-    Ok(nix::sys::signal::kill(
-        pid,
-        nix::sys::signal::Signal::SIGTERM,
-    )?)
+    nix::sys::signal::kill(pid, nix::sys::signal::Signal::SIGTERM)?;
+    Ok(())
 }
 
 type ReqwestResult<T> = std::result::Result<T, reqwest::Error>;

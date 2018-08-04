@@ -127,7 +127,7 @@ pub fn get_deployments(
                 let base_file_content = serde_yaml::from_slice(base_file.content())?;
                 let deployment = Deployable {
                     name: name.clone(),
-                    base_file_name: base_file_name,
+                    base_file_name,
                     merged_content: merge_deployable(base_file_content, &content),
                     version_content: content,
                     version_file_name: Some(PathBuf::from("version").join(&file_name)),
@@ -167,7 +167,7 @@ pub fn get_deployments(
             break;
         };
 
-        for (name, deployment) in deployments.iter_mut() {
+        for (name, deployment) in &mut deployments {
             let blob_id = if let Some(id) = blob_id_by_deployment.get(name) {
                 *id
             } else {

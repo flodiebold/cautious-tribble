@@ -23,7 +23,7 @@ pub fn check_precondition(
     service_state: &ServiceState,
 ) -> Result<PreconditionResult, Error> {
     match precondition {
-        &Precondition::SourceClean => check_source_clean(transition, service_state),
+        Precondition::SourceClean => check_source_clean(transition, service_state),
     }
 }
 

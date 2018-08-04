@@ -141,7 +141,7 @@ fn serve(config: Config) -> Result<(), Error> {
     loop {
         git::update(&repo, &service_state.config.common.versions_url)?;
 
-        for (env, deployer) in deployers.iter_mut() {
+        for (env, deployer) in &mut deployers {
             let version = git::get_head_commit(&repo)?.id().into();
 
             let mut latest_status = service_state.latest_status.get();
@@ -189,7 +189,7 @@ fn deploy(config: Config) -> Result<(), Error> {
 
     git::update(&repo, &config.common.versions_url)?;
 
-    for (env, deployer) in deployers.iter_mut() {
+    for (env, deployer) in &mut deployers {
         let version = git::get_head_commit(&repo)?.id().into();
 
         let env_status = deploy_env(version, deployer, &repo, env, None, None)?;
@@ -211,7 +211,7 @@ fn check(config: Config) -> Result<(), Error> {
 
     git::update(&repo, &config.common.versions_url)?;
 
-    for (env, deployer) in deployers.iter_mut() {
+    for (env, deployer) in &mut deployers {
         let version = git::get_head_commit(&repo)?.id().into();
 
         let mut env_status = new_deployer_status(version);

@@ -193,9 +193,10 @@ i.e. validation failures in latest should prevent only those services from being
    CLOSED: [2018-07-21 Sa 14:55]
 ** DONE set up CI
    CLOSED: [2018-07-21 Sa 14:54]
+** DONE update rustfmt
+   CLOSED: [2018-08-04 Sa 21:16]
 ** TODO set up bors
 https://bors.tech/
-** TODO update rustfmt
 ** TODO build static binaries & docker images
 ** TODO test coverage
 ** TODO add structured logging

@@ -46,7 +46,7 @@ pub fn init_or_open(checkout_path: &str) -> Result<Repository, Error> {
     Ok(repo)
 }
 
-pub fn get_head_commit<'repo>(repo: &'repo Repository) -> Result<Commit<'repo>, Error> {
+pub fn get_head_commit(repo: &Repository) -> Result<Commit<'_>, Error> {
     let head = repo
         .find_reference("refs/dm_head")
         .context("refs/dm_head not found")?;
@@ -286,11 +286,11 @@ impl<'de> serde::de::Visitor<'de> for VersionHashVisitor {
     }
 
     fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        VersionHash::from_str(v).map_err(|e| E::custom(e))
+        VersionHash::from_str(v).map_err(E::custom)
     }
 
     fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
-        VersionHash::from_str(&v).map_err(|e| E::custom(e))
+        VersionHash::from_str(&v).map_err(E::custom)
     }
 }
 

@@ -30,7 +30,7 @@ impl TransitionStates {
         };
 
         let result = serde_yaml::from_slice(locks_blob.content())
-            .with_context(|_| format!("deserializing transitions.yaml failed"))?;
+            .context("deserializing transitions.yaml failed")?;
 
         Ok(result)
     }
@@ -45,17 +45,15 @@ impl TransitionStates {
                 tree_builder.remove("transitions.yaml")?;
             }
         } else {
-            let mut serialized = serde_yaml::to_vec(self)
-                .with_context(|_| format!("serializing transitions.yaml failed"))?;
+            let mut serialized =
+                serde_yaml::to_vec(self).context("serializing transitions.yaml failed")?;
             serialized.extend("\n".as_bytes());
 
-            let blob = repo
-                .blob(&serialized)
-                .with_context(|_| format!("writing blob failed"))?;
+            let blob = repo.blob(&serialized).context("writing blob failed")?;
 
             tree_builder
                 .insert("transitions.yaml", blob, 0o100644)
-                .with_context(|_| format!("updating transitions.yaml failed"))?;
+                .context("updating transitions.yaml failed")?;
         }
         Ok(())
     }

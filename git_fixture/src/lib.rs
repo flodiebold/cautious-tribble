@@ -29,7 +29,7 @@ impl RepoTemplate {
         let mut repo = git2::Repository::init_bare(dir.path())?;
         let mut commits = HashMap::with_capacity(self.commits.len());
         let mut last_commit = None;
-        for commit in self.commits.iter() {
+        for commit in &self.commits {
             last_commit = Some(commit.create(&mut repo, &mut commits, last_commit)?);
         }
         Ok(RepoFixture {
@@ -44,7 +44,7 @@ impl RepoTemplate {
         let mut repo = git2::Repository::init_bare(path)?;
         let mut commits = HashMap::with_capacity(self.commits.len());
         let mut last_commit = None;
-        for commit in self.commits.iter() {
+        for commit in &self.commits {
             last_commit = Some(commit.create(&mut repo, &mut commits, last_commit)?);
         }
         Ok(RepoFixture {
@@ -222,11 +222,10 @@ impl RepoFixture {
         Ok(())
     }
     pub fn get_commit(&self, commit_name: &str) -> Result<git2::Oid, Error> {
-        Ok(self
+        Ok(*self
             .commits
             .get(commit_name)
-            .ok_or_else(|| format_err!("named commit not found: {}", commit_name))?
-            .clone())
+            .ok_or_else(|| format_err!("named commit not found: {}", commit_name))?)
     }
 
     pub fn assert_ref_matches(&self, ref_name: &str, commit_name: &str) {
