@@ -156,6 +156,7 @@ fn run_transition(
 
     let mut last_path = PathBuf::new();
     for (path, entry) in source.walk(true) {
+        let entry = entry?;
         if entry.kind() == Some(ObjectType::Blob) {
             target.rebuild(|b| {
                 b.insert(entry.name_bytes(), entry.id(), entry.filemode())?;

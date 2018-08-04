@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use failure::{Error, ResultExt};
-use git2::{Blob, Commit, ObjectType, Oid, Repository, Tree, TreeBuilder, TreeEntry};
+use git2::{self, Blob, Commit, ObjectType, Oid, Repository, Tree, TreeBuilder, TreeEntry};
 use serde;
 
 pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
@@ -172,7 +172,7 @@ impl<'repo> TreeZipper<'repo> {
     pub fn walk(
         &self,
         include_dirs: bool,
-    ) -> impl Iterator<Item = (PathBuf, TreeEntry<'static>)> + 'repo {
+    ) -> impl Iterator<Item = (PathBuf, Result<TreeEntry<'static>, git2::Error>)> + 'repo {
         if let Some(tree) = self.current.clone() {
             TreeWalk {
                 path: PathBuf::new(),
@@ -199,7 +199,7 @@ pub struct TreeWalk<'tree> {
 }
 
 impl<'tree> Iterator for TreeWalk<'tree> {
-    type Item = (PathBuf, TreeEntry<'static>);
+    type Item = (PathBuf, Result<TreeEntry<'static>, git2::Error>);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -218,17 +218,24 @@ impl<'tree> Iterator for TreeWalk<'tree> {
                     Some(entry) => match entry.kind() {
                         Some(ObjectType::Tree) => {
                             self.path.push(OsStr::from_bytes(entry.name_bytes()));
-                            let tree = entry
-                                .to_object(self.repo)
-                                .unwrap()
-                                .into_tree()
-                                .expect("checked object type");
-                            Some((0..tree.len(), tree, entry.to_owned()))
+                            match entry.to_object(self.repo) {
+                                Ok(obj) => {
+                                    let tree = obj
+                                        .into_tree()
+                                        .expect("object not a tree even though just checked");
+                                    Some((0..tree.len(), tree, entry.to_owned()))
+                                }
+                                Err(e) => {
+                                    let path = self.path.clone();
+                                    self.path.pop();
+                                    return Some((path, Err(e)));
+                                }
+                            }
                         }
                         _ => {
                             let mut path = self.path.clone();
                             path.push(OsStr::from_bytes(entry.name_bytes()));
-                            return Some((path, entry.to_owned()));
+                            return Some((path, Ok(entry.to_owned())));
                         }
                     },
                 }
@@ -236,7 +243,7 @@ impl<'tree> Iterator for TreeWalk<'tree> {
             if let Some((range, tree, entry)) = tree {
                 self.stack.push((range, tree));
                 if self.include_dirs {
-                    return Some((self.path.clone(), entry));
+                    return Some((self.path.clone(), Ok(entry)));
                 }
             } else {
                 self.stack.pop();

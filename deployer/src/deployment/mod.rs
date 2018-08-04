@@ -50,7 +50,7 @@ pub fn get_deployments(
     zipper.descend("deployable")?;
 
     for (file_name, entry) in zipper.walk(true) {
-        let obj = entry.to_object(&repo)?;
+        let obj = entry?.to_object(&repo)?;
 
         if let Some(blob) = obj.as_blob() {
             let content = serde_yaml::from_slice(blob.content())?;
@@ -87,7 +87,7 @@ pub fn get_deployments(
 
     if let Some(base_tree) = base_zipper.into_inner() {
         for (file_name, entry) in zipper.walk(true) {
-            let obj = entry.to_object(&repo)?;
+            let obj = entry?.to_object(&repo)?;
 
             if let Some(blob) = obj.as_blob() {
                 // FIXME don't fail everything if content is invalid
