@@ -33,8 +33,8 @@ use crossbeam::atomic::ArcCell;
 use failure::Error;
 use structopt::StructOpt;
 
-use common::deployment::{AllDeployerStatus, DeployerStatus, RolloutStatus};
-use common::git::{self, VersionHash};
+use common::deployment::AllDeployerStatus;
+use common::git;
 
 mod api;
 mod config;
@@ -69,57 +69,6 @@ pub struct ServiceState {
     config: config::Config,
 }
 
-fn new_deployer_status(version: VersionHash) -> DeployerStatus {
-    DeployerStatus {
-        deployed_version: version,
-        last_successfully_deployed_version: None,
-        rollout_status: RolloutStatus::InProgress,
-        status_by_deployment: HashMap::new(),
-    }
-}
-
-fn deploy_env(
-    version: VersionHash,
-    deployer: &mut deployment::kubernetes::KubernetesDeployer,
-    repo: &git2::Repository,
-    env: &str,
-    last_version: Option<VersionHash>,
-    last_status: Option<DeployerStatus>,
-) -> Result<DeployerStatus, Error> {
-    let mut env_status = last_status.unwrap_or_else(|| new_deployer_status(version));
-    if let Some(deployments) = deployment::get_deployments(repo, env, last_version)? {
-        info!(
-            "Got a change for {} to version {:?}, now deploying...",
-            env, version
-        );
-        deployer.deploy(&deployments.deployments)?;
-
-        env_status.deployed_version = version;
-        env_status.rollout_status = RolloutStatus::InProgress;
-
-        info!("Deployed {} up to {:?}", env, version);
-    }
-
-    if env_status.rollout_status == RolloutStatus::InProgress {
-        if let Some(deployments) =
-            deployment::get_deployments(&repo, env, env_status.last_successfully_deployed_version)?
-        {
-            let (new_rollout_status, new_status_by_deployment) =
-                deployer.check_rollout_status(&deployments.deployments)?;
-            env_status.rollout_status = new_rollout_status;
-            env_status
-                .status_by_deployment
-                .extend(new_status_by_deployment.into_iter());
-        }
-    }
-
-    if env_status.rollout_status == RolloutStatus::Clean {
-        env_status.last_successfully_deployed_version = Some(version);
-    }
-
-    Ok(env_status)
-}
-
 fn serve(config: Config) -> Result<(), Error> {
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
@@ -141,14 +90,14 @@ fn serve(config: Config) -> Result<(), Error> {
     loop {
         git::update(&repo, &service_state.config.common.versions_url)?;
 
-        for (env, deployer) in &mut deployers {
-            let version = git::get_head_commit(&repo)?.id().into();
+        let version = git::get_head_commit(&repo)?.id().into();
 
+        for (env, deployer) in &mut deployers {
             let mut latest_status = service_state.latest_status.get();
 
             let env_status = latest_status.deployers.get(&*env).cloned();
 
-            let env_status = match deploy_env(
+            let env_status = match deployment::deploy_env(
                 version,
                 deployer,
                 &repo,
@@ -192,7 +141,7 @@ fn deploy(config: Config) -> Result<(), Error> {
     for (env, deployer) in &mut deployers {
         let version = git::get_head_commit(&repo)?.id().into();
 
-        let env_status = deploy_env(version, deployer, &repo, env, None, None)?;
+        let env_status = deployment::deploy_env(version, deployer, &repo, env, None, None)?;
 
         println!("Status of {}: {:?}", env, env_status);
     }
@@ -214,11 +163,11 @@ fn check(config: Config) -> Result<(), Error> {
     for (env, deployer) in &mut deployers {
         let version = git::get_head_commit(&repo)?.id().into();
 
-        let mut env_status = new_deployer_status(version);
+        let mut env_status = deployment::new_deployer_status(version);
 
         if let Some(deployments) = deployment::get_deployments(&repo, env, None)? {
             let (new_rollout_status, new_status_by_deployment) =
-                deployer.check_rollout_status(&deployments.deployments)?;
+                deployment::check_rollout_status(deployer, &deployments.deployments)?;
 
             env_status.rollout_status = new_rollout_status;
             env_status

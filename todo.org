@@ -112,7 +112,7 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** DONE allow arbitrary subdirs in versions repo
    CLOSED: [2018-07-12 Do 22:25]
 ** TODO switch to cron master, build on stable again
-** TODO add per-service locks
+** TODO add per-resource locks
 ** TODO add unlock after transition
 ** TODO add jenkins checks
 ** TODO add k8s job checks
@@ -187,7 +187,7 @@ i.e. validation failures in latest should prevent only those services from being
 ** TODO show transition status
  - including detailed check status
 ** TODO allow locking environments
-** TODO allow locking services
+** TODO allow locking resources
 * general
 ** DONE set up rustfmt
    CLOSED: [2018-07-21 Sa 14:55]

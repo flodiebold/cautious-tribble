@@ -45,7 +45,7 @@ impl KubernetesDeployer {
         })
     }
 
-    fn retrieve_current_state(
+    pub fn retrieve_current_state(
         &mut self,
         deployables: &[Deployable],
     ) -> Result<HashMap<String, DeploymentState>, Error> {
@@ -79,7 +79,7 @@ impl KubernetesDeployer {
         Ok(result)
     }
 
-    fn do_deploy(&mut self, deployment: &Deployable) -> Result<(), Error> {
+    pub fn deploy(&mut self, deployment: &Deployable) -> Result<(), Error> {
         use serde_yaml::{self, Mapping, Value};
         let mut data: Value = deployment.merged_content.clone(); // TODO
         let root = data
@@ -163,78 +163,6 @@ impl KubernetesDeployer {
         );
 
         Ok(())
-    }
-
-    // TODO not k8s-specific, move to deployment module
-    pub fn deploy(&mut self, deployments: &[Deployable]) -> Result<(), Error> {
-        let current_state = self.retrieve_current_state(deployments)?;
-
-        for d in deployments {
-            debug!("looking at {}", d.name);
-            let deployed_version = if let Some(v) = current_state.get(&d.name) {
-                v.clone()
-            } else {
-                warn!("no known version for {}, not deploying", d.name);
-                continue;
-            };
-
-            if let DeploymentState::Deployed { version, .. } = deployed_version {
-                if version == d.version {
-                    info!("same version for {}, not deploying", d.name);
-                    continue;
-                }
-            }
-
-            info!(
-                "Deploying {} version {} with content {}",
-                d.name,
-                d.version,
-                serde_yaml::to_string(&d.merged_content).unwrap_or_default() // FIXME
-            );
-
-            match self.do_deploy(d) {
-                Ok(()) => {}
-                Err(e) => {
-                    // TODO: maybe instead mark the service as failing to deploy
-                    // and don't try again?
-                    error!("Deployment of {} failed: {}\n{}", d.name, e, e.backtrace());
-                    for cause in e.causes() {
-                        error!("caused by: {}", cause);
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    // TODO not k8s-specific, move to deployment module
-    pub fn check_rollout_status(
-        &mut self,
-        deployments: &[Deployable],
-    ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
-        let current_state = self.retrieve_current_state(deployments)?;
-
-        let combined = current_state
-            .iter()
-            .map(|(_, v)| v)
-            .map(|d| match d {
-                DeploymentState::NotDeployed => RolloutStatus::Outdated,
-                DeploymentState::Deployed {
-                    status,
-                    version,
-                    expected_version,
-                }
-                    if version == expected_version =>
-                {
-                    status.clone().into()
-                }
-                DeploymentState::Deployed { status, .. } => {
-                    RolloutStatus::Outdated.combine(status.clone().into())
-                }
-            }).fold(RolloutStatus::Clean, RolloutStatus::combine);
-
-        Ok((combined, current_state))
     }
 }
 

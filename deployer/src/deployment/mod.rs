@@ -6,6 +6,7 @@ use git2::{ErrorCode, Repository};
 use regex;
 use serde_yaml;
 
+use common::deployment::{DeployerStatus, DeploymentState, RolloutStatus};
 use common::git::{self, TreeZipper, VersionHash};
 
 pub mod kubernetes;
@@ -239,6 +240,130 @@ fn merge_deployable(
     }
     merge_mut(&mut base, version_content);
     base
+}
+
+pub fn deploy(
+    deployer: &mut kubernetes::KubernetesDeployer,
+    deployments: &[Deployable],
+) -> Result<(), Error> {
+    let current_state = deployer.retrieve_current_state(deployments)?;
+
+    for d in deployments {
+        debug!("looking at {}", d.name);
+        let deployed_version = if let Some(v) = current_state.get(&d.name) {
+            v.clone()
+        } else {
+            warn!("no known version for {}, not deploying", d.name);
+            continue;
+        };
+
+        if let DeploymentState::Deployed { version, .. } = deployed_version {
+            if version == d.version {
+                info!("same version for {}, not deploying", d.name);
+                continue;
+            }
+        }
+
+        info!(
+            "Deploying {} version {} with content {}",
+            d.name,
+            d.version,
+            serde_yaml::to_string(&d.merged_content).unwrap_or_default() // FIXME
+        );
+
+        match deployer.deploy(d) {
+            Ok(()) => {}
+            Err(e) => {
+                // TODO: maybe instead mark the service as failing to deploy
+                // and don't try again?
+                error!("Deployment of {} failed: {}\n{}", d.name, e, e.backtrace());
+                for cause in e.causes() {
+                    error!("caused by: {}", cause);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn check_rollout_status(
+    deployer: &mut kubernetes::KubernetesDeployer,
+    deployments: &[Deployable],
+) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
+    let current_state = deployer.retrieve_current_state(deployments)?;
+
+    let combined = current_state
+        .iter()
+        .map(|(_, v)| v)
+        .map(|d| match d {
+            DeploymentState::NotDeployed => RolloutStatus::Outdated,
+            DeploymentState::Deployed {
+                status,
+                version,
+                expected_version,
+            }
+                if version == expected_version =>
+            {
+                status.clone().into()
+            }
+            DeploymentState::Deployed { status, .. } => {
+                RolloutStatus::Outdated.combine(status.clone().into())
+            }
+        }).fold(RolloutStatus::Clean, RolloutStatus::combine);
+
+    Ok((combined, current_state))
+}
+
+pub fn new_deployer_status(version: VersionHash) -> DeployerStatus {
+    DeployerStatus {
+        deployed_version: version,
+        last_successfully_deployed_version: None,
+        rollout_status: RolloutStatus::InProgress,
+        status_by_deployment: HashMap::new(),
+    }
+}
+
+pub fn deploy_env(
+    version: VersionHash,
+    deployer: &mut kubernetes::KubernetesDeployer,
+    repo: &Repository,
+    env: &str,
+    last_version: Option<VersionHash>,
+    last_status: Option<DeployerStatus>,
+) -> Result<DeployerStatus, Error> {
+    let mut env_status = last_status.unwrap_or_else(|| new_deployer_status(version));
+    if let Some(deployments) = get_deployments(repo, env, last_version)? {
+        info!(
+            "Got a change for {} to version {:?}, now deploying...",
+            env, version
+        );
+        deploy(deployer, &deployments.deployments)?;
+
+        env_status.deployed_version = version;
+        env_status.rollout_status = RolloutStatus::InProgress;
+
+        info!("Deployed {} up to {:?}", env, version);
+    }
+
+    if env_status.rollout_status == RolloutStatus::InProgress {
+        if let Some(deployments) =
+            get_deployments(&repo, env, env_status.last_successfully_deployed_version)?
+        {
+            let (new_rollout_status, new_status_by_deployment) =
+                check_rollout_status(deployer, &deployments.deployments)?;
+            env_status.rollout_status = new_rollout_status;
+            env_status
+                .status_by_deployment
+                .extend(new_status_by_deployment.into_iter());
+        }
+    }
+
+    if env_status.rollout_status == RolloutStatus::Clean {
+        env_status.last_successfully_deployed_version = Some(version);
+    }
+
+    Ok(env_status)
 }
 
 #[cfg(test)]
