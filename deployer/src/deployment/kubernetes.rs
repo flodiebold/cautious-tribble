@@ -128,8 +128,7 @@ impl KubernetesDeployer {
                 &self.kubeconf,
                 "-f",
                 "-",
-            ])
-            .stdin(Stdio::piped())
+            ]).stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -233,8 +232,7 @@ impl KubernetesDeployer {
                 DeploymentState::Deployed { status, .. } => {
                     RolloutStatus::Outdated.combine(status.clone().into())
                 }
-            })
-            .fold(RolloutStatus::Clean, RolloutStatus::combine);
+            }).fold(RolloutStatus::Clean, RolloutStatus::combine);
 
         Ok((combined, current_state))
     }
@@ -370,7 +368,10 @@ fn to_deployable_state<T: Resource>(
     state
 }
 
-fn get_kubernetes_resource<T: Resource>(client: KubeClient<T>, name: &str) -> Result<Option<T>, Error> {
+fn get_kubernetes_resource<T: Resource>(
+    client: KubeClient<T>,
+    name: &str,
+) -> Result<Option<T>, Error> {
     let result = match client.get(name) {
         Ok(r) => r,
         Err(ref e) if e.http_status() == Some(404) => return Ok(None),

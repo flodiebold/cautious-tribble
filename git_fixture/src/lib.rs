@@ -253,8 +253,7 @@ impl RepoFixture {
                     "diff",
                     &format!("{}", expected_tree),
                     &format!("{}", actual_tree),
-                ])
-                .current_dir(self.repo.path())
+                ]).current_dir(self.repo.path())
                 .output()
                 .unwrap()
                 .stdout;

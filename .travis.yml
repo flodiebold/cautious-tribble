@@ -8,11 +8,12 @@ matrix:
   #   script:
   #     - cargo check --tests
   - env: RUSTFMT
-    rust: 1.27.2  # `stable`: Locking down for consistent behavior
+    # rust: 1.28.0  # `stable`: Locking down for consistent behavior
+    rust: nightly # temporarily for better formatting
     install:
       - rustup component add rustfmt-preview
     script:
-      - cargo fmt --all -- --write-mode=diff
+      - cargo fmt --all -- --check
     # clippy, currently disabled
   # - env: CLIPPY
   #   rust: nightly

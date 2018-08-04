@@ -220,7 +220,7 @@ impl<'tree> Iterator for TreeWalk<'tree> {
                             self.path.push(OsStr::from_bytes(entry.name_bytes()));
                             let tree = entry
                                 .to_object(self.repo)
-                                .unwrap() // FIXME
+                                .unwrap()
                                 .into_tree()
                                 .expect("checked object type");
                             Some((0..tree.len(), tree, entry.to_owned()))

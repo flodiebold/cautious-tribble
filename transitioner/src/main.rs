@@ -274,9 +274,9 @@ mod test {
 
     #[test]
     fn test_transition_source_missing() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/transition_source_missing.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/transition_source_missing.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
@@ -300,9 +300,9 @@ mod test {
 
     #[test]
     fn test_transition_target_created() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/transition_target_created.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/transition_target_created.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
@@ -316,9 +316,9 @@ mod test {
 
     #[test]
     fn test_transition_target_changed() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/transition_target_changed.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/transition_target_changed.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
@@ -416,9 +416,9 @@ mod test {
 
     #[test]
     fn test_timed_transition_pending() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/timed_transition_pending.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/timed_transition_pending.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config = make_config(
             include_str!("./fixtures/timed_transition_config.yaml"),
@@ -444,9 +444,9 @@ mod test {
 
     #[test]
     fn test_timed_transition_runs() {
-        let fixture = RepoFixture::from_str(include_str!(
-            "./fixtures/timed_transition_pending.yaml"
-        )).unwrap();
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/timed_transition_pending.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config = make_config(
             include_str!("./fixtures/timed_transition_config.yaml"),
