@@ -51,6 +51,7 @@ impl IntegrationTest {
         eprintln!("temp dir for test: {:?}", dir.path());
         // copy kube config, ignore errors
         let _ = fs::copy(
+            #[allow(deprecated)] // the edge cases of home_dir don't really matter here
             env::home_dir().unwrap().join(".kube/config"),
             dir.path().join("kube_config"),
         );
@@ -67,7 +68,7 @@ impl IntegrationTest {
             processes: Vec::new(),
             ports,
             suffix: rng
-                .gen_ascii_chars()
+                .sample_iter(&rand::distributions::Alphanumeric)
                 .take(5)
                 .collect::<String>()
                 .to_lowercase(),

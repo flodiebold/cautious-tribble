@@ -3,10 +3,10 @@ sudo: required
 matrix:
   include:
     # warnings check, currently disabled
-  # - env: RUSTFLAGS="-D warnings"
-  #   rust: nightly
-  #   script:
-  #     - cargo check --tests
+  - env: RUSTFLAGS="-D warnings"
+    rust: nightly
+    script:
+      - cargo check --tests
   - env: RUSTFMT
     # rust: 1.28.0  # `stable`: Locking down for consistent behavior
     rust: nightly # temporarily for better formatting
