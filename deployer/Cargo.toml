@@ -17,8 +17,8 @@ warp = "0.1"
 
 crossbeam = "0.4"
 
-log = "0.4.3"
-env_logger = "0.5.11"
+log = "0.4"
+env_logger = "0.5"
 
 # kubeclient = "0.1"
 kubeclient = { git = "https://github.com/flodiebold/kubeclient-rs.git" }

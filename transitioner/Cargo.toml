@@ -17,13 +17,13 @@ warp = "0.1"
 
 crossbeam = "0.4"
 
-log = "0.4.3"
-env_logger = "0.5.11"
+log = "0.4"
+env_logger = "0.5"
 
 indexmap = { version = "1", features = ["serde-1"] }
 
 chrono = { version = "0.4", features = ["serde"] }
-cron = { git = "https://github.com/lholden/cron", rev = "28e8ea81c2bcb121716aaa514bfa0954d638c2d3" }
+cron = { git = "https://github.com/zslayton/cron", rev = "2ef8d178189cd6fa04ee41c19354afa7141c6c73" }
 
 common = { path = "../common" }
 

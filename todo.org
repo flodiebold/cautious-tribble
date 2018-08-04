@@ -228,5 +228,6 @@ https://bors.tech/
 ** TODO abstract out the git stuff more
 ** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
+** TODO remove use of kubeclient, directly use k8s-openapi, support multiple k8s versions?
 ** TODO use thunder?
 ** TODO use fail in testing?

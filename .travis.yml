@@ -2,9 +2,9 @@ language: rust
 sudo: required
 matrix:
   include:
-    # warnings check, currently disabled
+    # warnings check
   - env: RUSTFLAGS="-D warnings"
-    rust: nightly
+    rust: stable
     script:
       - cargo check --tests
   - env: RUSTFMT
@@ -23,7 +23,7 @@ matrix:
   #     - cargo clippy --all-features -- -D clippy
   - env:
       - CHANGE_MINIKUBE_NONE_USER=true
-    rust: nightly
+    rust: stable
     install:
       - rustc -Vv
       - cargo -V
