@@ -21,6 +21,12 @@ matrix:
   #     - rustup component add clippy-preview
   #   script:
   #     - cargo clippy --all-features -- -D clippy
+  - env: NIGHTLY # test on nightly, but without the minikube tests
+    rust: nightly
+    script:
+      - export RUST_BACKTRACE=1
+      - cargo build --all
+      - cargo test -- --skip minikube
   - env:
       - CHANGE_MINIKUBE_NONE_USER=true
     rust: stable
@@ -34,6 +40,7 @@ matrix:
       - minikube update-context
       - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done
     script:
+      - export RUST_BACKTRACE=1
       - ./test-integration-existing-minikube.sh
 cache:
   cargo: true

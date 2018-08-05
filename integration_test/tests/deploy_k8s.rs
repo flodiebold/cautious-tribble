@@ -3,7 +3,7 @@ extern crate integration_test;
 use integration_test::*;
 
 #[test]
-fn deploy_k8s() {
+fn minikube_deploy_k8s() {
     let mut test = IntegrationTest::new();
     test.create_namespace("dev-");
     let fixture = test.git_fixture(include_str!("./repo.yaml"));
