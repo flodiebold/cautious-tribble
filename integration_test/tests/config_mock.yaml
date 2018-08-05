@@ -1,0 +1,15 @@
+versions_url: "./versions.git"
+versions_checkout_path: %%versions_checkout_path%%
+api_port: %%api_port%%
+deployers:
+  dev:
+    type: Mock
+  prod:
+    type: Mock
+transitions:
+  prod:
+    source: dev
+    target: prod
+    preconditions:
+      - SourceClean
+deployer_url: "http://localhost:%%deployer_port%%"
