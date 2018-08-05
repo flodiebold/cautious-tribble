@@ -35,7 +35,8 @@ use failure::Error;
 use git2::{ObjectType, Repository, Signature};
 use structopt::StructOpt;
 
-use common::git::{self, TreeZipper, VersionHash};
+use common::git::{self, TreeZipper};
+use common::repo::{oid_to_id, Id};
 
 mod api;
 mod config;
@@ -102,7 +103,7 @@ enum TransitionResult {
 pub struct PendingTransitionInfo {
     source: String,
     target: String,
-    current_version: VersionHash,
+    current_version: Id,
 }
 
 fn run_transition(
@@ -133,7 +134,7 @@ fn run_transition(
     let pending_transition = PendingTransitionInfo {
         source: transition.source.clone(),
         target: transition.target.clone(),
-        current_version: head_commit.id().into(),
+        current_version: oid_to_id(head_commit.id()),
     };
 
     let new_state = TransitionState {

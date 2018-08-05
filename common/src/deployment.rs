@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use git::VersionHash;
+use repo::Id;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RolloutStatus {
@@ -32,8 +32,8 @@ impl RolloutStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeployerStatus {
-    pub deployed_version: VersionHash,
-    pub last_successfully_deployed_version: Option<VersionHash>,
+    pub deployed_version: Id,
+    pub last_successfully_deployed_version: Option<Id>,
     pub rollout_status: RolloutStatus,
     // TODO rename to by_deployable
     pub status_by_deployment: HashMap<String, DeploymentState>,
@@ -82,8 +82,8 @@ impl From<RolloutStatusReason> for RolloutStatus {
 pub enum DeploymentState {
     NotDeployed,
     Deployed {
-        version: VersionHash,
-        expected_version: VersionHash,
+        version: Id,
+        expected_version: Id,
         status: RolloutStatusReason,
     },
 }

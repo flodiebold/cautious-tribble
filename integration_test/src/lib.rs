@@ -21,6 +21,7 @@ use failure::Error;
 use rand::Rng;
 
 use common::deployment::{AllDeployerStatus, RolloutStatus};
+use common::repo::oid_to_id;
 
 pub struct IntegrationTest {
     executable_root: PathBuf,
@@ -285,7 +286,7 @@ impl IntegrationTest {
             )) {
                 eprintln!("full env status: {:?}", status);
                 if let Some(env_status) = status.deployers.get(env) {
-                    if env_status.deployed_version != current_hash.into() {
+                    if env_status.deployed_version != oid_to_id(current_hash) {
                         eprintln!(
                             "current version not yet deployed -- expecting {}, got {}",
                             current_hash, env_status.deployed_version

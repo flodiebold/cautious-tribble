@@ -10,8 +10,8 @@ use kubeclient::resources::Resource;
 use kubeclient::Kubernetes;
 use serde_yaml;
 
-use common::deployment::{DeploymentState, RolloutStatus, RolloutStatusReason};
-use common::git::VersionHash;
+use common::deployment::{DeploymentState, RolloutStatusReason};
+use common::repo::Id;
 
 use super::Deployable;
 
@@ -286,9 +286,7 @@ fn to_deployable_state<T: Resource>(
     let version = version_annotation.unwrap_or("");
 
     DeploymentState::Deployed {
-        version: version
-            .parse()
-            .unwrap_or_else(|_| VersionHash::from_bytes(&[0; 20]).unwrap()),
+        version: version.parse().unwrap_or_else(|_| Id([0; 20])),
         expected_version: deployable.version,
         status: rollout_status,
     }

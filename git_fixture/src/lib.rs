@@ -191,7 +191,6 @@ pub fn test_path_order() {
 }
 
 pub struct RepoFixture {
-    #[allow(dead_code)] // it's there to keep the temp dir alive
     dir: Option<tempfile::TempDir>,
     template: RepoTemplate,
     pub repo: git2::Repository,
@@ -199,6 +198,9 @@ pub struct RepoFixture {
 }
 
 impl RepoFixture {
+    pub fn into_inner(self) -> (git2::Repository, Option<tempfile::TempDir>) {
+        (self.repo, self.dir)
+    }
     pub fn from_str(s: &str) -> Result<RepoFixture, Error> {
         RepoTemplate::from_string(s)?.create()
     }

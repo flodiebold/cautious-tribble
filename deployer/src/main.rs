@@ -34,7 +34,7 @@ use failure::Error;
 use structopt::StructOpt;
 
 use common::deployment::AllDeployerStatus;
-use common::git;
+use common::repo::{self, ResourceRepo};
 
 mod api;
 mod config;
@@ -70,7 +70,10 @@ pub struct ServiceState {
 }
 
 fn serve(config: Config) -> Result<(), Error> {
-    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+    let mut repo = repo::GitResourceRepo::open(
+        &config.common.versions_checkout_path,
+        config.common.versions_url.clone(),
+    )?;
 
     let mut deployers = config
         .deployers
@@ -88,9 +91,9 @@ fn serve(config: Config) -> Result<(), Error> {
     let mut last_version = HashMap::new();
 
     loop {
-        git::update(&repo, &service_state.config.common.versions_url)?;
+        repo.update()?;
 
-        let version = git::get_head_commit(&repo)?.id().into();
+        let version = repo.version();
 
         for (env, deployer) in &mut deployers {
             let mut latest_status = service_state.latest_status.get();
@@ -98,7 +101,6 @@ fn serve(config: Config) -> Result<(), Error> {
             let env_status = latest_status.deployers.get(&*env).cloned();
 
             let env_status = match deployment::deploy_env(
-                version,
                 deployer,
                 &repo,
                 env,
@@ -128,7 +130,10 @@ fn serve(config: Config) -> Result<(), Error> {
 }
 
 fn deploy(config: Config) -> Result<(), Error> {
-    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+    let repo = repo::GitResourceRepo::open(
+        &config.common.versions_checkout_path,
+        config.common.versions_url.clone(),
+    )?;
 
     let mut deployers = config
         .deployers
@@ -136,12 +141,8 @@ fn deploy(config: Config) -> Result<(), Error> {
         .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
         .collect::<Result<BTreeMap<_, _>, Error>>()?;
 
-    git::update(&repo, &config.common.versions_url)?;
-
     for (env, deployer) in &mut deployers {
-        let version = git::get_head_commit(&repo)?.id().into();
-
-        let env_status = deployment::deploy_env(version, deployer, &repo, env, None, None)?;
+        let env_status = deployment::deploy_env(deployer, &repo, env, None, None)?;
 
         println!("Status of {}: {:?}", env, env_status);
     }
@@ -150,7 +151,10 @@ fn deploy(config: Config) -> Result<(), Error> {
 }
 
 fn check(config: Config) -> Result<(), Error> {
-    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+    let repo = repo::GitResourceRepo::open(
+        &config.common.versions_checkout_path,
+        config.common.versions_url.clone(),
+    )?;
 
     let mut deployers = config
         .deployers
@@ -158,10 +162,8 @@ fn check(config: Config) -> Result<(), Error> {
         .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
         .collect::<Result<BTreeMap<_, _>, Error>>()?;
 
-    git::update(&repo, &config.common.versions_url)?;
-
     for (env, deployer) in &mut deployers {
-        let version = git::get_head_commit(&repo)?.id().into();
+        let version = repo.version();
 
         let mut env_status = deployment::new_deployer_status(version);
 
