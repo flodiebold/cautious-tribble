@@ -113,6 +113,7 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
    CLOSED: [2018-07-12 Do 22:25]
 ** TODO switch to cron master, build on stable again
 ** TODO add per-resource locks
+** TODO don't transition resources that don't have a base file in the target env
 ** TODO add unlock after transition
 ** TODO add jenkins checks
 ** TODO add k8s job checks
@@ -225,12 +226,38 @@ https://bors.tech/
  - nice "zipper" interface for tree building / walking?
 ** DONE abstract out the git stuff more
    CLOSED: [2018-08-05 So 17:53]
+** DONE use json data structures instead of yaml (convert immediately when reading yaml)
+   CLOSED: [2018-08-05 So 20:15]
 ** TODO use ResourceRepo abstraction in transitioner as well
 ** TODO clean up naming
  - deployable / deployment -> resource
-** TODO use json data structures instead of yaml (convert immediately when reading yaml)
 ** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
 ** TODO remove use of kubeclient, directly use k8s-openapi, support multiple k8s versions?
 ** TODO use thunder?
 ** TODO use fail in testing?
+* alternatives for version file merge method
+** text substitution:
+*** version file e.g.:
+version: 123abc
+*** base file:
+apiVersion: extensions/v1beta1
+kind: Deployment
+...
+spec:
+  ...
+  template:
+    ...
+    spec:
+      containers:
+      - name: service
+        image: exampleservice:$version
+** json pointer:
+*** version file e.g.:
+"/spec/template/spec/containers/0/image": "exampleservice:123abc"
+*** base file does not contain image at all
+** json pointer + container references:
+*** version file e.g.:
+containers:
+  service:
+    "/image": "exampleservice:123abc"

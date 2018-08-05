@@ -8,7 +8,7 @@ use kubeclient::clients::ReadClient;
 use kubeclient::resources::Kind;
 use kubeclient::resources::Resource;
 use kubeclient::Kubernetes;
-use serde_yaml;
+use serde_json;
 
 use common::deployment::{DeploymentState, RolloutStatusReason};
 use common::repo::Id;
@@ -79,35 +79,27 @@ impl KubernetesDeployer {
         Ok(result)
     }
 
-    pub fn deploy(&mut self, deployment: &Deployable) -> Result<(), Error> {
-        use serde_yaml::{self, Mapping, Value};
-        let mut data: Value = deployment.merged_content.clone(); // TODO
-        let root = data
-            .as_mapping_mut()
-            .ok_or_else(|| format_err!("bad deployment yaml: root not a mapping"))?;
+    pub fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
+        use serde_json::{self, Value};
+        let mut data: Value = resource.merged_content.clone(); // TODO
         {
-            let metadata = root
-                .get_mut(&Value::String("metadata".to_owned()))
-                .ok_or_else(|| format_err!("bad deployment yaml: no metadata"))?
-                .as_mapping_mut()
-                .ok_or_else(|| format_err!("bad deployment yaml: metadata not a mapping"))?;
+            let metadata = data
+                .get_mut("metadata")
+                .ok_or_else(|| format_err!("bad resource: no metadata"))?
+                .as_object_mut()
+                .ok_or_else(|| format_err!("bad resource: metadata not an object"))?;
             // TODO check name
-            let annotations_key = Value::String("annotations".to_owned());
-            if !metadata.contains_key(&annotations_key) {
-                metadata.insert(annotations_key.clone(), Value::Mapping(Mapping::new()));
-            }
             let annotations = metadata
-                .get_mut(&annotations_key)
-                .expect("just inserted mapping")
-                .as_mapping_mut()
-                .ok_or_else(|| format_err!("bad deployment yaml: annotations not a mapping"))?;
+                .entry("annotations")
+                .or_insert(json!({}))
+                .as_object_mut()
+                .ok_or_else(|| format_err!("bad resource: annotations not an object"))?;
 
-            let key = Value::String(VERSION_ANNOTATION.to_owned());
-            let value = Value::String(format!("{}", deployment.version));
-            annotations.insert(key, value);
+            let value = json!(resource.version.to_string());
+            annotations.insert(VERSION_ANNOTATION.to_string(), value);
         }
 
-        let data = serde_yaml::to_string(root)?;
+        let data = serde_json::to_string(&data)?;
 
         self.kubectl_apply(&data)?;
 
@@ -181,7 +173,6 @@ fn determine_rollout_status(
             .and_then(|c| c.iter().find(|c| c.type_ == "Progressing"));
 
         if progressing_condition
-            .as_ref()
             .and_then(|c| c.reason.as_ref())
             .map(|r| r == "ProgressDeadlineExceeded")
             .unwrap_or(false)
@@ -312,8 +303,8 @@ struct MinimalResource {
     metadata: ObjectMeta,
 }
 
-fn determine_kind(data: &serde_yaml::Value) -> Result<Kind, Error> {
+fn determine_kind(data: &serde_json::Value) -> Result<Kind, Error> {
     // TODO: it should be possible to do this without cloning
-    let resource: MinimalResource = serde_yaml::from_value(data.clone())?;
+    let resource: MinimalResource = serde_json::from_value(data.clone())?;
     Ok(resource.kind)
 }

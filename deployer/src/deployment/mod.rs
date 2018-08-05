@@ -1,8 +1,10 @@
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use failure::Error;
 use regex;
+use serde_json;
 use serde_yaml;
 
 use common::deployment::{DeployerStatus, DeploymentState, RolloutStatus};
@@ -10,18 +12,18 @@ use common::repo::{Id, ResourceRepo};
 
 pub mod kubernetes;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Deployable {
     pub name: String,
     pub base_file_name: PathBuf,
     pub version_file_name: Option<PathBuf>,
-    pub version_content: serde_yaml::Mapping,
-    pub merged_content: serde_yaml::Value,
+    pub version_content: BTreeMap<String, String>,
+    pub merged_content: serde_json::Value,
     pub version: Id,
     pub message: String,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DeploymentsInfo {
     pub deployments: Vec<Deployable>,
 }
@@ -59,7 +61,7 @@ pub fn get_deployments(
             name: name.clone(),
             base_file_name: env_path.join("deployable").join(entry.path),
             merged_content: content,
-            version_content: serde_yaml::Mapping::new(),
+            version_content: BTreeMap::new(),
             version_file_name: None,
             version: entry.last_change,
             message: entry.change_message,
@@ -71,14 +73,7 @@ pub fn get_deployments(
 
     repo.walk(&env_path.join("version"), |entry| {
         // FIXME don't fail everything if content is invalid
-        let content = if let serde_yaml::Value::Mapping(m) = serde_yaml::from_slice(&entry.content)?
-        {
-            m
-        } else {
-            // FIXME report error
-            eprintln!("error: versions file not a mapping");
-            return Ok(());
-        };
+        let content = serde_yaml::from_slice(&entry.content)?;
         let name = entry
             .path
             .file_stem()
@@ -118,34 +113,27 @@ pub fn get_deployments(
 }
 
 fn merge_deployable(
-    mut base: serde_yaml::Value,
-    version_content: &serde_yaml::Mapping,
-) -> serde_yaml::Value {
-    use serde_yaml::*;
+    mut base: serde_json::Value,
+    version_content: &BTreeMap<String, String>,
+) -> serde_json::Value {
+    use serde_json::*;
     // TODO rewrite everything about this
-    fn merge_mut(base: &mut Value, version_content: &Mapping) {
+    fn merge_mut(base: &mut Value, version_content: &BTreeMap<String, String>) {
         match base {
             Value::String(s) => {
                 let regex = regex::Regex::new("\\$version").unwrap();
                 let replaced = regex
                     .replace_all(&s, move |_cap: &regex::Captures<'_>| {
-                        let version = version_content
-                            .get(&Value::String("version".to_owned()))
-                            .unwrap(); // FIXME
-                        match version {
-                            Value::String(s) => s.clone(),
-                            Value::Number(n) => n.to_string(),
-                            _ => String::new(),
-                        }
+                        version_content.get("version").cloned().unwrap_or_default()
                     }).into_owned();
                 *s = replaced;
             }
-            Value::Sequence(s) => {
+            Value::Array(s) => {
                 for element in s {
                     merge_mut(element, version_content);
                 }
             }
-            Value::Mapping(m) => {
+            Value::Object(m) => {
                 for (_, value) in m {
                     merge_mut(value, version_content);
                 }
@@ -183,7 +171,7 @@ pub fn deploy(
             "Deploying {} version {} with content {}",
             d.name,
             d.version,
-            serde_yaml::to_string(&d.merged_content).unwrap_or_default() // FIXME
+            serde_json::to_string(&d.merged_content).unwrap_or_default() // FIXME
         );
 
         match deployer.deploy(d) {
@@ -286,7 +274,6 @@ mod test {
     use super::*;
     use common::repo;
     use git_fixture;
-    use serde_yaml::Value;
     use std::path::Path;
 
     fn make_resource_repo(git_fixture: git_fixture::RepoFixture, head: &str) -> impl ResourceRepo {
@@ -323,10 +310,7 @@ mod test {
             info.deployments[0].base_file_name,
             Path::new("available/deployable/foo")
         );
-        assert_eq!(
-            info.deployments[0].merged_content,
-            Value::String("blubb".to_owned())
-        );
+        assert_eq!(info.deployments[0].merged_content, json!("blubb"));
         assert_eq!(info.deployments[0].version, head)
     }
 
@@ -347,20 +331,14 @@ mod test {
             info.deployments[0].base_file_name,
             Path::new("available/deployable/bar")
         );
-        assert_eq!(
-            info.deployments[0].merged_content,
-            Value::String("xx".to_owned())
-        );
+        assert_eq!(info.deployments[0].merged_content, json!("xx"));
         assert_eq!(info.deployments[0].version, head);
         assert_eq!(info.deployments[1].name, "foo");
         assert_eq!(
             info.deployments[1].base_file_name,
             Path::new("available/deployable/foo")
         );
-        assert_eq!(
-            info.deployments[1].merged_content,
-            Value::String("blubb".to_owned())
-        );
+        assert_eq!(info.deployments[1].merged_content, json!("blubb"));
         assert_eq!(info.deployments[1].version, head);
     }
 
@@ -385,10 +363,7 @@ mod test {
             info.deployments[0].version_file_name,
             Some(PathBuf::from("available/version/nothing"))
         );
-        assert_eq!(
-            info.deployments[0].merged_content,
-            Value::String("blubb".to_owned())
-        );
+        assert_eq!(info.deployments[0].merged_content, json!("blubb"));
         assert_eq!(info.deployments[0].version, head);
         assert_eq!(info.deployments[1].name, "simple");
         assert_eq!(
@@ -401,15 +376,9 @@ mod test {
         );
         assert_eq!(
             info.deployments[1].merged_content,
-            Value::Mapping(
-                [(
-                    Value::String("the_version_is".to_owned()),
-                    Value::String("blubb".to_owned())
-                )]
-                    .iter()
-                    .cloned()
-                    .collect()
-            )
+            json!({
+                "the_version_is": "blubb"
+            })
         );
         assert_eq!(info.deployments[1].version, head);
     }
@@ -461,10 +430,7 @@ mod test {
         info.deployments.sort_by_key(|d| d.name.clone());
         assert_eq!(info.deployments.len(), 2);
         assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(
-            info.deployments[0].merged_content,
-            Value::String("yy".to_owned())
-        );
+        assert_eq!(info.deployments[0].merged_content, json!("yy"));
         assert_eq!(info.deployments[0].version, head);
         assert_eq!(info.deployments[1].name, "foo");
         assert_eq!(info.deployments[1].version, first);
@@ -487,10 +453,7 @@ mod test {
         info.deployments.sort_by_key(|d| d.name.clone());
         assert_eq!(info.deployments.len(), 2);
         assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(
-            info.deployments[0].merged_content,
-            Value::String("yy".to_owned())
-        );
+        assert_eq!(info.deployments[0].merged_content, json!("yy"));
         assert_eq!(info.deployments[0].version, head);
         assert_eq!(info.deployments[1].name, "foo");
         assert_eq!(info.deployments[1].version, first);
