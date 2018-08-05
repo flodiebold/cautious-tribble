@@ -13,7 +13,7 @@ use serde_json;
 use common::deployment::{DeploymentState, RolloutStatusReason};
 use common::repo::Id;
 
-use super::Deployable;
+use super::{Deployable, Deployer};
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
@@ -44,68 +44,6 @@ impl KubernetesDeployer {
             client: Kubernetes::load_conf(&config.kubeconf)?.namespace(&config.namespace),
         })
     }
-
-    pub fn retrieve_current_state(
-        &mut self,
-        deployables: &[Deployable],
-    ) -> Result<HashMap<String, DeploymentState>, Error> {
-        let mut result = HashMap::with_capacity(deployables.len());
-
-        for d in deployables {
-            let kind = determine_kind(&d.merged_content)?;
-
-            let state = match kind {
-                Kind::Deployment => get_deployment_state(&self.client.deployments(), d)?,
-                // TODO these should work
-                Kind::DaemonSet => bail!("Unsupported deployable type: {:?}", kind),
-                Kind::Pod => bail!("Unsupported deployable type: {:?}", kind),
-
-                Kind::Service => get_simple_deployable_state(&self.client.services(), d)?,
-                Kind::ConfigMap => get_simple_deployable_state(&self.client.config_maps(), d)?,
-                Kind::Secret => get_simple_deployable_state(&self.client.secrets(), d)?,
-                Kind::NetworkPolicy | Kind::Node => {
-                    bail!("Unsupported deployable type: {:?}", kind);
-                }
-            };
-
-            if let Some(state) = state {
-                result.insert(d.name.clone(), state);
-            } else {
-                warn!("Deployable {} does not exist", d.name);
-                result.insert(d.name.clone(), DeploymentState::NotDeployed);
-            }
-        }
-
-        Ok(result)
-    }
-
-    pub fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
-        use serde_json::{self, Value};
-        let mut data: Value = resource.merged_content.clone(); // TODO
-        {
-            let metadata = data
-                .get_mut("metadata")
-                .ok_or_else(|| format_err!("bad resource: no metadata"))?
-                .as_object_mut()
-                .ok_or_else(|| format_err!("bad resource: metadata not an object"))?;
-            // TODO check name
-            let annotations = metadata
-                .entry("annotations")
-                .or_insert(json!({}))
-                .as_object_mut()
-                .ok_or_else(|| format_err!("bad resource: annotations not an object"))?;
-
-            let value = json!(resource.version.to_string());
-            annotations.insert(VERSION_ANNOTATION.to_string(), value);
-        }
-
-        let data = serde_json::to_string(&data)?;
-
-        self.kubectl_apply(&data)?;
-
-        Ok(())
-    }
-
     fn kubectl_apply(&self, data: &str) -> Result<(), Error> {
         // TODO: use kube API instead
         use std::io::Write;
@@ -153,6 +91,69 @@ impl KubernetesDeployer {
             "kubectl stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
+
+        Ok(())
+    }
+}
+
+impl Deployer for KubernetesDeployer {
+    fn retrieve_current_state(
+        &mut self,
+        deployables: &[Deployable],
+    ) -> Result<HashMap<String, DeploymentState>, Error> {
+        let mut result = HashMap::with_capacity(deployables.len());
+
+        for d in deployables {
+            let kind = determine_kind(&d.merged_content)?;
+
+            let state = match kind {
+                Kind::Deployment => get_deployment_state(&self.client.deployments(), d)?,
+                // TODO these should work
+                Kind::DaemonSet => bail!("Unsupported deployable type: {:?}", kind),
+                Kind::Pod => bail!("Unsupported deployable type: {:?}", kind),
+
+                Kind::Service => get_simple_deployable_state(&self.client.services(), d)?,
+                Kind::ConfigMap => get_simple_deployable_state(&self.client.config_maps(), d)?,
+                Kind::Secret => get_simple_deployable_state(&self.client.secrets(), d)?,
+                Kind::NetworkPolicy | Kind::Node => {
+                    bail!("Unsupported deployable type: {:?}", kind);
+                }
+            };
+
+            if let Some(state) = state {
+                result.insert(d.name.clone(), state);
+            } else {
+                warn!("Deployable {} does not exist", d.name);
+                result.insert(d.name.clone(), DeploymentState::NotDeployed);
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
+        use serde_json::{self, Value};
+        let mut data: Value = resource.merged_content.clone(); // TODO
+        {
+            let metadata = data
+                .get_mut("metadata")
+                .ok_or_else(|| format_err!("bad resource: no metadata"))?
+                .as_object_mut()
+                .ok_or_else(|| format_err!("bad resource: metadata not an object"))?;
+            // TODO check name
+            let annotations = metadata
+                .entry("annotations")
+                .or_insert(json!({}))
+                .as_object_mut()
+                .ok_or_else(|| format_err!("bad resource: annotations not an object"))?;
+
+            let value = json!(resource.version.to_string());
+            annotations.insert(VERSION_ANNOTATION.to_string(), value);
+        }
+
+        let data = serde_json::to_string(&data)?;
+
+        self.kubectl_apply(&data)?;
 
         Ok(())
     }

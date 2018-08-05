@@ -11,6 +11,7 @@ use common::deployment::{DeployerStatus, DeploymentState, RolloutStatus};
 use common::repo::{Id, ResourceRepo};
 
 pub mod kubernetes;
+pub mod mock;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Deployable {
@@ -26,6 +27,28 @@ pub struct Deployable {
 #[derive(Debug, PartialEq, Clone)]
 pub struct DeploymentsInfo {
     pub deployments: Vec<Deployable>,
+}
+
+pub trait Deployer {
+    fn retrieve_current_state(
+        &mut self,
+        resources: &[Deployable],
+    ) -> Result<HashMap<String, DeploymentState>, Error>;
+
+    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error>;
+}
+
+impl Deployer for Box<dyn Deployer> {
+    fn retrieve_current_state(
+        &mut self,
+        resources: &[Deployable],
+    ) -> Result<HashMap<String, DeploymentState>, Error> {
+        (**self).retrieve_current_state(resources)
+    }
+
+    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
+        (**self).deploy(resource)
+    }
 }
 
 pub fn get_deployments(
@@ -145,10 +168,7 @@ fn merge_deployable(
     base
 }
 
-pub fn deploy(
-    deployer: &mut kubernetes::KubernetesDeployer,
-    deployments: &[Deployable],
-) -> Result<(), Error> {
+pub fn deploy(deployer: &mut impl Deployer, deployments: &[Deployable]) -> Result<(), Error> {
     let current_state = deployer.retrieve_current_state(deployments)?;
 
     for d in deployments {
@@ -191,7 +211,7 @@ pub fn deploy(
 }
 
 pub fn check_rollout_status(
-    deployer: &mut kubernetes::KubernetesDeployer,
+    deployer: &mut impl Deployer,
     deployments: &[Deployable],
 ) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
     let current_state = deployer.retrieve_current_state(deployments)?;
@@ -228,7 +248,7 @@ pub fn new_deployer_status(version: Id) -> DeployerStatus {
 }
 
 pub fn deploy_env(
-    deployer: &mut kubernetes::KubernetesDeployer,
+    deployer: &mut impl Deployer,
     repo: &impl ResourceRepo,
     env: &str,
     last_version: Option<Id>,
