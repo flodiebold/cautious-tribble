@@ -111,7 +111,7 @@ fn serve(config: Config) -> Result<(), Error> {
                 Ok(s) => s,
                 Err(e) => {
                     error!("Deployment failed: {}\n{}", e, e.backtrace());
-                    for cause in e.causes() {
+                    for cause in e.iter_causes() {
                         error!("caused by: {}", cause);
                     }
 
@@ -201,7 +201,7 @@ fn main() {
         Ok(()) => process::exit(0),
         Err(e) => {
             eprintln!("{}\n{}", e, e.backtrace());
-            for cause in e.causes() {
+            for cause in e.iter_causes() {
                 eprintln!("caused by: {}", cause);
             }
             process::exit(1);

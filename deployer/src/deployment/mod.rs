@@ -200,7 +200,7 @@ pub fn deploy(deployer: &mut impl Deployer, deployments: &[Deployable]) -> Resul
                 // TODO: maybe instead mark the service as failing to deploy
                 // and don't try again?
                 error!("Deployment of {} failed: {}\n{}", d.name, e, e.backtrace());
-                for cause in e.causes() {
+                for cause in e.iter_causes() {
                     error!("caused by: {}", cause);
                 }
             }

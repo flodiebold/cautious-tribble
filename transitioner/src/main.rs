@@ -507,7 +507,7 @@ fn run() -> Result<(), Error> {
 
         if let Err(error) = run_one_transition(&repo, &service_state, Utc::now()) {
             error!("Transition failed: {}\n{}", error, error.backtrace());
-            for cause in error.causes() {
+            for cause in error.iter_causes() {
                 error!("caused by: {}", cause);
             }
         }
@@ -521,7 +521,7 @@ fn main() {
         Ok(()) => process::exit(0),
         Err(e) => {
             eprintln!("{}\n{}", e, e.backtrace());
-            for cause in e.causes() {
+            for cause in e.iter_causes() {
                 eprintln!("caused by: {}", cause);
             }
             process::exit(1);
