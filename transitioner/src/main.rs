@@ -22,10 +22,11 @@ extern crate common;
 #[cfg(test)]
 extern crate git_fixture;
 
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -33,6 +34,7 @@ use chrono::{DateTime, Utc};
 use cron::Schedule;
 use failure::Error;
 use git2::{ObjectType, Repository, Signature};
+use indexmap::IndexMap;
 use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
@@ -58,6 +60,7 @@ struct Options {
 pub struct ServiceState {
     config: Config,
     client: reqwest::Client,
+    transition_status: Mutex<IndexMap<String, TransitionStatusInfo>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -86,10 +89,10 @@ impl Transition {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 enum TransitionResult {
     /// The transition was performed successfully.
-    Success,
+    Success(Id),
     /// The transition was not applicable for some reason, or there was no change.
     Skipped(SkipReason),
     /// The transition might be applicable soon, and the source env should not
@@ -99,7 +102,7 @@ enum TransitionResult {
     CheckFailed,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 enum SkipReason {
     Scheduled { time: DateTime<Utc> },
     TargetLocked,
@@ -107,7 +110,34 @@ enum SkipReason {
     NoChange,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
+pub struct TransitionStatusInfo {
+    successful_runs: VecDeque<TransitionSuccessfulRunInfo>,
+    last_run: Option<TransitionRunInfo>,
+}
+
+impl TransitionStatusInfo {
+    pub fn new() -> TransitionStatusInfo {
+        TransitionStatusInfo {
+            successful_runs: VecDeque::with_capacity(101),
+            last_run: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TransitionSuccessfulRunInfo {
+    time: DateTime<Utc>,
+    committed_version: Id,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TransitionRunInfo {
+    time: DateTime<Utc>,
+    result: TransitionResult,
+}
+
+#[derive(Debug, Clone)]
 pub struct PendingTransitionInfo {
     source: String,
     target: String,
@@ -244,7 +274,7 @@ fn run_transition(
 
     info!("Pushed.");
 
-    Ok(TransitionResult::Success)
+    Ok(TransitionResult::Success(oid_to_id(commit)))
 }
 
 fn run_one_transition(
@@ -253,8 +283,12 @@ fn run_one_transition(
     now: DateTime<Utc>,
 ) -> Result<(), Error> {
     for (name, transition) in service_state.config.transitions.iter() {
-        match run_transition(name, transition, &repo, service_state, now)? {
-            TransitionResult::Success => break,
+        let result = run_transition(name, transition, &repo, service_state, now)?;
+
+        update_transition_status(service_state, &name, result.clone());
+
+        match result {
+            TransitionResult::Success(..) => break,
             TransitionResult::Skipped(..) => continue,
             // TODO we could instead just block transitions that touch the source env
             TransitionResult::Blocked => break,
@@ -262,6 +296,32 @@ fn run_one_transition(
         }
     }
     Ok(())
+}
+
+fn update_transition_status(service_state: &ServiceState, name: &str, result: TransitionResult) {
+    let mut map = service_state
+        .transition_status
+        .lock()
+        .expect("Mutex poisoned");
+
+    let transition_status = map
+        .entry(name.to_string())
+        .or_insert_with(TransitionStatusInfo::new);
+
+    let time = Utc::now();
+
+    if let TransitionResult::Success(committed_version) = result {
+        transition_status
+            .successful_runs
+            .push_front(TransitionSuccessfulRunInfo {
+                time,
+                committed_version,
+            });
+        let cap = transition_status.successful_runs.capacity() - 1;
+        transition_status.successful_runs.truncate(cap);
+    }
+
+    transition_status.last_run = Some(TransitionRunInfo { time, result });
 }
 
 #[cfg(test)]
@@ -289,7 +349,12 @@ mod test {
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         let result = run_transition(
             "prod",
@@ -315,7 +380,12 @@ mod test {
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -331,7 +401,12 @@ mod test {
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -346,7 +421,12 @@ mod test {
         let config =
             make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -363,7 +443,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -380,7 +465,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -396,7 +486,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -412,7 +507,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(&fixture.repo, &state, test_time()).unwrap();
 
@@ -433,7 +533,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         let result = run_transition(
             "prod",
@@ -466,7 +571,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(
             &fixture.repo,
@@ -488,7 +598,12 @@ mod test {
             &fixture.repo,
         ).unwrap();
         let client = reqwest::Client::new();
-        let state = ServiceState { config, client };
+        let transition_status = Mutex::new(IndexMap::new());
+        let state = ServiceState {
+            config,
+            client,
+            transition_status,
+        };
 
         run_one_transition(
             &fixture.repo,
@@ -507,14 +622,31 @@ fn run() -> Result<(), Error> {
     let repo = git::init_or_open(&config.common.versions_checkout_path)?;
 
     let client = reqwest::Client::new();
-    let service_state = Arc::new(ServiceState { config, client });
+    let transition_status = Mutex::new(IndexMap::new());
+    let service_state = Arc::new(ServiceState {
+        config,
+        client,
+        transition_status,
+    });
 
     api::start(service_state.clone());
 
     info!("Transitioner running.");
 
     loop {
-        git::update(&repo, &service_state.config.common.versions_url)?;
+        if let Err(error) = git::update(&repo, &service_state.config.common.versions_url) {
+            // TODO improve this error logging
+            error!(
+                "Updating versions repo failed: {}\n{}",
+                error,
+                error.backtrace()
+            );
+            for cause in error.iter_causes() {
+                error!("caused by: {}", cause);
+            }
+            thread::sleep(Duration::from_millis(1000));
+            continue;
+        }
 
         if let Err(error) = run_one_transition(&repo, &service_state, Utc::now()) {
             error!("Transition failed: {}\n{}", error, error.backtrace());
