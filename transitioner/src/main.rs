@@ -91,12 +91,20 @@ enum TransitionResult {
     /// The transition was performed successfully.
     Success,
     /// The transition was not applicable for some reason, or there was no change.
-    Skipped,
+    Skipped(SkipReason),
     /// The transition might be applicable soon, and the source env should not
     /// be changed until then.
     Blocked,
     /// A precondition check was negative.
     CheckFailed,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize)]
+enum SkipReason {
+    Scheduled { time: DateTime<Utc> },
+    TargetLocked,
+    SourceMissing,
+    NoChange,
 }
 
 #[derive(Debug)]
@@ -115,18 +123,16 @@ fn run_transition(
 ) -> Result<TransitionResult, Error> {
     let mut transition_states = TransitionStates::load(repo)?;
     let transition_state = transition_states.0.get(name).cloned().unwrap_or_default();
-    if transition_state
-        .scheduled
-        .map(|t| t >= now)
-        .unwrap_or(false)
-    {
-        // before scheduled time
-        return Ok(TransitionResult::Skipped);
+    if let Some(time) = transition_state.scheduled {
+        if time >= now {
+            // before scheduled time
+            return Ok(TransitionResult::Skipped(SkipReason::Scheduled { time }));
+        }
     }
 
     let target_locks = locks::load_locks(repo, &transition.target)?;
     if target_locks.env_lock.is_locked() {
-        return Ok(TransitionResult::Skipped);
+        return Ok(TransitionResult::Skipped(SkipReason::TargetLocked));
     }
 
     let head_commit = git::get_head_commit(repo)?;
@@ -148,7 +154,7 @@ fn run_transition(
     source.descend(&transition.source)?;
     source.descend("version")?;
     if !source.exists() {
-        return Ok(TransitionResult::Skipped);
+        return Ok(TransitionResult::Skipped(SkipReason::SourceMissing));
     };
 
     let mut target = TreeZipper::from(repo, tree.clone());
@@ -182,7 +188,7 @@ fn run_transition(
                         }
                     }
                     _ => {
-                        panic!("unexpected path component in file name: {:?}", component);
+                        bail!("unexpected path component in file name: {:?}", component);
                     }
                 }
             }
@@ -203,7 +209,7 @@ fn run_transition(
 
     if new_tree.id() == tree.id() {
         // nothing changed
-        return Ok(TransitionResult::Skipped);
+        return Ok(TransitionResult::Skipped(SkipReason::NoChange));
     }
 
     for precondition in &transition.preconditions {
@@ -249,7 +255,7 @@ fn run_one_transition(
     for (name, transition) in service_state.config.transitions.iter() {
         match run_transition(name, transition, &repo, service_state, now)? {
             TransitionResult::Success => break,
-            TransitionResult::Skipped => continue,
+            TransitionResult::Skipped(..) => continue,
             // TODO we could instead just block transitions that touch the source env
             TransitionResult::Blocked => break,
             TransitionResult::CheckFailed => continue,
@@ -293,7 +299,7 @@ mod test {
             test_time(),
         ).unwrap();
 
-        assert_eq!(result, TransitionResult::Skipped);
+        assert_eq!(result, TransitionResult::Skipped(SkipReason::SourceMissing));
         assert_eq!(
             fixture.repo.refname_to_id("refs/dm_head").unwrap(),
             fixture.get_commit("head").unwrap()
@@ -437,7 +443,12 @@ mod test {
             "2018-01-01T00:00:00Z".parse().unwrap(),
         ).unwrap();
 
-        assert_eq!(result, TransitionResult::Skipped);
+        assert_eq!(
+            result,
+            TransitionResult::Skipped(SkipReason::Scheduled {
+                time: "2018-01-01T00:00:00Z".parse().unwrap()
+            })
+        );
         assert_eq!(
             fixture.repo.refname_to_id("refs/dm_head").unwrap(),
             fixture.get_commit("head").unwrap()
