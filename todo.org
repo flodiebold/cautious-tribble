@@ -111,16 +111,18 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
    CLOSED: [2018-05-31 Do 19:39]
 ** DONE allow arbitrary subdirs in versions repo
    CLOSED: [2018-07-12 Do 22:25]
+** DONE add status resource
+   CLOSED: [2018-08-10 Fr 23:01]
+ - report time of last actual run for each transition
+ - report commit ID of last actual run for each transition
+ - report time and status of last check for each transition
+** TODO more details for Blocked and Failed transition status
 ** TODO switch to cron master, build on stable again
 ** TODO add per-resource locks
 ** TODO don't transition resources that don't have a base file in the target env
 ** TODO add unlock after transition
 ** TODO add jenkins checks
 ** TODO add k8s job checks
-** TODO add status resource
- - report time of last actual run for each transition
- - report commit ID of last actual run for each transition
- - report time and status of last check for each transition
 ** TODO fix signal handling
 ** TODO handle remote callbacks during push and use push_update_reference
  - and handle push conficts

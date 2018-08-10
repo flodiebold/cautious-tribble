@@ -1,5 +1,6 @@
 extern crate failure;
 extern crate git2;
+extern crate indexmap;
 extern crate nix;
 extern crate rand;
 pub extern crate reqwest;
@@ -18,10 +19,12 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 
 use failure::Error;
+use indexmap::IndexMap;
 use rand::Rng;
 
 use common::deployment::{AllDeployerStatus, RolloutStatus};
 use common::repo::oid_to_id;
+use common::transitions::TransitionStatusInfo;
 
 pub struct IntegrationTest {
     executable_root: PathBuf,
@@ -309,20 +312,35 @@ impl IntegrationTest {
         panic!("wait_ready timed out");
     }
 
-    pub fn wait_transitioner_commit(&mut self) -> &mut Self {
-        let repo = git2::Repository::open(self.versions_repo_path()).unwrap();
+    pub fn wait_transition(&mut self, transition: &str, count: usize) -> &mut Self {
         for _ in 0..500 {
-            let head_id = repo.refname_to_id("refs/heads/master").unwrap();
-            let commit = repo.find_commit(head_id).unwrap();
+            match get_transitioner_status(&format!(
+                "http://127.0.0.1:{}/status",
+                self.get_port(TestService::Transitioner)
+            )) {
+                Ok(status) => {
+                    eprintln!("full transitioner status: {:?}", status);
 
-            if commit.committer().name().unwrap() == "DM Transitioner" {
-                return self;
+                    let successful_transitions = status
+                        .get(transition)
+                        .map(|status| status.successful_runs.clone())
+                        .unwrap_or_default();
+
+                    if successful_transitions.len() >= count {
+                        let run = &successful_transitions[successful_transitions.len() - count];
+                        eprintln!(
+                            "transition {} ran at {}, resulting in version {:?}",
+                            transition, run.time, run.committed_version
+                        );
+                        return self;
+                    }
+
+                    // if the transition is failed, we could stop early here
+                }
+                Err(e) => {
+                    eprintln!("transitioner status request failed: {}", e);
+                }
             }
-
-            eprintln!(
-                "Newest commit is by {}, waiting for transitioner...",
-                commit.committer().name().unwrap()
-            );
 
             std::thread::sleep(std::time::Duration::from_millis(200));
         }
@@ -378,7 +396,11 @@ impl Drop for IntegrationTest {
 }
 
 fn get_deployer_status(url: &str) -> Result<AllDeployerStatus, Error> {
-    Ok(reqwest::get(url)?.json()?)
+    Ok(reqwest::get(url)?.error_for_status()?.json()?)
+}
+
+fn get_transitioner_status(url: &str) -> Result<IndexMap<String, TransitionStatusInfo>, Error> {
+    Ok(reqwest::get(url)?.error_for_status()?.json()?)
 }
 
 fn should_teardown_namespaces() -> bool {

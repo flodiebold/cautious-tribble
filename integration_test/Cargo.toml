@@ -14,6 +14,8 @@ serde_derive = "1.0"
 serde_json = "1.0"
 git2 = "0.7"
 
+indexmap = { version = "1", features = ["serde-1"] }
+
 common = { path = "../common" }
 git_fixture = { path = "../git_fixture" }
 deployer = { path = "../deployer" }

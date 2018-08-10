@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 
 use super::repo::Id;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransitionResult {
     /// The transition was performed successfully.
     Success(Id),
@@ -17,7 +17,7 @@ pub enum TransitionResult {
     CheckFailed,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SkipReason {
     Scheduled { time: DateTime<Utc> },
     TargetLocked,
@@ -25,7 +25,7 @@ pub enum SkipReason {
     NoChange,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionStatusInfo {
     pub successful_runs: VecDeque<TransitionSuccessfulRunInfo>,
     pub last_run: Option<TransitionRunInfo>,
@@ -40,13 +40,13 @@ impl TransitionStatusInfo {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionSuccessfulRunInfo {
     pub time: DateTime<Utc>,
     pub committed_version: Id,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionRunInfo {
     pub time: DateTime<Utc>,
     pub result: TransitionResult,

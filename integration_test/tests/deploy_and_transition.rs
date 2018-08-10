@@ -12,7 +12,7 @@ fn minikube_deploy_and_transition() {
         .run_transitioner(include_str!("./config_k8s.yaml"))
         .wait_ready()
         .wait_env_rollout_done("dev")
-        .wait_transitioner_commit()
+        .wait_transition("prod", 1)
         .wait_env_rollout_done("prod");
 
     let url = format!("{}/answer", test.get_service_url("prod-", "s1-service"));
@@ -25,7 +25,7 @@ fn minikube_deploy_and_transition() {
     // update service
     fixture.apply("refs/heads/master", "head2").unwrap();
     test.wait_env_rollout_done("dev")
-        .wait_transitioner_commit()
+        .wait_transition("prod", 2)
         .wait_env_rollout_done("prod");
     let url = format!("{}/answer", test.get_service_url("prod-", "s1-service"));
     eprintln!("Requesting {}...", url);

@@ -56,8 +56,8 @@ fn check_source_clean(
 
     if env_status.deployed_version != transition.current_version {
         info!(
-            "Transition blocked: Deployer is on commit {}",
-            env_status.deployed_version
+            "Transition blocked: Deployer is on version {}, we're on version {}",
+            env_status.deployed_version, transition.current_version
         );
         return Ok(PreconditionResult::Blocked);
     }
