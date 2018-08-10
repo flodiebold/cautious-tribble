@@ -22,7 +22,6 @@ extern crate common;
 #[cfg(test)]
 extern crate git_fixture;
 
-use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process;
 use std::str::FromStr;
@@ -39,6 +38,10 @@ use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
 use common::repo::{oid_to_id, Id};
+use common::transitions::{
+    SkipReason, TransitionResult, TransitionRunInfo, TransitionStatusInfo,
+    TransitionSuccessfulRunInfo,
+};
 
 mod api;
 mod config;
@@ -87,54 +90,6 @@ impl Transition {
         };
         schedule.after(&now).next()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-enum TransitionResult {
-    /// The transition was performed successfully.
-    Success(Id),
-    /// The transition was not applicable for some reason, or there was no change.
-    Skipped(SkipReason),
-    /// The transition might be applicable soon, and the source env should not
-    /// be changed until then.
-    Blocked,
-    /// A precondition check was negative.
-    CheckFailed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-enum SkipReason {
-    Scheduled { time: DateTime<Utc> },
-    TargetLocked,
-    SourceMissing,
-    NoChange,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct TransitionStatusInfo {
-    successful_runs: VecDeque<TransitionSuccessfulRunInfo>,
-    last_run: Option<TransitionRunInfo>,
-}
-
-impl TransitionStatusInfo {
-    pub fn new() -> TransitionStatusInfo {
-        TransitionStatusInfo {
-            successful_runs: VecDeque::with_capacity(101),
-            last_run: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct TransitionSuccessfulRunInfo {
-    time: DateTime<Utc>,
-    committed_version: Id,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct TransitionRunInfo {
-    time: DateTime<Utc>,
-    result: TransitionResult,
 }
 
 #[derive(Debug, Clone)]

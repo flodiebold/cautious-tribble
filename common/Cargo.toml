@@ -11,5 +11,7 @@ serde_derive = "1.0"
 # serde_yaml = "0.7"
 tempfile = "3"
 
+chrono = { version = "0.4", features = ["serde"] }
+
 [dev-dependencies]
 git_fixture = { path = "../git_fixture" }
