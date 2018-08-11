@@ -48,15 +48,15 @@
 ** DONE implement separated version files
    CLOSED: [2018-08-04 Sa 20:45]
 ** TODO add dry run mode (default for CLI)
-** TODO add full diff mode that compares all deployables with what would be deployed
+** TODO add full diff mode that compares all resources with what would be deployed
  - in CLI mode, show diffs using treediff crate
- - fall back automatically to this for deployables that don't have an annotation
+ - fall back automatically to this for resources that don't have an annotation
  - don't deploy if the diff contains nothing
 ** TODO cli: add nicer output
  - json output with -o json
  - table otherwise
  - expect only one env by default, all envs with option
- - show commit message of the deployed / to deploy commit for each deployable
+ - show commit message of the deployed / to deploy commit for each resource
 ** TODO allow reading from file system instead of git in CLI mode
 ** TODO integration-test configmap & secret deployment
 ** TODO check rollout status of configmap to all nodes
@@ -230,9 +230,10 @@ https://bors.tech/
    CLOSED: [2018-08-05 So 17:53]
 ** DONE use json data structures instead of yaml (convert immediately when reading yaml)
    CLOSED: [2018-08-05 So 20:15]
-** TODO use ResourceRepo abstraction in transitioner as well
-** TODO clean up naming
+** DONE clean up naming
+   CLOSED: [2018-08-11 Sa 17:32]
  - deployable / deployment -> resource
+** TODO use ResourceRepo abstraction in transitioner as well
 ** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
 ** TODO remove use of kubeclient, directly use k8s-openapi, support multiple k8s versions?

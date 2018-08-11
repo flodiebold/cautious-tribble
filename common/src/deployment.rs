@@ -35,8 +35,7 @@ pub struct DeployerStatus {
     pub deployed_version: Id,
     pub last_successfully_deployed_version: Option<Id>,
     pub rollout_status: RolloutStatus,
-    // TODO rename to by_deployable
-    pub status_by_deployment: HashMap<String, DeploymentState>,
+    pub status_by_resource: HashMap<String, ResourceState>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,9 +76,8 @@ impl From<RolloutStatusReason> for RolloutStatus {
     }
 }
 
-// TODO rename to DeployableState
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DeploymentState {
+pub enum ResourceState {
     NotDeployed,
     Deployed {
         version: Id,
