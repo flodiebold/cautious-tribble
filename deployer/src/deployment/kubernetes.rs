@@ -5,15 +5,14 @@ use std::collections::HashMap;
 use failure::{Error, ResultExt};
 use k8s_openapi::v1_10::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kubeclient::clients::ReadClient;
-use kubeclient::resources::Kind;
-use kubeclient::resources::Resource;
+use kubeclient::resources::{Kind, Resource as KubeResource};
 use kubeclient::Kubernetes;
 use serde_json;
 
-use common::deployment::{DeploymentState, RolloutStatusReason};
+use common::deployment::{ResourceState, RolloutStatusReason};
 use common::repo::Id;
 
-use super::{Deployable, Deployer};
+use super::{Deployer, Resource};
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
@@ -99,39 +98,39 @@ impl KubernetesDeployer {
 impl Deployer for KubernetesDeployer {
     fn retrieve_current_state(
         &mut self,
-        deployables: &[Deployable],
-    ) -> Result<HashMap<String, DeploymentState>, Error> {
-        let mut result = HashMap::with_capacity(deployables.len());
+        resources: &[Resource],
+    ) -> Result<HashMap<String, ResourceState>, Error> {
+        let mut result = HashMap::with_capacity(resources.len());
 
-        for d in deployables {
+        for d in resources {
             let kind = determine_kind(&d.merged_content)?;
 
             let state = match kind {
                 Kind::Deployment => get_deployment_state(&self.client.deployments(), d)?,
                 // TODO these should work
-                Kind::DaemonSet => bail!("Unsupported deployable type: {:?}", kind),
-                Kind::Pod => bail!("Unsupported deployable type: {:?}", kind),
+                Kind::DaemonSet => bail!("Unsupported resource type: {:?}", kind),
+                Kind::Pod => bail!("Unsupported resource type: {:?}", kind),
 
-                Kind::Service => get_simple_deployable_state(&self.client.services(), d)?,
-                Kind::ConfigMap => get_simple_deployable_state(&self.client.config_maps(), d)?,
-                Kind::Secret => get_simple_deployable_state(&self.client.secrets(), d)?,
+                Kind::Service => get_simple_resource_state(&self.client.services(), d)?,
+                Kind::ConfigMap => get_simple_resource_state(&self.client.config_maps(), d)?,
+                Kind::Secret => get_simple_resource_state(&self.client.secrets(), d)?,
                 Kind::NetworkPolicy | Kind::Node => {
-                    bail!("Unsupported deployable type: {:?}", kind);
+                    bail!("Unsupported resource type: {:?}", kind);
                 }
             };
 
             if let Some(state) = state {
                 result.insert(d.name.clone(), state);
             } else {
-                warn!("Deployable {} does not exist", d.name);
-                result.insert(d.name.clone(), DeploymentState::NotDeployed);
+                warn!("Resource {} does not exist", d.name);
+                result.insert(d.name.clone(), ResourceState::NotDeployed);
             }
         }
 
         Ok(result)
     }
 
-    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
+    fn deploy(&mut self, resource: &Resource) -> Result<(), Error> {
         use serde_json::{self, Value};
         let mut data: Value = resource.merged_content.clone(); // TODO
         {
@@ -229,8 +228,8 @@ fn determine_rollout_status(
 
 fn get_deployment_state(
     client: &KubeClient<Deployment>,
-    d: &Deployable,
-) -> Result<Option<DeploymentState>, Error> {
+    d: &Resource,
+) -> Result<Option<ResourceState>, Error> {
     let kube_deployment = get_kubernetes_resource(client, &d.name)?;
 
     let kube_deployment = if let Some(k) = kube_deployment {
@@ -241,16 +240,16 @@ fn get_deployment_state(
 
     let rollout_status = determine_rollout_status(&d.name, &kube_deployment);
 
-    let state = to_deployable_state(&d, &kube_deployment, rollout_status);
+    let state = to_resource_state(&d, &kube_deployment, rollout_status);
 
     Ok(Some(state))
 }
 
-fn get_simple_deployable_state<T: Resource>(
+fn get_simple_resource_state<T: KubeResource>(
     client: &KubeClient<T>,
-    d: &Deployable,
-) -> Result<Option<DeploymentState>, Error> {
-    let resource = get_kubernetes_resource(&client, &d.name)?;
+    r: &Resource,
+) -> Result<Option<ResourceState>, Error> {
+    let resource = get_kubernetes_resource(&client, &r.name)?;
 
     let resource = if let Some(k) = resource {
         k
@@ -258,17 +257,17 @@ fn get_simple_deployable_state<T: Resource>(
         return Ok(None);
     };
 
-    let state = to_deployable_state(&d, &resource, RolloutStatusReason::Clean);
+    let state = to_resource_state(&r, &resource, RolloutStatusReason::Clean);
 
     Ok(Some(state))
 }
 
-fn to_deployable_state<T: Resource>(
-    deployable: &Deployable,
-    resource: &T,
+fn to_resource_state<T: KubeResource>(
+    resource: &Resource,
+    kube_resource: &T,
     rollout_status: RolloutStatusReason,
-) -> DeploymentState {
-    let version_annotation = resource
+) -> ResourceState {
+    let version_annotation = kube_resource
         .metadata()
         .annotations
         .as_ref()
@@ -277,14 +276,14 @@ fn to_deployable_state<T: Resource>(
 
     let version = version_annotation.unwrap_or("");
 
-    DeploymentState::Deployed {
+    ResourceState::Deployed {
         version: version.parse().unwrap_or_else(|_| Id([0; 20])),
-        expected_version: deployable.version,
+        expected_version: resource.version,
         status: rollout_status,
     }
 }
 
-fn get_kubernetes_resource<T: Resource>(
+fn get_kubernetes_resource<T: KubeResource>(
     client: &KubeClient<T>,
     name: &str,
 ) -> Result<Option<T>, Error> {

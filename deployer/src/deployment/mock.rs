@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use failure::Error;
 use serde_json;
 
-use common::deployment::{DeploymentState, RolloutStatusReason};
+use common::deployment::{ResourceState, RolloutStatusReason};
 use common::repo::Id;
 
-use super::{Deployable, Deployer};
+use super::{Deployer, Resource};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {}
@@ -38,19 +38,19 @@ impl MockDeployer {
 impl Deployer for MockDeployer {
     fn retrieve_current_state(
         &mut self,
-        resources: &[Deployable],
-    ) -> Result<HashMap<String, DeploymentState>, Error> {
+        resources: &[Resource],
+    ) -> Result<HashMap<String, ResourceState>, Error> {
         let mut result = HashMap::new();
         for resource in resources {
             let mock = self.resources.get(&resource.name);
             let state = if let Some(mock) = mock {
-                DeploymentState::Deployed {
+                ResourceState::Deployed {
                     version: mock.version,
                     expected_version: resource.version,
                     status: RolloutStatusReason::Clean,
                 }
             } else {
-                DeploymentState::NotDeployed
+                ResourceState::NotDeployed
             };
 
             result.insert(resource.name.clone(), state);
@@ -58,7 +58,7 @@ impl Deployer for MockDeployer {
         Ok(result)
     }
 
-    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
+    fn deploy(&mut self, resource: &Resource) -> Result<(), Error> {
         // TODO: allow simulating errors etc. by setting properties in the content
         self.resources.insert(
             resource.name.clone(),

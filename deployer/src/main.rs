@@ -168,14 +168,14 @@ fn check(config: Config) -> Result<(), Error> {
 
         let mut env_status = deployment::new_deployer_status(version);
 
-        if let Some(deployments) = deployment::get_deployments(&repo, env, None)? {
-            let (new_rollout_status, new_status_by_deployment) =
-                deployment::check_rollout_status(deployer, &deployments.deployments)?;
+        if let Some(resources) = deployment::get_resources(&repo, env, None)? {
+            let (new_rollout_status, new_status_by_resource) =
+                deployment::check_rollout_status(deployer, &resources.resources)?;
 
             env_status.rollout_status = new_rollout_status;
             env_status
-                .status_by_deployment
-                .extend(new_status_by_deployment.into_iter());
+                .status_by_resource
+                .extend(new_status_by_resource.into_iter());
         }
 
         println!("Status of {}: {:?}", env, env_status);

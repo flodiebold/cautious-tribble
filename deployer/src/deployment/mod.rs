@@ -7,14 +7,14 @@ use regex;
 use serde_json;
 use serde_yaml;
 
-use common::deployment::{DeployerStatus, DeploymentState, RolloutStatus};
+use common::deployment::{DeployerStatus, ResourceState, RolloutStatus};
 use common::repo::{Id, ResourceRepo};
 
 pub mod kubernetes;
 pub mod mock;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Deployable {
+pub struct Resource {
     pub name: String,
     pub base_file_name: PathBuf,
     pub version_file_name: Option<PathBuf>,
@@ -25,40 +25,40 @@ pub struct Deployable {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct DeploymentsInfo {
-    pub deployments: Vec<Deployable>,
+pub struct ResourcesInfo {
+    pub resources: Vec<Resource>,
 }
 
 pub trait Deployer {
     fn retrieve_current_state(
         &mut self,
-        resources: &[Deployable],
-    ) -> Result<HashMap<String, DeploymentState>, Error>;
+        resources: &[Resource],
+    ) -> Result<HashMap<String, ResourceState>, Error>;
 
-    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error>;
+    fn deploy(&mut self, resource: &Resource) -> Result<(), Error>;
 }
 
 impl Deployer for Box<dyn Deployer> {
     fn retrieve_current_state(
         &mut self,
-        resources: &[Deployable],
-    ) -> Result<HashMap<String, DeploymentState>, Error> {
+        resources: &[Resource],
+    ) -> Result<HashMap<String, ResourceState>, Error> {
         (**self).retrieve_current_state(resources)
     }
 
-    fn deploy(&mut self, resource: &Deployable) -> Result<(), Error> {
+    fn deploy(&mut self, resource: &Resource) -> Result<(), Error> {
         (**self).deploy(resource)
     }
 }
 
-pub fn get_deployments(
+pub fn get_resources(
     repo: &impl ResourceRepo,
     env: &str,
     last_version: Option<Id>,
-) -> Result<Option<DeploymentsInfo>, Error> {
-    let mut deployments = HashMap::<String, Deployable>::new();
+) -> Result<Option<ResourcesInfo>, Error> {
+    let mut resources = HashMap::<String, Resource>::new();
 
-    // collect current versions of all deployments
+    // collect current versions of all resources
     let current_version = repo.version();
 
     if last_version
@@ -72,7 +72,7 @@ pub fn get_deployments(
 
     repo.walk(&env_path.join("deployable"), |entry| {
         // FIXME don't fail everything if content is invalid, report the
-        // deployable as errored
+        // resource as errored
         let content = serde_yaml::from_slice(&entry.content)?;
         let name = entry
             .path
@@ -80,7 +80,7 @@ pub fn get_deployments(
             .and_then(|s| s.to_str())
             .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
             .to_string();
-        let deployment = Deployable {
+        let resource = Resource {
             name: name.clone(),
             base_file_name: env_path.join("deployable").join(entry.path),
             merged_content: content,
@@ -90,7 +90,7 @@ pub fn get_deployments(
             message: entry.change_message,
         };
 
-        deployments.insert(name, deployment);
+        resources.insert(name, resource);
         Ok(())
     })?;
 
@@ -114,28 +114,28 @@ pub fn get_deployments(
             Err(e) => bail!(e),
         };
         let base_file_content = serde_yaml::from_slice(&base_file_content)?;
-        let deployment = Deployable {
+        let resource = Resource {
             name: name.clone(),
             base_file_name,
-            merged_content: merge_deployable(base_file_content, &content),
+            merged_content: merge_resource(base_file_content, &content),
             version_content: content,
             version_file_name: Some(env_path.join("version").join(&entry.path)),
             version: entry.last_change,
             message: entry.change_message,
         };
 
-        deployments.insert(name, deployment);
+        resources.insert(name, resource);
         Ok(())
     })?;
 
-    let result = DeploymentsInfo {
-        deployments: deployments.into_iter().map(|(_, v)| v).collect(),
+    let result = ResourcesInfo {
+        resources: resources.into_iter().map(|(_, v)| v).collect(),
     };
 
     Ok(Some(result))
 }
 
-fn merge_deployable(
+fn merge_resource(
     mut base: serde_json::Value,
     version_content: &BTreeMap<String, String>,
 ) -> serde_json::Value {
@@ -168,10 +168,10 @@ fn merge_deployable(
     base
 }
 
-pub fn deploy(deployer: &mut impl Deployer, deployments: &[Deployable]) -> Result<(), Error> {
-    let current_state = deployer.retrieve_current_state(deployments)?;
+pub fn deploy(deployer: &mut impl Deployer, resources: &[Resource]) -> Result<(), Error> {
+    let current_state = deployer.retrieve_current_state(resources)?;
 
-    for d in deployments {
+    for d in resources {
         debug!("looking at {}", d.name);
         let deployed_version = if let Some(v) = current_state.get(&d.name) {
             v.clone()
@@ -180,7 +180,7 @@ pub fn deploy(deployer: &mut impl Deployer, deployments: &[Deployable]) -> Resul
             continue;
         };
 
-        if let DeploymentState::Deployed { version, .. } = deployed_version {
+        if let ResourceState::Deployed { version, .. } = deployed_version {
             if version == d.version {
                 info!("same version for {}, not deploying", d.name);
                 continue;
@@ -212,16 +212,16 @@ pub fn deploy(deployer: &mut impl Deployer, deployments: &[Deployable]) -> Resul
 
 pub fn check_rollout_status(
     deployer: &mut impl Deployer,
-    deployments: &[Deployable],
-) -> Result<(RolloutStatus, HashMap<String, DeploymentState>), Error> {
-    let current_state = deployer.retrieve_current_state(deployments)?;
+    resources: &[Resource],
+) -> Result<(RolloutStatus, HashMap<String, ResourceState>), Error> {
+    let current_state = deployer.retrieve_current_state(resources)?;
 
     let combined = current_state
         .iter()
         .map(|(_, v)| v)
         .map(|d| match d {
-            DeploymentState::NotDeployed => RolloutStatus::Outdated,
-            DeploymentState::Deployed {
+            ResourceState::NotDeployed => RolloutStatus::Outdated,
+            ResourceState::Deployed {
                 status,
                 version,
                 expected_version,
@@ -230,7 +230,7 @@ pub fn check_rollout_status(
             {
                 status.clone().into()
             }
-            DeploymentState::Deployed { status, .. } => {
+            ResourceState::Deployed { status, .. } => {
                 RolloutStatus::Outdated.combine(status.clone().into())
             }
         }).fold(RolloutStatus::Clean, RolloutStatus::combine);
@@ -243,7 +243,7 @@ pub fn new_deployer_status(version: Id) -> DeployerStatus {
         deployed_version: version,
         last_successfully_deployed_version: None,
         rollout_status: RolloutStatus::InProgress,
-        status_by_deployment: HashMap::new(),
+        status_by_resource: HashMap::new(),
     }
 }
 
@@ -256,12 +256,12 @@ pub fn deploy_env(
 ) -> Result<DeployerStatus, Error> {
     let version = repo.version();
     let mut env_status = last_status.unwrap_or_else(|| new_deployer_status(version));
-    if let Some(deployments) = get_deployments(repo, env, last_version)? {
+    if let Some(resources) = get_resources(repo, env, last_version)? {
         info!(
             "Got a change for {} to version {:?}, now deploying...",
             env, version
         );
-        deploy(deployer, &deployments.deployments)?;
+        deploy(deployer, &resources.resources)?;
 
         env_status.deployed_version = version;
         env_status.rollout_status = RolloutStatus::InProgress;
@@ -270,15 +270,15 @@ pub fn deploy_env(
     }
 
     if env_status.rollout_status == RolloutStatus::InProgress {
-        if let Some(deployments) =
-            get_deployments(repo, env, env_status.last_successfully_deployed_version)?
+        if let Some(resources) =
+            get_resources(repo, env, env_status.last_successfully_deployed_version)?
         {
-            let (new_rollout_status, new_status_by_deployment) =
-                check_rollout_status(deployer, &deployments.deployments)?;
+            let (new_rollout_status, new_status_by_resource) =
+                check_rollout_status(deployer, &resources.resources)?;
             env_status.rollout_status = new_rollout_status;
             env_status
-                .status_by_deployment
-                .extend(new_status_by_deployment.into_iter());
+                .status_by_resource
+                .extend(new_status_by_resource.into_iter());
         }
     }
 
@@ -304,178 +304,178 @@ mod test {
     }
 
     #[test]
-    fn test_get_deployments_no_deployments() {
+    fn test_get_resources_no_resources() {
         let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_no_deployments.yaml"
+            "./fixtures/get_resources_no_resources.yaml"
         )).unwrap();
         let result =
-            get_deployments(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
         assert!(result.is_some());
-        assert_eq!(result.unwrap().deployments.len(), 0);
+        assert_eq!(result.unwrap().resources.len(), 0);
     }
 
     #[test]
-    fn test_get_deployments_1() {
+    fn test_get_resources_1() {
         let fixture =
-            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_deployments_1.yaml"))
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_resources_1.yaml"))
                 .unwrap();
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
         let result =
-            get_deployments(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
         assert!(result.is_some());
         let info = result.unwrap();
-        assert_eq!(info.deployments.len(), 1);
-        assert_eq!(info.deployments[0].name, "foo");
+        assert_eq!(info.resources.len(), 1);
+        assert_eq!(info.resources[0].name, "foo");
         assert_eq!(
-            info.deployments[0].base_file_name,
+            info.resources[0].base_file_name,
             Path::new("available/deployable/foo")
         );
-        assert_eq!(info.deployments[0].merged_content, json!("blubb"));
-        assert_eq!(info.deployments[0].version, head)
+        assert_eq!(info.resources[0].merged_content, json!("blubb"));
+        assert_eq!(info.resources[0].version, head)
     }
 
     #[test]
-    fn test_get_deployments_2() {
+    fn test_get_resources_2() {
         let fixture =
-            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_deployments_2.yaml"))
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_resources_2.yaml"))
                 .unwrap();
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
         let result =
-            get_deployments(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
-        info.deployments.sort_by_key(|d| d.name.clone());
-        assert_eq!(info.deployments.len(), 2);
-        assert_eq!(info.deployments[0].name, "bar");
+        info.resources.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.resources.len(), 2);
+        assert_eq!(info.resources[0].name, "bar");
         assert_eq!(
-            info.deployments[0].base_file_name,
+            info.resources[0].base_file_name,
             Path::new("available/deployable/bar")
         );
-        assert_eq!(info.deployments[0].merged_content, json!("xx"));
-        assert_eq!(info.deployments[0].version, head);
-        assert_eq!(info.deployments[1].name, "foo");
+        assert_eq!(info.resources[0].merged_content, json!("xx"));
+        assert_eq!(info.resources[0].version, head);
+        assert_eq!(info.resources[1].name, "foo");
         assert_eq!(
-            info.deployments[1].base_file_name,
+            info.resources[1].base_file_name,
             Path::new("available/deployable/foo")
         );
-        assert_eq!(info.deployments[1].merged_content, json!("blubb"));
-        assert_eq!(info.deployments[1].version, head);
+        assert_eq!(info.resources[1].merged_content, json!("blubb"));
+        assert_eq!(info.resources[1].version, head);
     }
 
     #[test]
-    fn test_get_deployments_separated() {
+    fn test_get_resources_separated() {
         let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_separated.yaml"
+            "./fixtures/get_resources_separated.yaml"
         )).unwrap();
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
         let result =
-            get_deployments(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
-        info.deployments.sort_by_key(|d| d.name.clone());
-        assert_eq!(info.deployments.len(), 2);
-        assert_eq!(info.deployments[0].name, "nothing");
+        info.resources.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.resources.len(), 2);
+        assert_eq!(info.resources[0].name, "nothing");
         assert_eq!(
-            info.deployments[0].base_file_name,
+            info.resources[0].base_file_name,
             Path::new("available/base/nothing")
         );
         assert_eq!(
-            info.deployments[0].version_file_name,
+            info.resources[0].version_file_name,
             Some(PathBuf::from("available/version/nothing"))
         );
-        assert_eq!(info.deployments[0].merged_content, json!("blubb"));
-        assert_eq!(info.deployments[0].version, head);
-        assert_eq!(info.deployments[1].name, "simple");
+        assert_eq!(info.resources[0].merged_content, json!("blubb"));
+        assert_eq!(info.resources[0].version, head);
+        assert_eq!(info.resources[1].name, "simple");
         assert_eq!(
-            info.deployments[1].base_file_name,
+            info.resources[1].base_file_name,
             Path::new("available/base/simple")
         );
         assert_eq!(
-            info.deployments[1].version_file_name,
+            info.resources[1].version_file_name,
             Some(PathBuf::from("available/version/simple"))
         );
         assert_eq!(
-            info.deployments[1].merged_content,
+            info.resources[1].merged_content,
             json!({
                 "the_version_is": "blubb"
             })
         );
-        assert_eq!(info.deployments[1].version, head);
+        assert_eq!(info.resources[1].version, head);
     }
 
     #[test]
-    fn test_get_deployments_subdir() {
-        let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_glob.yaml"
-        )).unwrap();
+    fn test_get_resources_subdir() {
+        let fixture =
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_resources_glob.yaml"))
+                .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let result =
-            get_deployments(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
-        info.deployments.sort_by_key(|d| d.name.clone());
-        assert_eq!(info.deployments.len(), 3);
-        assert_eq!(info.deployments[0].name, "bar");
+        info.resources.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.resources.len(), 3);
+        assert_eq!(info.resources[0].name, "bar");
         assert_eq!(
-            info.deployments[0].base_file_name,
+            info.resources[0].base_file_name,
             Path::new("available/deployable/bar")
         );
-        assert_eq!(info.deployments[1].name, "baz");
+        assert_eq!(info.resources[1].name, "baz");
         assert_eq!(
-            info.deployments[1].base_file_name,
+            info.resources[1].base_file_name,
             Path::new("available/deployable/subdir/baz")
         );
-        assert_eq!(info.deployments[2].name, "blub");
+        assert_eq!(info.resources[2].name, "blub");
         assert_eq!(
-            info.deployments[2].base_file_name,
+            info.resources[2].base_file_name,
             Path::new("available/deployable/othersubdir/blub")
         );
     }
 
     #[test]
-    fn test_get_deployments_changed() {
+    fn test_get_resources_changed() {
         let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_changed.yaml"
+            "./fixtures/get_resources_changed.yaml"
         )).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let first = repo::oid_to_id(fixture.get_commit("first").unwrap());
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
-        let result = get_deployments(
+        let result = get_resources(
             &make_resource_repo(fixture, "head"),
             "available",
             Some(first),
         ).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
-        info.deployments.sort_by_key(|d| d.name.clone());
-        assert_eq!(info.deployments.len(), 2);
-        assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(info.deployments[0].merged_content, json!("yy"));
-        assert_eq!(info.deployments[0].version, head);
-        assert_eq!(info.deployments[1].name, "foo");
-        assert_eq!(info.deployments[1].version, first);
+        info.resources.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.resources.len(), 2);
+        assert_eq!(info.resources[0].name, "bar");
+        assert_eq!(info.resources[0].merged_content, json!("yy"));
+        assert_eq!(info.resources[0].version, head);
+        assert_eq!(info.resources[1].name, "foo");
+        assert_eq!(info.resources[1].version, first);
     }
 
     #[test]
-    fn test_get_deployments_added() {
-        let fixture = git_fixture::RepoFixture::from_str(include_str!(
-            "./fixtures/get_deployments_added.yaml"
-        )).unwrap();
+    fn test_get_resources_added() {
+        let fixture =
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_resources_added.yaml"))
+                .unwrap();
         let first = repo::oid_to_id(fixture.get_commit("first").unwrap());
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
-        let result = get_deployments(
+        let result = get_resources(
             &make_resource_repo(fixture, "head"),
             "available",
             Some(first),
         ).unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
-        info.deployments.sort_by_key(|d| d.name.clone());
-        assert_eq!(info.deployments.len(), 2);
-        assert_eq!(info.deployments[0].name, "bar");
-        assert_eq!(info.deployments[0].merged_content, json!("yy"));
-        assert_eq!(info.deployments[0].version, head);
-        assert_eq!(info.deployments[1].name, "foo");
-        assert_eq!(info.deployments[1].version, first);
+        info.resources.sort_by_key(|d| d.name.clone());
+        assert_eq!(info.resources.len(), 2);
+        assert_eq!(info.resources[0].name, "bar");
+        assert_eq!(info.resources[0].merged_content, json!("yy"));
+        assert_eq!(info.resources[0].version, head);
+        assert_eq!(info.resources[1].name, "foo");
+        assert_eq!(info.resources[1].version, first);
     }
 }
