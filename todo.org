@@ -47,6 +47,14 @@
   - command `deploy` to deploy
 ** DONE implement separated version files
    CLOSED: [2018-08-04 Sa 20:45]
+** TODO improve error handling
+ - report errors in yaml parsing etc. on the deployable status
+** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
+ - that means more state though... maybe just rely on validation
+** TODO integration-test configmap & secret deployment
+** TODO reload config on every loop
+** TODO fix signal handling
+use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO add dry run mode (default for CLI)
 ** TODO add full diff mode that compares all resources with what would be deployed
  - in CLI mode, show diffs using treediff crate
@@ -58,7 +66,6 @@
  - expect only one env by default, all envs with option
  - show commit message of the deployed / to deploy commit for each resource
 ** TODO allow reading from file system instead of git in CLI mode
-** TODO integration-test configmap & secret deployment
 ** TODO check rollout status of configmap to all nodes
  - somehow?
 ** TODO support deploying daemonsets
@@ -71,8 +78,6 @@
 ** TODO just use blob OIDs instead of earliest commit?
 ** TODO handle undeploying something
 is that a use case though?
-** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
- - that means more state though... maybe just rely on validation
 ** TODO do resource patching without kubectl?
  - makes diffs more reliable
  - API support in https://github.com/kubernetes/features/issues/555
@@ -80,16 +85,12 @@ is that a use case though?
 See also:
 kubectl diff -- https://github.com/kubernetes/features/issues/491
 current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
-** TODO improve error handling
- - per-deployment errors should be reported in the deployment status, but not stop other deployments
-** TODO fix signal handling
-use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO use k8s api instead of relying on kubectl for deployment
-** TODO reload config on every loop
 ** TODO validate yamls before deploying
  - allow disabling validation by yaml
  - detect k8s version automatically?
 ** TODO validate & report validation status for envs that aren't actually deployed (i.e. 'latest')
+ - handle as 'just validation' Deployer?
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -111,6 +112,8 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
    CLOSED: [2018-05-31 Do 19:39]
 ** DONE allow arbitrary subdirs in versions repo
    CLOSED: [2018-07-12 Do 22:25]
+** DONE switch to cron master, build on stable again
+   CLOSED: [2018-08-06 Mo 23:04]
 ** DONE add status resource
    CLOSED: [2018-08-10 Fr 23:01]
  - report time of last actual run for each transition
@@ -178,6 +181,7 @@ i.e. validation failures in latest should prevent only those services from being
 ** TODO get current versions repo state & watch for changes
 ** TODO aggregate transition status from versions repo & transitioner status
 ** TODO fetch commit histories from repos
+ - keep commit histories in versions repo? as branches of commits without content?
 ** TODO notify about changes via websocket / h2
 ** TODO serve ui
 * ui
@@ -200,6 +204,10 @@ i.e. validation failures in latest should prevent only those services from being
    CLOSED: [2018-08-04 Sa 21:16]
 ** TODO set up bors
 https://bors.tech/
+** TODO script to automatically set up 'playground'
+ - all parts running
+ - versions repo set up & some resources defined
+ - automatically recompile & restart services when making changes
 ** TODO build static binaries & docker images
 ** TODO test coverage
 ** TODO add structured logging
@@ -213,6 +221,8 @@ https://bors.tech/
  - add Deserialize
 ** TODO add cli option to write version update (for use in push job)
  - include commit messages since the last version
+** TODO documentation
+** TODO contribution issues
 * later
 ** Allow scaling down & locking deployments temporarily
 ** Canaries

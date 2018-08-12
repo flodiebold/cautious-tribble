@@ -11,6 +11,8 @@ pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
         .remote_anonymous(url)
         .context("creating remote failed")?;
 
+    // TODO use RemoteCallBacks to watch progress
+
     remote
         .fetch(&["+refs/heads/master:refs/dm_head"], None, None)
         .context("fetch failed")?;
