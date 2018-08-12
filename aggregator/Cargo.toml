@@ -1,0 +1,26 @@
+[package]
+name = "aggregator"
+version = "0.1.0"
+authors = ["Florian Diebold <flodiebold@gmail.com>"]
+
+[dependencies]
+failure = "0.1"
+git2 = "0.7"
+serde = "1.0"
+serde_derive = "1.0"
+serde_yaml = "0.7"
+serde_json = "1.0"
+structopt = "0.2"
+reqwest = "0.8"
+
+warp = "0.1"
+
+crossbeam = "0.4"
+
+log = "0.4"
+env_logger = "0.5"
+
+common = { path = "../common" }
+
+[dev-dependencies]
+git_fixture = { path = "../git_fixture" }
