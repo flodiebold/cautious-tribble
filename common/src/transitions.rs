@@ -49,5 +49,6 @@ pub struct TransitionSuccessfulRunInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionRunInfo {
     pub time: DateTime<Utc>,
+    // TODO add version: Id
     pub result: TransitionResult,
 }

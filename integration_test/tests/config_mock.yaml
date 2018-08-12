@@ -13,3 +13,4 @@ transitions:
     preconditions:
       - SourceClean
 deployer_url: "http://localhost:%%deployer_port%%"
+transitioner_url: "http://localhost:%%transitioner_port%%"

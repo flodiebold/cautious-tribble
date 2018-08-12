@@ -6,6 +6,7 @@ extern crate rand;
 pub extern crate reqwest;
 extern crate serde_json;
 extern crate tempfile;
+extern crate websocket;
 
 extern crate common;
 extern crate git_fixture;

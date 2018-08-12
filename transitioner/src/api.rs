@@ -6,7 +6,7 @@ use warp::{self, Filter};
 use super::ServiceState;
 
 fn health(_state: &ServiceState) -> impl warp::Reply {
-    warp::reply::json(&())
+    warp::reply::json(&json!({}))
 }
 
 fn status(state: &ServiceState) -> impl warp::Reply {

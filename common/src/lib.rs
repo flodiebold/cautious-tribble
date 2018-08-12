@@ -9,6 +9,7 @@ extern crate chrono;
 extern crate git_fixture;
 extern crate tempfile;
 
+pub mod aggregator;
 mod config;
 pub mod deployment;
 pub mod git;

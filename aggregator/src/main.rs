@@ -12,7 +12,9 @@ extern crate serde_json;
 extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
+extern crate bus;
 extern crate crossbeam;
+extern crate futures;
 extern crate reqwest;
 extern crate warp;
 
@@ -20,20 +22,20 @@ extern crate common;
 #[cfg(test)]
 extern crate git_fixture;
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
+use std::sync::Mutex;
 
-use crossbeam::atomic::ArcCell;
+use bus::Bus;
 use failure::Error;
 use structopt::StructOpt;
 
+use common::aggregator::Message;
+
 mod api;
 mod config;
+mod deployer_watch;
 
 use config::Config;
 
@@ -47,14 +49,18 @@ struct Options {
 pub struct ServiceState {
     // latest_status: ArcCell<AllDeployerStatus>,
     config: config::Config,
+    bus: Mutex<Bus<Arc<Message>>>,
 }
 
 fn serve(config: Config) -> Result<(), Error> {
-    let service_state = Arc::new(ServiceState { config });
+    let bus = Mutex::new(Bus::new(100));
+    let service_state = Arc::new(ServiceState { config, bus });
 
-    let handle = api::start(service_state.clone());
+    let api = api::start(service_state.clone());
+    let deployer_watch = deployer_watch::start(service_state.clone());
 
-    handle.join().unwrap();
+    api.join().unwrap();
+    deployer_watch.join().unwrap();
 
     Ok(())
 }

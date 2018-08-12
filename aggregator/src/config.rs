@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -11,6 +10,8 @@ use common;
 pub struct Config {
     #[serde(flatten)]
     pub common: common::Config,
+    pub deployer_url: Option<String>,
+    pub transitioner_url: Option<String>,
 }
 
 impl Config {

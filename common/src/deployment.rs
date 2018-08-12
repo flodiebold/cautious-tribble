@@ -30,7 +30,7 @@ impl RolloutStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DeployerStatus {
     pub deployed_version: Id,
     pub last_successfully_deployed_version: Option<Id>,
@@ -38,7 +38,7 @@ pub struct DeployerStatus {
     pub status_by_resource: HashMap<String, ResourceState>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AllDeployerStatus {
     pub deployers: BTreeMap<String, DeployerStatus>,
 }

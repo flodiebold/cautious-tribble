@@ -9,6 +9,7 @@ pub extern crate reqwest;
 extern crate serde_json;
 extern crate signal_hook;
 extern crate tempfile;
+extern crate websocket;
 
 extern crate common;
 extern crate git_fixture;
@@ -32,7 +33,9 @@ fn main() -> Result<(), Error> {
     fixture.set_ref("refs/heads/master", "head1").unwrap();
     test.run_deployer(include_str!("../tests/config_mock.yaml"))
         .run_transitioner(include_str!("../tests/config_mock.yaml"))
+        .run_aggregator(include_str!("../tests/config_mock.yaml"))
         .wait_ready()
+        .connect_to_aggregator_socket()
         .wait_env_rollout_done("dev")
         .wait_transition("prod", 1)
         .wait_env_rollout_done("prod");

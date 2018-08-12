@@ -14,6 +14,7 @@ use nix;
 use rand::{self, Rng};
 use reqwest;
 use tempfile;
+use websocket;
 
 use git_fixture;
 
@@ -34,6 +35,7 @@ pub struct IntegrationTest {
 enum TestService {
     Deployer,
     Transitioner,
+    Aggregator,
 }
 
 fn executable_root() -> PathBuf {
@@ -72,11 +74,10 @@ impl IntegrationTest {
         );
         let mut rng = rand::thread_rng();
         let mut ports = HashMap::new();
-        ports.insert(TestService::Deployer, rng.gen_range(1024, std::u16::MAX));
-        ports.insert(
-            TestService::Transitioner,
-            rng.gen_range(1024, std::u16::MAX),
-        );
+        let start = rng.gen_range(1024, std::u16::MAX - 3);
+        ports.insert(TestService::Deployer, start);
+        ports.insert(TestService::Transitioner, start + 1);
+        ports.insert(TestService::Aggregator, start + 2);
         IntegrationTest {
             dir,
             executable_root: root,
@@ -104,6 +105,7 @@ impl IntegrationTest {
         let mut ports = HashMap::new();
         ports.insert(TestService::Deployer, 9001);
         ports.insert(TestService::Transitioner, 9002);
+        ports.insert(TestService::Aggregator, 9003);
         IntegrationTest {
             dir,
             executable_root: root,
@@ -202,6 +204,12 @@ impl IntegrationTest {
             .replace(
                 "%%deployer_port%%",
                 &self.get_port(TestService::Deployer).to_string(),
+            ).replace(
+                "%%transitioner_port%%",
+                &self.get_port(TestService::Transitioner).to_string(),
+            ).replace(
+                "%%aggregator_port%%",
+                &self.get_port(TestService::Aggregator).to_string(),
             ).replace("%%suffix%%", &self.suffix)
             .replace(
                 "%%versions_checkout_path%%",
@@ -253,6 +261,29 @@ impl IntegrationTest {
             .spawn()
             .unwrap();
         self.processes.push((TestService::Transitioner, child));
+        self
+    }
+
+    pub fn run_aggregator(&mut self, config: &str) -> &mut Self {
+        let config = self.adapt_config(config, TestService::Aggregator);
+        let config_path = self.dir.path().join("aggregator.yaml");
+        {
+            let mut file = File::create(&config_path).unwrap();
+            file.write_all(config.as_bytes()).unwrap();
+            file.flush().unwrap();
+        }
+        let child = Command::new(self.executable_root.join("aggregator"))
+            .arg("--config")
+            .arg(&config_path)
+            .current_dir(self.dir.path())
+            .env_clear()
+            .env("RUST_LOG", "warn,aggregator=debug")
+            .env("RUST_BACKTRACE", "1")
+            .env("PATH", std::env::var("PATH").unwrap_or_default())
+            .stdin(Stdio::null())
+            .spawn()
+            .unwrap();
+        self.processes.push((TestService::Aggregator, child));
         self
     }
 
@@ -379,6 +410,34 @@ impl IntegrationTest {
             std::thread::sleep(std::time::Duration::from_millis(200));
         }
         panic!("wait_transitioner_commit timed out");
+    }
+
+    pub fn connect_to_aggregator_socket(&mut self) -> &mut Self {
+        let url = format!("ws://127.0.0.1:{}", self.get_port(TestService::Aggregator));
+        let client = websocket::ClientBuilder::new(&url)
+            .expect("Aggregator websocket client creation failed")
+            .connect_insecure()
+            .expect("Aggregator websocket connect failed");
+
+        std::thread::spawn(move || {
+            let mut client = client;
+            for msg in client.incoming_messages() {
+                if let Ok(msg) = msg {
+                    match msg {
+                        websocket::OwnedMessage::Text(text) => {
+                            eprintln!("Aggregator message: {}", text);
+                        }
+                        _ => {
+                            eprintln!("Unknown aggregator message: {:?}", msg);
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
+        });
+
+        self
     }
 
     pub fn teardown_namespaces(&mut self) {
