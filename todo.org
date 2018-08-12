@@ -185,11 +185,13 @@ i.e. validation failures in latest should prevent only those services from being
    CLOSED: [2018-08-12 So 21:18]
 ** DONE notify about changes via websocket / h2
    CLOSED: [2018-08-12 So 21:18]
+** TODO when opening the websocket, send full current status
 ** TODO integrationtest websocket updates
 ** TODO get current versions repo state & watch for changes
 ** TODO aggregate transition status from versions repo & transitioner status
 ** TODO fetch commit histories from repos
  - keep commit histories in versions repo? as branches of commits without content?
+** TODO send smaller updates
 ** TODO serve ui
 * ui
 ** TODO show list of resources

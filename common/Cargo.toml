@@ -11,6 +11,8 @@ serde_derive = "1.0"
 # serde_yaml = "0.7"
 tempfile = "3"
 
+indexmap = { version = "1", features = ["serde-1"] }
+
 chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]

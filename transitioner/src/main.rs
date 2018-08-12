@@ -230,7 +230,9 @@ fn run_transition(
 
     info!("Pushed.");
 
-    Ok(TransitionResult::Success(oid_to_id(commit)))
+    Ok(TransitionResult::Success {
+        committed_version: oid_to_id(commit),
+    })
 }
 
 fn run_one_transition(
@@ -244,7 +246,7 @@ fn run_one_transition(
         update_transition_status(service_state, &name, result.clone());
 
         match result {
-            TransitionResult::Success(..) => break,
+            TransitionResult::Success { .. } => break,
             TransitionResult::Skipped(..) => continue,
             // TODO we could instead just block transitions that touch the source env
             TransitionResult::Blocked => break,
@@ -266,7 +268,7 @@ fn update_transition_status(service_state: &ServiceState, name: &str, result: Tr
 
     let time = Utc::now();
 
-    if let TransitionResult::Success(committed_version) = result {
+    if let TransitionResult::Success { committed_version } = result {
         transition_status
             .successful_runs
             .push_front(TransitionSuccessfulRunInfo {
@@ -277,7 +279,10 @@ fn update_transition_status(service_state: &ServiceState, name: &str, result: Tr
         transition_status.successful_runs.truncate(cap);
     }
 
-    transition_status.last_run = Some(TransitionRunInfo { time, result });
+    transition_status.last_run = Some(TransitionRunInfo {
+        time: Some(time),
+        result,
+    });
 }
 
 #[cfg(test)]

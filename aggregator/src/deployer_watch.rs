@@ -43,7 +43,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
             };
 
             if last_status.as_ref() != Some(&status) {
-                debug!("Deployer status changed: {:?}", status);
+                trace!("Deployer status changed: {:?}", status);
 
                 service_state
                     .bus

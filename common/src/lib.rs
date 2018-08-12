@@ -4,9 +4,10 @@ extern crate git2;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate chrono;
+pub extern crate chrono;
 #[cfg(test)]
 extern crate git_fixture;
+extern crate indexmap;
 extern crate tempfile;
 
 pub mod aggregator;

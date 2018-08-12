@@ -36,6 +36,7 @@ use common::aggregator::Message;
 mod api;
 mod config;
 mod deployer_watch;
+mod transitioner_watch;
 
 use config::Config;
 
@@ -58,9 +59,11 @@ fn serve(config: Config) -> Result<(), Error> {
 
     let api = api::start(service_state.clone());
     let deployer_watch = deployer_watch::start(service_state.clone());
+    let transitioner_watch = transitioner_watch::start(service_state.clone());
 
     api.join().unwrap();
     deployer_watch.join().unwrap();
+    transitioner_watch.join().unwrap();
 
     Ok(())
 }
