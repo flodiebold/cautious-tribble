@@ -38,20 +38,19 @@ pub struct DeployerStatus {
     pub status_by_resource: HashMap<String, ResourceState>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct AllDeployerStatus {
     pub deployers: BTreeMap<String, DeployerStatus>,
 }
 
 impl AllDeployerStatus {
     pub fn empty() -> AllDeployerStatus {
-        AllDeployerStatus {
-            deployers: BTreeMap::new(),
-        }
+        Default::default()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "reason")]
 pub enum RolloutStatusReason {
     Clean,
     Failed { message: String },
@@ -77,11 +76,13 @@ impl From<RolloutStatusReason> for RolloutStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state")]
 pub enum ResourceState {
     NotDeployed,
     Deployed {
         version: Id,
         expected_version: Id,
+        #[serde(flatten)]
         status: RolloutStatusReason,
     },
 }

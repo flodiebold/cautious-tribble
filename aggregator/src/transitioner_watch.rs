@@ -24,7 +24,7 @@ fn get_current_transitioner_status(config: &Config) -> Result<AllTransitionStatu
 
 pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let mut last_status = None;
+        let mut last_status = Default::default();
         loop {
             trace!("Retrieve transitioner status...");
             let mut status = match get_current_transitioner_status(&service_state.config) {
@@ -60,16 +60,27 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                 }
             }
 
-            if last_status.as_ref() != Some(&status) {
+            if last_status != status {
                 trace!("Transitioner status changed: {:?}", status);
+
+                let counter = {
+                    let mut write_lock = service_state.full_status.write().unwrap();
+                    let full_status = Arc::make_mut(&mut write_lock);
+                    full_status.counter += 1;
+                    full_status.transitions = status.clone();
+                    full_status.counter
+                };
 
                 service_state
                     .bus
                     .lock()
                     .unwrap()
-                    .broadcast(Arc::new(Message::TransitionStatus(status.clone())));
+                    .broadcast(Arc::new(Message::TransitionStatus {
+                        counter,
+                        content: status.clone(),
+                    }));
 
-                last_status = Some(status);
+                last_status = status;
             } else {
                 trace!("Transitioner status unchanged");
             }

@@ -24,14 +24,13 @@ extern crate git_fixture;
 
 use std::path::PathBuf;
 use std::process;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, RwLock};
 
 use bus::Bus;
 use failure::Error;
 use structopt::StructOpt;
 
-use common::aggregator::Message;
+use common::aggregator::{FullStatus, Message};
 
 mod api;
 mod config;
@@ -50,12 +49,18 @@ struct Options {
 pub struct ServiceState {
     // latest_status: ArcCell<AllDeployerStatus>,
     config: config::Config,
+    full_status: RwLock<Arc<FullStatus>>,
     bus: Mutex<Bus<Arc<Message>>>,
 }
 
 fn serve(config: Config) -> Result<(), Error> {
     let bus = Mutex::new(Bus::new(100));
-    let service_state = Arc::new(ServiceState { config, bus });
+    let full_status = Default::default();
+    let service_state = Arc::new(ServiceState {
+        config,
+        full_status,
+        bus,
+    });
 
     let api = api::start(service_state.clone());
     let deployer_watch = deployer_watch::start(service_state.clone());
