@@ -77,7 +77,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                     .unwrap()
                     .broadcast(Arc::new(Message::TransitionStatus {
                         counter,
-                        content: status.clone(),
+                        transitions: status.clone(),
                     }));
 
                 last_status = status;

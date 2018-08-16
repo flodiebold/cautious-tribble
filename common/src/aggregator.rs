@@ -4,6 +4,7 @@ use transitions::AllTransitionStatus;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FullStatus {
     pub counter: usize,
+    #[serde(flatten)]
     pub deployers: AllDeployerStatus,
     pub transitions: AllTransitionStatus,
 }
@@ -11,6 +12,7 @@ pub struct FullStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Message {
+    FullStatus(FullStatus),
     DeployerStatus {
         counter: usize,
         #[serde(flatten)]
@@ -18,7 +20,6 @@ pub enum Message {
     },
     TransitionStatus {
         counter: usize,
-        #[serde(flatten)]
-        content: AllTransitionStatus,
+        transitions: AllTransitionStatus,
     },
 }

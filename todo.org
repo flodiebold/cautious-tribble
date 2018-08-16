@@ -121,14 +121,15 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
  - report time and status of last check for each transition
 ** TODO more details for Blocked and Failed transition status
 ** TODO add manual confirm check
+** TODO Copy logs from commits when transitioning
 ** TODO add per-resource locks
+** TODO handle remote callbacks during push and use push_update_reference
+ - and handle push conficts
 ** TODO don't transition resources that don't have a base file in the target env
 ** TODO add unlock after transition
 ** TODO add jenkins checks
 ** TODO add k8s job checks
 ** TODO fix signal handling
-** TODO handle remote callbacks during push and use push_update_reference
- - and handle push conficts
 ** TODO reload config on every loop
 ** TODO allow restricting transitions to subdirs
 ** TODO make runnable as CLI tool

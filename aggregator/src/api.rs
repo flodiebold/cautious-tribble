@@ -3,7 +3,9 @@ use std::thread;
 
 use futures::future;
 use serde_json;
-use warp::{self, ws::Message, Filter, Future, Sink, Stream};
+use warp::{self, ws, Filter, Future, Sink, Stream};
+
+use common::aggregator::Message;
 
 use super::ServiceState;
 
@@ -20,14 +22,28 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
             .and(state.clone())
             .map(health);
         let ws_handler = warp::ws(move |websocket| {
-            let (tx, rx) = websocket.split();
+            let (mut tx, rx) = websocket.split();
             let bus_rx = service_state.bus.lock().unwrap().add_rx();
+
+            // TODO add a counter query parameter
+
+            let full_status = service_state.full_status.read().unwrap().clone();
+            if let Err(e) = tx.start_send(ws::Message::text(
+                serde_json::to_string(&Message::FullStatus((*full_status).clone()))
+                    .expect("could not serialize message"),
+            )) {
+                debug!(
+                    "Could not send Websocket message,\
+                     other side probably closed the socket: {}",
+                    e
+                );
+                let _ = tx.close();
+            }
 
             // TODO make this async instead of spawning a thread for every client
             thread::spawn(move || {
-                let mut tx = tx;
                 for msg in bus_rx {
-                    if let Err(e) = tx.start_send(Message::text(
+                    if let Err(e) = tx.start_send(ws::Message::text(
                         serde_json::to_string(&*msg).expect("could not serialize message"),
                     )) {
                         debug!(
