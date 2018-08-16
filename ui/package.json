@@ -27,6 +27,8 @@
     "webpack-serve": "^2.0.2"
   },
   "dependencies": {
+    "@material-ui/core": "^1.5.0",
+    "@material-ui/icons": "^2.0.2",
     "react": "^16.4.2",
     "react-dom": "^16.4.2"
   }

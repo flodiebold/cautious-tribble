@@ -198,13 +198,21 @@ i.e. validation failures in latest should prevent only those services from being
 ** TODO show list of resources
 ** TODO show deployment status of each resource
 ** TODO show deployment status details (e.g. error messages)
-** TODO show relevant version repo commits for each resource
-** TODO show git histories for resources with versions
+** TODO aggregate / interpret versions repo
+ - changes to base data of resources
+ - newly introduced versions
+ - changes to versions
+ - transitions
+ - locks/unlocks
+** TODO show histories for resources
+ - aggregate from commits changing either version or base
 ** TODO allow reverting resources to a previous version
 ** TODO show transition status
  - including detailed check status
 ** TODO allow locking environments
 ** TODO allow locking resources
+** TODO add tslint setup
+** TODO add unit tests
 * general
 ** DONE set up rustfmt
    CLOSED: [2018-07-21 Sa 14:55]
