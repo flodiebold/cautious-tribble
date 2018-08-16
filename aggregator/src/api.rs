@@ -70,7 +70,8 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                 future::ok(())
             })
         });
-        let ws = warp::index().and(ws_handler);
+        let api = warp::path("api");
+        let ws = api.and(warp::index()).and(ws_handler);
         let routes = health.or(ws);
         warp::serve(routes).run(([0, 0, 0, 0], port));
     })

@@ -413,7 +413,10 @@ impl IntegrationTest {
     }
 
     pub fn connect_to_aggregator_socket(&mut self) -> &mut Self {
-        let url = format!("ws://127.0.0.1:{}", self.get_port(TestService::Aggregator));
+        let url = format!(
+            "ws://127.0.0.1:{}/api",
+            self.get_port(TestService::Aggregator)
+        );
         let client = websocket::ClientBuilder::new(&url)
             .expect("Aggregator websocket client creation failed")
             .connect_insecure()

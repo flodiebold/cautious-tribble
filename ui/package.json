@@ -1,0 +1,33 @@
+{
+  "name": "dm-ui",
+  "version": "0.1.0",
+  "description": "The UI for the deployment manager",
+  "main": "index.js",
+  "repository": "https://github.com/flodiebold/cautious-tribble",
+  "author": "Florian Diebold <flodiebold@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "webpack-serve ./webpack.config.js",
+    "build": "webpack -p --progress",
+    "format": "prettier --tab-width 4 --write \"src/**/*.{ts,tsx,css}\"",
+    "format-check": "prettier --tab-width 4 --list-different \"src/**/*.{ts,tsx,css}\""
+  },
+  "devDependencies": {
+    "@types/react": "^16.4.11",
+    "@types/react-dom": "^16.0.7",
+    "awesome-typescript-loader": "^5.2.0",
+    "http-proxy-middleware": "^0.18.0",
+    "koa-connect": "^2.0.1",
+    "prettier": "^1.14.2",
+    "source-map-loader": "^0.2.4",
+    "typescript": "^3.0.1",
+    "webpack": "^4.16.5",
+    "webpack-command": "^0.4.1",
+    "webpack-serve": "^2.0.2"
+  },
+  "dependencies": {
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2"
+  }
+}
