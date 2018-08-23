@@ -86,9 +86,13 @@ See also:
 kubectl diff -- https://github.com/kubernetes/features/issues/491
 current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
 ** TODO use k8s api instead of relying on kubectl for deployment
+** TODO allow complete deployment stop for an env (i.e. disabling a deployer)
+ - although that becomes a problem when you have something you really want deployed anyway
+ - in that case you could maybe deploy it via command-line
 ** TODO validate yamls before deploying
  - allow disabling validation by yaml
  - detect k8s version automatically?
+ - maybe https://gitlab.com/silwol/juster
 ** TODO validate & report validation status for envs that aren't actually deployed (i.e. 'latest')
  - handle as 'just validation' Deployer?
 * transition manager
@@ -121,6 +125,11 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
  - report time and status of last check for each transition
 ** TODO more details for Blocked and Failed transition status
 ** TODO add manual confirm check
+** TODO add informative trailers to created commits
+DM-Type: Transition
+DM-Transition-Name: pp
+DM-Source: dev
+DM-Target: pp
 ** TODO Copy logs from commits when transitioning
 ** TODO add per-resource locks
 ** TODO handle remote callbacks during push and use push_update_reference
@@ -139,6 +148,8 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
  - keep last error for transition status info
 ** TODO allow specifying that a check should only prevent the problematic resources from being transitioned
 i.e. validation failures in latest should prevent only those services from being deployed
+** TODO move transition config to versions repo?
+ - maybe different branch?
 * integration tests
 ** DONE fix hard-coded ports and namespaces, so the tests can run in parallel
    CLOSED: [2018-04-01 So 19:22]
@@ -186,18 +197,28 @@ i.e. validation failures in latest should prevent only those services from being
    CLOSED: [2018-08-12 So 21:18]
 ** DONE notify about changes via websocket / h2
    CLOSED: [2018-08-12 So 21:18]
-** TODO when opening the websocket, send full current status
+** DONE when opening the websocket, send full current status
+   CLOSED: [2018-08-18 Sa 20:46]
 ** TODO integrationtest websocket updates
 ** TODO get current versions repo state & watch for changes
-** TODO aggregate transition status from versions repo & transitioner status
-** TODO fetch commit histories from repos
- - keep commit histories in versions repo? as branches of commits without content?
+ - which resources exist (in current version for now)
+ - for each resource:
+   - name
+   - type (from latest env?)
+   - content & whether it's versioned
+   - metadata / labels (only from latest env?)
+ - aggregated / interpreted changes (see below)
+** TODO provide config information (in particular, transitions)
+ - transition config should maybe be in the versions repo anyway
+** TODO aggregate transition status from versions repo & transitioner status (& configuration)
 ** TODO send smaller updates
 ** TODO serve ui
 ** TODO graceful shutdown
 warp: bind_with_graceful_shutdown
 ** TODO add endpoints to lock envs & resources
 ** TODO add endpoint to create new version
+** TODO include current state in served UI html
+** TODO make sure aggregator & ui work and make sense without transitioner
 * ui
 ** DONE add tslint setup
    CLOSED: [2018-08-30 Do 20:38]
@@ -207,17 +228,26 @@ warp: bind_with_graceful_shutdown
 ** TODO aggregate / interpret versions repo
  - changes to base data of resources
  - newly introduced versions
- - changes to versions
+ - changes to deployed versions
  - transitions
  - locks/unlocks
+ - use commit message trailers
 ** TODO show histories for resources
  - aggregate from commits changing either version or base
 ** TODO allow reverting resources to a previous version
 ** TODO show transition status
  - including detailed check status
+** TODO show version history of an env
+ - separate tab?
 ** TODO allow locking environments
 ** TODO allow locking resources
+** TODO allow searching resources by labels
 ** TODO add unit tests
+** TODO reconnect websocket after losing connection
+** TODO oauth support
+** resources tab
+** history tab
+  - filter by env, event type, resources
 * general
 ** DONE set up rustfmt
    CLOSED: [2018-07-21 Sa 14:55]
@@ -245,6 +275,7 @@ https://bors.tech/
  - add Deserialize
 ** TODO add cli option to write version update (for use in push job)
  - include commit messages since the last version
+ - request last version known by dm via api, post new version via api
 ** TODO documentation
 ** TODO contribution issues
 * later

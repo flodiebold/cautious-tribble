@@ -24,6 +24,8 @@ interface IFullStatusMessage {
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
     transitions: { [key: string]: ITransitionStatus };
+    resources: any;
+    history: any;
 }
 
 interface IDeployerStatusMessage {
@@ -47,6 +49,8 @@ interface IUiData {
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
     transitions: { [key: string]: ITransitionStatus };
+    resources: any;
+    history: any;
 }
 
 class Page extends React.Component<{}, { tab: number; data: IUiData }> {
@@ -56,7 +60,9 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
             data: {
                 counter: 0,
                 deployers: {},
-                transitions: {}
+                transitions: {},
+                resources: {},
+                history: []
             },
             tab: 0
         };
@@ -83,6 +89,11 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
                 message.type === "ITransitionStatus"
             ) {
                 Object.assign(data.transitions, message.transitions);
+            }
+
+            if (message.type === "FullStatus") {
+                Object.assign(data.resources, message.resources);
+                data.history = message.history;
             }
 
             data.counter = message.counter;

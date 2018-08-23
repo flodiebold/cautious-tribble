@@ -36,6 +36,7 @@ mod api;
 mod config;
 mod deployer_watch;
 mod transitioner_watch;
+mod versions_watch;
 
 use config::Config;
 
@@ -47,7 +48,6 @@ struct Options {
 }
 
 pub struct ServiceState {
-    // latest_status: ArcCell<AllDeployerStatus>,
     config: config::Config,
     full_status: RwLock<Arc<FullStatus>>,
     bus: Mutex<Bus<Arc<Message>>>,
@@ -62,6 +62,7 @@ fn serve(config: Config) -> Result<(), Error> {
         bus,
     });
 
+    let versions_watch = versions_watch::start(service_state.clone())?;
     let api = api::start(service_state.clone());
     let deployer_watch = deployer_watch::start(service_state.clone());
     let transitioner_watch = transitioner_watch::start(service_state.clone());
@@ -69,6 +70,7 @@ fn serve(config: Config) -> Result<(), Error> {
     api.join().unwrap();
     deployer_watch.join().unwrap();
     transitioner_watch.join().unwrap();
+    versions_watch.join().unwrap();
 
     Ok(())
 }
