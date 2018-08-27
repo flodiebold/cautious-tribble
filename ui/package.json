@@ -22,7 +22,7 @@
     "prettier": "^1.14.2",
     "source-map-loader": "^0.2.4",
     "typescript": "^3.0.1",
-    "webpack": "^4.16.5",
+    "webpack": "^4.17.1",
     "webpack-command": "^0.4.1",
     "webpack-serve": "^2.0.2"
   },
