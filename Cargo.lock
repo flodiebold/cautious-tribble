@@ -186,7 +186,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "chrono"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num-integer 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -229,7 +229,7 @@ dependencies = [
 name = "common"
 version = "0.1.0"
 dependencies = [
- "chrono 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "git2 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "git_fixture 0.1.0",
@@ -269,7 +269,7 @@ name = "cron"
 version = "0.4.1"
 source = "git+https://github.com/zslayton/cron?rev=2ef8d178189cd6fa04ee41c19354afa7141c6c73#2ef8d178189cd6fa04ee41c19354afa7141c6c73"
 dependencies = [
- "chrono 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -728,7 +728,7 @@ source = "git+https://github.com/Arnavion/k8s-openapi-codegen#99bb0e6f4dba29c445
 dependencies = [
  "base64 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "chrono 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.71 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -750,7 +750,7 @@ version = "0.1.0"
 source = "git+https://github.com/flodiebold/kubeclient-rs.git#ac0698763caa9a20820333075cff2d4de81e06db"
 dependencies = [
  "base64 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "chrono 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "k8s-openapi 0.2.0 (git+https://github.com/Arnavion/k8s-openapi-codegen)",
  "openssl 0.9.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1701,7 +1701,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "transitioner"
 version = "0.1.0"
 dependencies = [
- "chrono 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "cron 0.4.1 (git+https://github.com/zslayton/cron?rev=2ef8d178189cd6fa04ee41c19354afa7141c6c73)",
  "crossbeam 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2024,7 +2024,7 @@ dependencies = [
 "checksum bytes 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)" = "e178b8e0e239e844b083d5a0d4a156b2654e67f9f80144d48398fcd736a24fb8"
 "checksum cc 1.0.18 (registry+https://github.com/rust-lang/crates.io-index)" = "2119ea4867bd2b8ed3aecab467709720b2d55b1bcfe09f772fd68066eaf15275"
 "checksum cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0c4e7bb64a8ebb0d856483e1e682ea3422f883c5f5615a90d51a2c82fe87fdd3"
-"checksum chrono 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "e48d85528df61dc964aa43c5f6ca681a19cfa74939b2348d204bd08a981f2fb0"
+"checksum chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "45912881121cb26fad7c38c17ba7daa18764771836b34fab7d3fbd93ed633878"
 "checksum clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b957d88f4b6a63b9d70d5f454ac8011819c6efa7727858f458ab71c756ce2d3e"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)" = "704fbf3bb5149daab0afb255dbea24a1f08d2f4099cedb9baab6d470d4c5eefb"
