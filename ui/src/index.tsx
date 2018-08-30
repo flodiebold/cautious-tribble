@@ -1,16 +1,17 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import AppBar from "@material-ui/core/AppBar";
-import Tabs from "@material-ui/core/Tabs";
-import Tab from "@material-ui/core/Tab";
 
-interface DeployerStatus {
+import AppBar from "@material-ui/core/AppBar";
+import Tab from "@material-ui/core/Tab";
+import Tabs from "@material-ui/core/Tabs";
+
+interface IDeployerStatus {
     deployed_version: string;
     last_successfully_deployed_version: string | null;
     rollout_status: "InProgress" | "Clean" | "Outdated" | "Failed";
 }
 
-interface TransitionStatus {
+interface ITransitionStatus {
     successful_runs: Array<{ time: string; committed_version: string }>;
     last_run: null | {
         time: string | null;
@@ -18,69 +19,68 @@ interface TransitionStatus {
     };
 }
 
-interface FullStatusMessage {
+interface IFullStatusMessage {
     type: "FullStatus";
     counter: number;
-    deployers: { [key: string]: DeployerStatus };
-    transitions: { [key: string]: TransitionStatus };
+    deployers: { [key: string]: IDeployerStatus };
+    transitions: { [key: string]: ITransitionStatus };
 }
 
-interface DeployerStatusMessage {
-    type: "DeployerStatus";
+interface IDeployerStatusMessage {
+    type: "IDeployerStatus";
     counter: number;
-    deployers: { [key: string]: DeployerStatus };
+    deployers: { [key: string]: IDeployerStatus };
 }
 
-interface TransitionStatusMessage {
-    type: "TransitionStatus";
+interface ITransitionStatusMessage {
+    type: "ITransitionStatus";
     counter: number;
-    transitions: { [key: string]: TransitionStatus };
+    transitions: { [key: string]: ITransitionStatus };
 }
 
 type Message =
-    | FullStatusMessage
-    | DeployerStatusMessage
-    | TransitionStatusMessage;
+    | IFullStatusMessage
+    | IDeployerStatusMessage
+    | ITransitionStatusMessage;
 
-interface UiData {
+interface IUiData {
     counter: number;
-    deployers: { [key: string]: DeployerStatus };
-    transitions: { [key: string]: TransitionStatus };
+    deployers: { [key: string]: IDeployerStatus };
+    transitions: { [key: string]: ITransitionStatus };
 }
 
-class Page extends React.Component<{}, { tab: number; data: UiData }> {
+class Page extends React.Component<{}, { tab: number; data: IUiData }> {
     constructor(props: {}) {
         super(props);
         this.state = {
-            tab: 0,
             data: {
                 counter: 0,
                 deployers: {},
                 transitions: {}
-            }
+            },
+            tab: 0
         };
 
         const ws = new WebSocket("ws://" + document.location.host + "/api");
 
-        ws.onopen = ev => {};
         ws.onmessage = this.handleWebSocketMessage;
     }
 
-    handleWebSocketMessage = (ev: MessageEvent) => {
+    public handleWebSocketMessage = (ev: MessageEvent) => {
         const message: Message = JSON.parse(ev.data);
 
         this.setState(state => {
             const data = state.data;
             if (
                 message.type === "FullStatus" ||
-                message.type === "DeployerStatus"
+                message.type === "IDeployerStatus"
             ) {
                 Object.assign(data.deployers, message.deployers);
             }
 
             if (
                 message.type === "FullStatus" ||
-                message.type === "TransitionStatus"
+                message.type === "ITransitionStatus"
             ) {
                 Object.assign(data.transitions, message.transitions);
             }
@@ -90,11 +90,11 @@ class Page extends React.Component<{}, { tab: number; data: UiData }> {
         });
     };
 
-    handleTabChange = (ev: any, tab: number) => {
+    public handleTabChange = (ev: any, tab: number) => {
         this.setState({ tab });
     };
 
-    render() {
+    public render() {
         return (
             <div>
                 <AppBar position="static">

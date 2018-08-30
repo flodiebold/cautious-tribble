@@ -195,6 +195,8 @@ i.e. validation failures in latest should prevent only those services from being
 ** TODO send smaller updates
 ** TODO serve ui
 * ui
+** DONE add tslint setup
+   CLOSED: [2018-08-30 Do 20:38]
 ** TODO show list of resources
 ** TODO show deployment status of each resource
 ** TODO show deployment status details (e.g. error messages)
@@ -211,7 +213,6 @@ i.e. validation failures in latest should prevent only those services from being
  - including detailed check status
 ** TODO allow locking environments
 ** TODO allow locking resources
-** TODO add tslint setup
 ** TODO add unit tests
 * general
 ** DONE set up rustfmt
@@ -220,7 +221,8 @@ i.e. validation failures in latest should prevent only those services from being
    CLOSED: [2018-07-21 Sa 14:54]
 ** DONE update rustfmt
    CLOSED: [2018-08-04 Sa 21:16]
-** TODO set up bors
+** DONE set up bors
+   CLOSED: [2018-08-30 Do 20:20]
 https://bors.tech/
 ** TODO script to automatically set up 'playground'
  - all parts running

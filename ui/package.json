@@ -10,6 +10,8 @@
   "scripts": {
     "start": "webpack-serve ./webpack.config.js",
     "build": "webpack -p --progress",
+    "ts-build": "tsc",
+    "lint": "tslint -c tslint.json --project .",
     "format": "prettier --tab-width 4 --write \"src/**/*.{ts,tsx,css}\"",
     "format-check": "prettier --tab-width 4 --list-different \"src/**/*.{ts,tsx,css}\""
   },
@@ -21,6 +23,8 @@
     "koa-connect": "^2.0.1",
     "prettier": "^1.14.2",
     "source-map-loader": "^0.2.4",
+    "tslint": "^5.11.0",
+    "tslint-config-prettier": "^1.15.0",
     "typescript": "^3.0.1",
     "webpack": "^4.17.1",
     "webpack-command": "^0.4.1",

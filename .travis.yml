@@ -50,7 +50,7 @@ matrix:
     script:
       - export RUST_BACKTRACE=1
       - ./test-integration-existing-minikube.sh
-  - env: JS_FORMAT
+  - env: JS
     language: node_js
     node_js: "node"
     before_script:
@@ -58,6 +58,8 @@ matrix:
       - yarn
     script:
       - yarn format-check
+      - yarn ts-build
+      - yarn lint
 cache:
   cargo: true
   yarn: true
