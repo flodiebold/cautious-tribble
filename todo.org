@@ -235,6 +235,8 @@ https://bors.tech/
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
  - this could be its own service that watches the aggregator change feed
+** TODO metrics?
+ - maybe prometheus endpoints
 ** TODO datadog integration (events when deploying / transitioning, ...)
 ** TODO contribute to cron library
  - add Clone
@@ -267,7 +269,6 @@ https://bors.tech/
 ** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
 ** TODO remove use of kubeclient, directly use k8s-openapi, support multiple k8s versions?
-** TODO use thunder?
 ** TODO use fail in testing?
 * alternatives for version file merge method
 ** text substitution:

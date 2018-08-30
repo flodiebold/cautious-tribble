@@ -25,8 +25,19 @@ pub struct Resource {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct FailedResource {
+    pub name: String,
+    pub base_file_name: PathBuf,
+    pub version_file_name: Option<PathBuf>,
+    pub version: Id,
+    pub message: String,
+    pub error: ResourceError,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct ResourcesInfo {
     pub resources: Vec<Resource>,
+    pub failed_resources: Vec<FailedResource>
 }
 
 pub trait Deployer {
@@ -73,7 +84,12 @@ pub fn get_resources(
     repo.walk(&env_path.join("deployable"), |entry| {
         // FIXME don't fail everything if content is invalid, report the
         // resource as errored
-        let content = serde_yaml::from_slice(&entry.content)?;
+        let content = match serde_yaml::from_slice(&entry.content) {
+            Ok(content) => content,
+            Err(e) => {
+                Err(e)?
+            }
+        };
         let name = entry
             .path
             .file_stem()

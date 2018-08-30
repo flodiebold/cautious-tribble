@@ -59,30 +59,46 @@ pub enum RolloutStatusReason {
     OldReplicasPending { number: i32 },
     UpdatedUnavailable { updated: i32, available: i32 },
     NoStatus,
+    NotFound,
+    ValidationError {
+        #[serde(flatten)]
+        error: ResourceValidationError
+    }
 }
 
 impl From<RolloutStatusReason> for RolloutStatus {
     fn from(r: RolloutStatusReason) -> RolloutStatus {
         match r {
             RolloutStatusReason::Clean => RolloutStatus::Clean,
-            RolloutStatusReason::Failed { .. } => RolloutStatus::Failed,
+            RolloutStatusReason::Failed { .. }
+            | RolloutStatusReason::ValidationError { .. } => RolloutStatus::Failed,
             RolloutStatusReason::NotYetObserved
             | RolloutStatusReason::NotAllUpdated { .. }
             | RolloutStatusReason::OldReplicasPending { .. }
             | RolloutStatusReason::UpdatedUnavailable { .. }
-            | RolloutStatusReason::NoStatus { .. } => RolloutStatus::InProgress,
+            | RolloutStatusReason::NoStatus { .. }
+            | RolloutStatusReason::NotFound => RolloutStatus::InProgress,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "state")]
-pub enum ResourceState {
-    NotDeployed,
-    Deployed {
-        version: Id,
-        expected_version: Id,
-        #[serde(flatten)]
-        status: RolloutStatusReason,
-    },
+pub struct ResourceState {
+    expected_version: Id,
+    status: RolloutStatusReason,
+    deployed_version: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "error")]
+pub enum ResourceValidationError {
+    BaseFileParsing(ParsingError),
+    VersionFileParsing(ParsingError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParsingError {
+    pub message: String,
+    pub line: usize,
+    pub column: usize,
 }
