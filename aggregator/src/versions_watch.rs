@@ -75,6 +75,7 @@ fn analyze_commit<'repo>(
 
     Ok(ResourceRepoCommit {
         id: repo::oid_to_id(commit.id()),
+        message: commit.message().unwrap_or("[invalid utf8]").to_string(),
         changes,
     })
 }

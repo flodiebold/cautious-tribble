@@ -35,6 +35,7 @@ pub enum ResourceRepoChange {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceRepoCommit {
     pub id: Id,
+    pub message: String,
     pub changes: Vec<ResourceRepoChange>,
 }
 
