@@ -29,6 +29,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use std::fmt::Write;
 
 use chrono::{DateTime, Utc};
 use cron::Schedule;
@@ -212,11 +213,16 @@ fn run_transition(
 
     let signature = Signature::now("DM Transitioner", "n/a")?;
 
+    let mut message = format!("Mirroring {} to {}\n\n", transition.source, transition.target);
+    write!(&mut message, "DM-Transition: {}\n", name).unwrap();
+    write!(&mut message, "DM-Source: {}\n", transition.source).unwrap();
+    write!(&mut message, "DM-Target: {}\n", transition.target).unwrap();
+
     let commit = repo.commit(
         Some("refs/dm_head"),
         &signature,
         &signature,
-        &format!("Mirroring {} to {}", transition.source, transition.target),
+        &message,
         &new_tree,
         &[&head_commit],
     )?;
