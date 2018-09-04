@@ -5,6 +5,8 @@ import AppBar from "@material-ui/core/AppBar";
 import Tab from "@material-ui/core/Tab";
 import Tabs from "@material-ui/core/Tabs";
 
+import { ResourcesView } from "./ResourcesView";
+
 interface IDeployerStatus {
     deployed_version: string;
     last_successfully_deployed_version: string | null;
@@ -40,11 +42,61 @@ interface ITransitionStatusMessage {
     transitions: { [key: string]: ITransitionStatus };
 }
 
+interface IResourceVersion {
+    version_id: string;
+    introduced_in: string;
+    version: string;
+}
+
+interface IResourceStatus {
+    name: string;
+    versions: { [id: string]: IResourceVersion };
+    base_data: { [env: string]: string };
+    version_by_env: { [env: string]: string };
+}
+
+type IChangeVersion = {
+    change: "Version";
+} & IResourceVersion;
+
+interface IChangeDeployable {
+    change: "Deployable";
+    resource: string;
+    env: string;
+    content_id: string;
+}
+
+interface IChangeBaseData {
+    change: "BaseData";
+    resource: string;
+    env: string;
+    content_id: string;
+}
+
+interface IVersionDeployed {
+    change: "VersionDeployed";
+    resource: string;
+    env: string;
+    version_id: string;
+}
+
+type ResourceRepoChange =
+    | IChangeVersion
+    | IChangeDeployable
+    | IChangeBaseData
+    | IVersionDeployed;
+
+interface IResourceRepoCommit {
+    id: string;
+    message: string;
+    changes: ResourceRepoChange[];
+}
+
 interface IVersionsMessage {
     type: "Versions";
     counter: number;
-    resources: any;
-    history: any;
+    resources: { [name: string]: IResourceStatus };
+    history: IResourceRepoCommit[];
 }
 
 type Message =
@@ -53,12 +105,12 @@ type Message =
     | ITransitionStatusMessage
     | IVersionsMessage;
 
-interface IUiData {
+export interface IUiData {
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
     transitions: { [key: string]: ITransitionStatus };
-    resources: any;
-    history: any;
+    resources: { [name: string]: IResourceStatus };
+    history: IResourceRepoCommit[];
 }
 
 class Page extends React.Component<{}, { tab: number; data: IUiData }> {
@@ -121,10 +173,13 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
                         value={this.state.tab}
                         onChange={this.handleTabChange}
                     >
-                        <Tab label="Stuff" />
+                        <Tab label="Resources" />
                         <Tab label="Data" />
                     </Tabs>
                 </AppBar>
+                {this.state.tab === 0 && (
+                    <ResourcesView data={this.state.data} />
+                )}
                 {this.state.tab === 1 && (
                     <pre>{JSON.stringify(this.state.data, null, 4)}</pre>
                 )}

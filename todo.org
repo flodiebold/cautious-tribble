@@ -208,10 +208,15 @@ i.e. validation failures in latest should prevent only those services from being
    - content & whether it's versioned
    - metadata / labels (only from latest env?)
  - aggregated / interpreted changes (see below)
+** TODO test commit analysis
 ** TODO integrationtest websocket updates
 ** TODO more resource info
  - type
  - metadata / labels
+** TODO further commit analysis
+ - locks/unlocks
+ - transition schedule
+ - transition config changes (when moved there)
 ** TODO provide config information (in particular, transitions)
  - transition config should maybe be in the versions repo anyway
 ** TODO aggregate transition status from versions repo & transitioner status (& configuration)
@@ -226,16 +231,10 @@ warp: bind_with_graceful_shutdown
 * ui
 ** DONE add tslint setup
    CLOSED: [2018-08-30 Do 20:38]
-** TODO show list of resources
+** DONE show list of resources
+   CLOSED: [2018-09-04 Di 15:27]
 ** TODO show deployment status of each resource
 ** TODO show deployment status details (e.g. error messages)
-** TODO aggregate / interpret versions repo
- - changes to base data of resources
- - newly introduced versions
- - changes to deployed versions
- - transitions
- - locks/unlocks
- - use commit message trailers
 ** TODO show histories for resources
  - aggregate from commits changing either version or base
 ** TODO allow reverting resources to a previous version
