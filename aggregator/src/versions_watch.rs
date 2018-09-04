@@ -42,35 +42,37 @@ fn analyze_commit<'repo>(
                     .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
                     .to_string();
                 let resource_id = ResourceId(name);
+                let env = EnvName(env_path.to_str().unwrap().to_string());
                 if analysis
                     .resources
                     .get(&resource_id)
-                    .map(|r| r.versions.contains_key(&entry.content_id))
-                    .unwrap_or(false)
+                    .map(|r| !r.versions.contains_key(&entry.content_id))
+                    .unwrap_or(true)
                 {
-                    return Ok(());
+                    let version_name = content.get("version").expect("FIXME");
+                    let version = ResourceVersion {
+                        version_id: entry.content_id,
+                        introduced_in: repo::oid_to_id(commit.id()),
+                        version: version_name.clone(),
+                    };
+                    changes.push(ResourceRepoChange::Version {
+                        resource: resource_id.clone(),
+                        version,
+                    });
                 }
-                // let base_file_name = env_path.join("base").join(&entry.path);
-                // let base_file_content = match repo.get(&base_file_name) {
-                //     Ok(Some(content)) => content,
-                //     Ok(None) => {
-                //         // FIXME report error (base file not found)
-                //         eprintln!("error: base file {:?} not found", base_file_name);
-                //         return Ok(());
-                //     }
-                //     Err(e) => bail!(e),
-                // };
-                // let base_file_content = serde_yaml::from_slice(&base_file_content)?;
-                let version_name = content.get("version").expect("FIXME");
-                let version = ResourceVersion {
-                    version_id: entry.content_id,
-                    introduced_in: repo::oid_to_id(commit.id()),
-                    version: version_name.clone(),
-                };
-                changes.push(ResourceRepoChange::NewVersion {
-                    resource: resource_id,
-                    version,
-                });
+                if analysis
+                    .resources
+                    .get(&resource_id)
+                    .and_then(|r| r.version_by_env.get(&env))
+                    .map(|v| *v != entry.content_id)
+                    .unwrap_or(true)
+                {
+                    changes.push(ResourceRepoChange::VersionDeployed {
+                        resource: resource_id,
+                        env,
+                        version_id: entry.content_id,
+                    });
+                }
                 Ok(())
             },
         )?;
@@ -98,7 +100,7 @@ fn analyze_commit<'repo>(
                 {
                     return Ok(());
                 }
-                changes.push(ResourceRepoChange::BaseDataChange {
+                changes.push(ResourceRepoChange::BaseData {
                     resource: resource_id,
                     env,
                     content_id: entry.content_id,
@@ -130,7 +132,7 @@ fn analyze_commit<'repo>(
                 {
                     return Ok(());
                 }
-                changes.push(ResourceRepoChange::DeployableChange {
+                changes.push(ResourceRepoChange::Deployable {
                     resource: resource_id,
                     env,
                     content_id: entry.content_id,

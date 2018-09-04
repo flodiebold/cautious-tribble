@@ -30,17 +30,17 @@ pub struct ResourceStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "change")]
 pub enum ResourceRepoChange {
-    NewVersion {
+    Version {
         resource: ResourceId,
         #[serde(flatten)]
         version: ResourceVersion,
     },
-    DeployableChange {
+    Deployable {
         resource: ResourceId,
         env: EnvName,
         content_id: Id,
     },
-    BaseDataChange {
+    BaseData {
         resource: ResourceId,
         env: EnvName,
         content_id: Id,
@@ -85,7 +85,7 @@ impl VersionsAnalysis {
         use self::ResourceRepoChange::*;
         for change in &commit.changes {
             match change {
-                NewVersion {
+                Version {
                     resource: resource_id,
                     version,
                 } => {
@@ -94,12 +94,12 @@ impl VersionsAnalysis {
                         .versions
                         .insert(version.version_id, version.clone());
                 }
-                DeployableChange {
+                Deployable {
                     resource: resource_id,
                     env,
                     content_id,
                 }
-                | BaseDataChange {
+                | BaseData {
                     resource: resource_id,
                     env,
                     content_id,
@@ -107,8 +107,13 @@ impl VersionsAnalysis {
                     let resource = self.get_resource(resource_id);
                     resource.base_data.insert(env.clone(), *content_id);
                 }
-                VersionDeployed { .. } => {
-                    // nothing to do here
+                VersionDeployed {
+                    resource: resource_id,
+                    env,
+                    version_id,
+                } => {
+                    let resource = self.get_resource(resource_id);
+                    resource.version_by_env.insert(env.clone(), *version_id);
                 }
             }
         }
@@ -144,6 +149,7 @@ pub enum Message {
     // TODO don't send full repo history unless needed
     Versions {
         counter: usize,
+        #[serde(flatten)]
         analysis: VersionsAnalysis,
     },
 }

@@ -29,21 +29,29 @@ interface IFullStatusMessage {
 }
 
 interface IDeployerStatusMessage {
-    type: "IDeployerStatus";
+    type: "DeployerStatus";
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
 }
 
 interface ITransitionStatusMessage {
-    type: "ITransitionStatus";
+    type: "TransitionStatus";
     counter: number;
     transitions: { [key: string]: ITransitionStatus };
+}
+
+interface IVersionsMessage {
+    type: "Versions";
+    counter: number;
+    resources: any;
+    history: any;
 }
 
 type Message =
     | IFullStatusMessage
     | IDeployerStatusMessage
-    | ITransitionStatusMessage;
+    | ITransitionStatusMessage
+    | IVersionsMessage;
 
 interface IUiData {
     counter: number;
@@ -79,19 +87,19 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
             const data = state.data;
             if (
                 message.type === "FullStatus" ||
-                message.type === "IDeployerStatus"
+                message.type === "DeployerStatus"
             ) {
                 Object.assign(data.deployers, message.deployers);
             }
 
             if (
                 message.type === "FullStatus" ||
-                message.type === "ITransitionStatus"
+                message.type === "TransitionStatus"
             ) {
                 Object.assign(data.transitions, message.transitions);
             }
 
-            if (message.type === "FullStatus") {
+            if (message.type === "FullStatus" || message.type === "Versions") {
                 Object.assign(data.resources, message.resources);
                 data.history = message.history;
             }
