@@ -18,9 +18,20 @@ export class ResourcesView extends React.Component<IResourcesViewProps> {
         const lines = [];
         for (const name of Object.keys(this.props.data.resources)) {
             const resource = this.props.data.resources[name];
+            const status_by_env = Object.keys(this.props.data.deployers).map(
+                env => ({
+                    env,
+                    status: this.props.data.deployers[env].status_by_resource[
+                        name
+                    ]
+                })
+            );
             lines.push(
                 <TableRow>
                     <TableCell>{resource.name}</TableCell>
+                    <TableCell>
+                        <pre>{JSON.stringify(status_by_env, null, 4)}</pre>
+                    </TableCell>
                     <TableCell>
                         <pre>{JSON.stringify(resource, null, 4)}</pre>
                     </TableCell>

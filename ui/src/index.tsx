@@ -7,10 +7,32 @@ import Tabs from "@material-ui/core/Tabs";
 
 import { ResourcesView } from "./ResourcesView";
 
+type IDeployerResourceState =
+    | { state: "NotDeployed" }
+    | {
+          state: "Deployed";
+          version: string;
+          expected_version: string;
+          reason:
+              | "Clean"
+              | "Failed"
+              | "NotYetObserved"
+              | "NotAllUpdated"
+              | "OldReplicasPending"
+              | "UpdatedUnavailable"
+              | "NoStatus";
+          message?: string;
+          expected?: number;
+          updated?: number;
+          number?: number;
+          available?: number;
+      };
+
 interface IDeployerStatus {
     deployed_version: string;
     last_successfully_deployed_version: string | null;
     rollout_status: "InProgress" | "Clean" | "Outdated" | "Failed";
+    status_by_resource: { [resource: string]: IDeployerResourceState };
 }
 
 interface ITransitionStatus {
