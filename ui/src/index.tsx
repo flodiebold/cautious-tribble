@@ -6,6 +6,7 @@ import Tab from "@material-ui/core/Tab";
 import Tabs from "@material-ui/core/Tabs";
 
 import { ResourcesView } from "./ResourcesView";
+import { HistoryView } from "./HistoryView";
 
 type IDeployerResourceState =
     | { state: "NotDeployed" }
@@ -196,13 +197,15 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
                         onChange={this.handleTabChange}
                     >
                         <Tab label="Resources" />
+                        <Tab label="History" />
                         <Tab label="Data" />
                     </Tabs>
                 </AppBar>
                 {this.state.tab === 0 && (
                     <ResourcesView data={this.state.data} />
                 )}
-                {this.state.tab === 1 && (
+                {this.state.tab === 1 && <HistoryView data={this.state.data} />}
+                {this.state.tab === 2 && (
                     <pre>{JSON.stringify(this.state.data, null, 4)}</pre>
                 )}
             </div>
