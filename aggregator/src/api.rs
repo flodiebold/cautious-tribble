@@ -47,6 +47,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                 // TODO make this async instead of spawning a thread for every client
                 thread::spawn(move || {
                     for msg in bus_rx {
+                        debug!("Waiting for WS message...");
                         if let Err(e) = tx.start_send(warp::ws::Message::text(
                             serde_json::to_string(&*msg).expect("could not serialize message"),
                         )) {
@@ -59,6 +60,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                             break;
                         };
                     }
+                    debug!("WS thread ending");
                 });
 
                 rx.for_each(|msg| {

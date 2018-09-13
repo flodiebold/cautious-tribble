@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import Paper from "@material-ui/core/Paper";
+import Popover from "@material-ui/core/Popover";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
@@ -15,24 +16,64 @@ interface IResourceHistoryProps {
 }
 
 class ResourceHistory extends React.Component<IResourceHistoryProps> {
+    public state = {
+        popoverElem: null,
+        popoverText: null
+    };
+
+    public handlePopoverOpen = (
+        version: IResourceVersion,
+        event: React.MouseEvent
+    ) => {
+        this.setState({
+            popoverElem: event.currentTarget,
+            popoverText: version.version
+        });
+    };
+
+    public handlePopoverClose = () => {
+        this.setState({ popoverElem: null });
+    };
+
     public render() {
         return (
-            <svg
-                viewBox="0 0 200 50"
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ width: 200, height: 50 }}
-            >
-                {this.props.versions.map((v, i) => (
-                    <circle
-                        cx={30 + i * 25}
-                        cy={25}
-                        r={10}
-                        fill="green"
-                        stroke="darkGreen"
-                        strokeWidth={3}
-                    />
-                ))}
-            </svg>
+            <div>
+                <svg
+                    viewBox="0 0 200 50"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ width: 200, height: 50 }}
+                >
+                    {this.props.versions.map((v, i) => (
+                        <circle
+                            cx={30 + i * 25}
+                            cy={25}
+                            r={10}
+                            fill="green"
+                            stroke="darkGreen"
+                            strokeWidth={3}
+                            onMouseEnter={this.handlePopoverOpen.bind(this, v)}
+                            onMouseLeave={this.handlePopoverClose}
+                        />
+                    ))}
+                </svg>
+                <Popover
+                    style={{ top: 10, pointerEvents: "none" }}
+                    open={!!this.state.popoverElem}
+                    anchorEl={this.state.popoverElem}
+                    anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "center"
+                    }}
+                    transformOrigin={{
+                        vertical: "top",
+                        horizontal: "center"
+                    }}
+                    onClose={this.handlePopoverClose}
+                    disableRestoreFocus
+                >
+                    {this.state.popoverText}
+                </Popover>
+            </div>
         );
     }
 }
