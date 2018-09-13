@@ -5,10 +5,10 @@ import AppBar from "@material-ui/core/AppBar";
 import Tab from "@material-ui/core/Tab";
 import Tabs from "@material-ui/core/Tabs";
 
-import { ResourcesView } from "./ResourcesView";
 import { HistoryView } from "./HistoryView";
+import { ResourcesView } from "./ResourcesView";
 
-type IDeployerResourceState =
+export type IDeployerResourceState =
     | { state: "NotDeployed" }
     | {
           state: "Deployed";
@@ -65,7 +65,7 @@ interface ITransitionStatusMessage {
     transitions: { [key: string]: ITransitionStatus };
 }
 
-interface IResourceVersion {
+export interface IResourceVersion {
     version_id: string;
     introduced_in: string;
     version: string;
