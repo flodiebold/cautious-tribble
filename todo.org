@@ -194,6 +194,10 @@ i.e. validation failures in latest should prevent only those services from being
  - keep commit histories in versions repo? as branches of commits without content?
 ** TODO send smaller updates
 ** TODO serve ui
+** TODO graceful shutdown
+warp: bind_with_graceful_shutdown
+** TODO add endpoints to lock envs & resources
+** TODO add endpoint to create new version
 * ui
 ** DONE add tslint setup
    CLOSED: [2018-08-30 Do 20:38]
