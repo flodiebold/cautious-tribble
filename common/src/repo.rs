@@ -5,7 +5,7 @@ use std::str::FromStr;
 use failure::Error;
 use serde;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Id(pub [u8; 20]);
 
 impl FromStr for Id {
@@ -69,27 +69,45 @@ impl<'de> serde::de::Visitor<'de> for IdVisitor {
 pub struct ResourceRepoEntry {
     pub path: PathBuf,
     pub content: Vec<u8>,
+    pub content_id: Id,
     pub last_change: Id,
     pub change_message: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct Version {
+    pub id: Id,
+    pub parent: Option<Id>,
+    pub message: String,
 }
 
 pub trait ResourceRepo {
     fn update(&mut self) -> Result<(), Error>;
     fn version(&self) -> Id;
     fn get(&self, path: &Path) -> Result<Option<Vec<u8>>, Error>;
+    fn walk_commit<F: FnMut(ResourceRepoEntry) -> Result<(), Error>>(
+        &self,
+        path: &Path,
+        commit: Id,
+        f: F,
+    ) -> Result<(), Error>;
     fn walk<F: FnMut(ResourceRepoEntry) -> Result<(), Error>>(
         &self,
         path: &Path,
         f: F,
-    ) -> Result<(), Error>;
+    ) -> Result<(), Error> {
+        self.walk_commit(path, self.version(), f)
+    }
+    // fn version_info(&self, id: Id) -> Result<Version, Error>;
+    // fn changed_files(&self, id: Id) -> Result<Vec<PathBuf>, Error>;
 }
 
 use super::git;
 use git2::{Commit, ErrorCode, Oid, Repository};
 
 pub struct GitResourceRepo {
-    repo: Repository,
-    head: Oid,
+    pub repo: Repository,
+    pub head: Oid,
     remote_url: String,
 }
 
@@ -145,12 +163,13 @@ impl ResourceRepo for GitResourceRepo {
         }
     }
 
-    fn walk<F: FnMut(ResourceRepoEntry) -> Result<(), Error>>(
+    fn walk_commit<F: FnMut(ResourceRepoEntry) -> Result<(), Error>>(
         &self,
         base_path: &Path,
+        commit: Id,
         mut f: F,
     ) -> Result<(), Error> {
-        let tree = self.repo.find_commit(self.head)?.tree()?;
+        let tree = self.repo.find_commit(id_to_oid(commit))?.tree()?;
 
         let mut zipper = git::TreeZipper::from(&self.repo, tree);
         for component in base_path {
@@ -165,6 +184,7 @@ impl ResourceRepo for GitResourceRepo {
             let entry = entry?;
 
             let obj = entry.to_object(&self.repo)?;
+            let content_id = oid_to_id(obj.id());
 
             let content = if let Some(blob) = obj.as_blob() {
                 blob.content().to_vec()
@@ -185,6 +205,7 @@ impl ResourceRepo for GitResourceRepo {
             let repo_entry = ResourceRepoEntry {
                 path,
                 content,
+                content_id,
                 last_change,
                 change_message,
             };
@@ -238,6 +259,10 @@ pub fn oid_to_id(oid: Oid) -> Id {
     id
 }
 
+pub fn id_to_oid(id: Id) -> Oid {
+    Oid::from_bytes(&id.0).expect("Id -> Oid failed")
+}
+
 /// A helper to keep a temp dir alive as long as a GitResourceRepo using it.
 pub struct GitResourceRepoWithTempDir {
     pub inner: GitResourceRepo,
@@ -254,12 +279,13 @@ impl ResourceRepo for GitResourceRepoWithTempDir {
     fn get(&self, path: &Path) -> Result<Option<Vec<u8>>, Error> {
         self.inner.get(path)
     }
-    fn walk<F: FnMut(ResourceRepoEntry) -> Result<(), Error>>(
+    fn walk_commit<F: FnMut(ResourceRepoEntry) -> Result<(), Error>>(
         &self,
         path: &Path,
+        commit: Id,
         f: F,
     ) -> Result<(), Error> {
-        self.inner.walk(path, f)
+        self.inner.walk_commit(path, commit, f)
     }
 }
 

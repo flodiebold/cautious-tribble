@@ -5,10 +5,35 @@ import AppBar from "@material-ui/core/AppBar";
 import Tab from "@material-ui/core/Tab";
 import Tabs from "@material-ui/core/Tabs";
 
+import { HistoryView } from "./HistoryView";
+import { ResourcesView } from "./ResourcesView";
+
+export type IDeployerResourceState =
+    | { state: "NotDeployed" }
+    | {
+          state: "Deployed";
+          version: string;
+          expected_version: string;
+          reason:
+              | "Clean"
+              | "Failed"
+              | "NotYetObserved"
+              | "NotAllUpdated"
+              | "OldReplicasPending"
+              | "UpdatedUnavailable"
+              | "NoStatus";
+          message?: string;
+          expected?: number;
+          updated?: number;
+          number?: number;
+          available?: number;
+      };
+
 interface IDeployerStatus {
     deployed_version: string;
     last_successfully_deployed_version: string | null;
     rollout_status: "InProgress" | "Clean" | "Outdated" | "Failed";
+    status_by_resource: { [resource: string]: IDeployerResourceState };
 }
 
 interface ITransitionStatus {
@@ -24,29 +49,91 @@ interface IFullStatusMessage {
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
     transitions: { [key: string]: ITransitionStatus };
+    resources: any;
+    history: any;
 }
 
 interface IDeployerStatusMessage {
-    type: "IDeployerStatus";
+    type: "DeployerStatus";
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
 }
 
 interface ITransitionStatusMessage {
-    type: "ITransitionStatus";
+    type: "TransitionStatus";
     counter: number;
     transitions: { [key: string]: ITransitionStatus };
+}
+
+export interface IResourceVersion {
+    version_id: string;
+    introduced_in: string;
+    version: string;
+}
+
+interface IResourceStatus {
+    name: string;
+    versions: { [id: string]: IResourceVersion };
+    base_data: { [env: string]: string };
+    version_by_env: { [env: string]: string };
+}
+
+type IChangeVersion = {
+    change: "Version";
+} & IResourceVersion;
+
+interface IChangeDeployable {
+    change: "Deployable";
+    resource: string;
+    env: string;
+    content_id: string;
+}
+
+interface IChangeBaseData {
+    change: "BaseData";
+    resource: string;
+    env: string;
+    content_id: string;
+}
+
+interface IVersionDeployed {
+    change: "VersionDeployed";
+    resource: string;
+    env: string;
+    version_id: string;
+}
+
+type ResourceRepoChange =
+    | IChangeVersion
+    | IChangeDeployable
+    | IChangeBaseData
+    | IVersionDeployed;
+
+interface IResourceRepoCommit {
+    id: string;
+    message: string;
+    changes: ResourceRepoChange[];
+}
+
+interface IVersionsMessage {
+    type: "Versions";
+    counter: number;
+    resources: { [name: string]: IResourceStatus };
+    history: IResourceRepoCommit[];
 }
 
 type Message =
     | IFullStatusMessage
     | IDeployerStatusMessage
-    | ITransitionStatusMessage;
+    | ITransitionStatusMessage
+    | IVersionsMessage;
 
-interface IUiData {
+export interface IUiData {
     counter: number;
     deployers: { [key: string]: IDeployerStatus };
     transitions: { [key: string]: ITransitionStatus };
+    resources: { [name: string]: IResourceStatus };
+    history: IResourceRepoCommit[];
 }
 
 class Page extends React.Component<{}, { tab: number; data: IUiData }> {
@@ -56,7 +143,9 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
             data: {
                 counter: 0,
                 deployers: {},
-                transitions: {}
+                transitions: {},
+                resources: {},
+                history: []
             },
             tab: 0
         };
@@ -73,16 +162,21 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
             const data = state.data;
             if (
                 message.type === "FullStatus" ||
-                message.type === "IDeployerStatus"
+                message.type === "DeployerStatus"
             ) {
                 Object.assign(data.deployers, message.deployers);
             }
 
             if (
                 message.type === "FullStatus" ||
-                message.type === "ITransitionStatus"
+                message.type === "TransitionStatus"
             ) {
                 Object.assign(data.transitions, message.transitions);
+            }
+
+            if (message.type === "FullStatus" || message.type === "Versions") {
+                Object.assign(data.resources, message.resources);
+                data.history = message.history;
             }
 
             data.counter = message.counter;
@@ -102,11 +196,16 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
                         value={this.state.tab}
                         onChange={this.handleTabChange}
                     >
-                        <Tab label="Stuff" />
+                        <Tab label="Resources" />
+                        <Tab label="History" />
                         <Tab label="Data" />
                     </Tabs>
                 </AppBar>
-                {this.state.tab === 1 && (
+                {this.state.tab === 0 && (
+                    <ResourcesView data={this.state.data} />
+                )}
+                {this.state.tab === 1 && <HistoryView data={this.state.data} />}
+                {this.state.tab === 2 && (
                     <pre>{JSON.stringify(this.state.data, null, 4)}</pre>
                 )}
             </div>
