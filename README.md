@@ -1,6 +1,7 @@
+# Cautious tribble (real name TBD)
+
 [![Build Status](https://travis-ci.org/flodiebold/cautious-tribble.svg?branch=master)](https://travis-ci.org/flodiebold/cautious-tribble)
 
-# Cautious tribble (real name TBD)
 It deploys your stuff to Kubernetes.
 
 ## Features
@@ -13,7 +14,13 @@ It deploys your stuff to Kubernetes.
 [TODO maybe a screenshot or two once ui is there]
 
 ## How it works
-[TODO]
+The central piece of a DM system is the *resource repository*, a git repository containing all state and the configuration of the deployable resources.
+ 
+This project consists of the following parts:
+ - the *deployer* makes sure the cluster matches the state of the resource repo
+ - the *transitioner* mirrors versions between environments when preconditions are met
+ - the *aggregator* watches the state of the deployer, transitioner and the resource repo itself, and provides data to the ui
+ - the *ui* allows inspecting the state of the deployments, locking services and environments, etc.
 
 ### Structure of the resource repo
  - top-level, there is one folder per environment, e.g. `dev`, `pp`, `prod`.
@@ -28,6 +35,16 @@ It deploys your stuff to Kubernetes.
 
 ### Transitioner configuration
 [TODO]
+
+### Example flow of a new service version
+[TODO]
+ - your CI (e.g. Jenkins) builds a docker image and pushes it to a registry. Then it calls the aggregator to inform it about the newly available version (including a changelog).
+ - the aggregator makes a new commit in the resource repository, adding the new resource version (in the `latest` environment) and including the changelog in the commit message.
+ - the transitioner notices there is a new version available in the `latest` environment. Since it is configured to mirror everything from `latest` to `dev`, it makes a new transition commit setting the deployed version of your service to the newly created one.
+ - the deployer notices that the version of your service specified in the resource repository for `dev` is not actually deployed, so it calls Kubernetes to apply the new configuration.
+ - the transitioner is configured to mirror everything from `dev` to `pp`, but only if it is deployed successfully; so it regularly checks in with the deployer to see whether everything on `dev` is deployed cleanly. Once that is the case, it makes a transition from `dev` to `pp` including all services that changed in the meantime.
+ - the deployer notices again that there is a new version, this time for `pp`, and deploys that.
+ - and so on...
 
 ## Contributing
 
