@@ -30,12 +30,6 @@ This project consists of the following parts:
    - `transitions.yaml` contains state related to transitions; concretely when a recurring transition is scheduled next.
    - `locks.yaml` contains the locking state for the environment (and per-service locking states in the future).
 
-### Deployer configuration
-[TODO]
-
-### Transitioner configuration
-[TODO]
-
 ### Example flow of a new service version
 [TODO]
  - your CI (e.g. Jenkins) builds a docker image and pushes it to a registry. Then it calls the aggregator to inform it about the newly available version (including a changelog).
@@ -45,6 +39,23 @@ This project consists of the following parts:
  - the transitioner is configured to mirror everything from `dev` to `pp`, but only if it is deployed successfully; so it regularly checks in with the deployer to see whether everything on `dev` is deployed cleanly. Once that is the case, it makes a transition from `dev` to `pp` including all services that changed in the meantime.
  - the deployer notices again that there is a new version, this time for `pp`, and deploys that.
  - and so on...
+ 
+### Configuration
+Each service (deployer, transitioner, aggregator) is configured with a yaml file. The following fields are common to all three:
+ - `versions_url`: the git URL for the resource repository
+ - `versions_checkout_path`: the path where the resource repository should be checked out
+ - `api_port`: the port to use for the REST API
+ 
+The deployer takes the following additional options:
+ - `deployers`: this configures what to deploy where. [TODO]
+ 
+The transitioner takes the following additional options:
+ - `transitions`: a list of transitions between environments. [TODO]
+ - `deployer_url`: the URL under which the deployer can be reached.
+ 
+The aggregator takes the following fields:
+ - `deployer_url`: the URL under which the deployer can be reached.
+ - `aggregator_url`: the URL under which the aggregator can be reached.
 
 ## Contributing
 
