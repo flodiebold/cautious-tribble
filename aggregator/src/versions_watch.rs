@@ -5,7 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use failure::Error;
-use git2::{Commit, Oid};
+use git2::{Commit, Oid, Sort};
 use serde_yaml;
 
 use common::aggregator::{
@@ -160,6 +160,7 @@ fn analyze_commits(
     to: Oid,
 ) -> Result<(), Error> {
     let mut revwalk = repo.repo.revwalk()?;
+    revwalk.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE);
     revwalk.push(to)?;
     if let Some(from) = from {
         revwalk.hide(from)?;

@@ -103,7 +103,7 @@ pub trait ResourceRepo {
 }
 
 use super::git;
-use git2::{Commit, ErrorCode, Oid, Repository};
+use git2::{Commit, ErrorCode, Oid, Repository, Sort};
 
 pub struct GitResourceRepo {
     pub repo: Repository,
@@ -223,6 +223,7 @@ fn determine_last_change<'repo>(
     path: &Path,
 ) -> Result<Commit<'repo>, Error> {
     let mut revwalk = repo.revwalk()?;
+    revwalk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME);
     revwalk.push(commit)?;
 
     let mut last = None;
