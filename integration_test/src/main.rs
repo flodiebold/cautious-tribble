@@ -30,15 +30,19 @@ fn main() -> Result<(), Error> {
     signal_hook::flag::register(2, Arc::clone(&term))?; // int
     signal_hook::flag::register(15, Arc::clone(&term))?; // term
     let mut test = IntegrationTest::new_playground();
-    let fixture = test.git_fixture(include_str!("../tests/repo.yaml"));
-    fixture.set_ref("refs/heads/master", "head1").unwrap();
-    test.run_deployer(include_str!("../tests/config_mock.yaml"))
-        .run_transitioner(include_str!("../tests/config_mock.yaml"))
-        .run_aggregator(include_str!("../tests/config_mock.yaml"))
+    let fixture = test.git_fixture(include_str!("./example.yaml"));
+    fixture.set_ref("refs/heads/master", "base").unwrap();
+    // FIXME make it possible to interrupt during this
+    test.run_deployer(include_str!("./config_playground.yaml"))
+        .run_transitioner(include_str!("./config_playground.yaml"))
+        .run_aggregator(include_str!("./config_playground.yaml"))
         .wait_ready()
         .connect_to_aggregator_socket()
-        .wait_env_rollout_done("dev")
-        .wait_transition("prod", 1)
+        .wait_transition("prod", 1);
+    fixture.apply("refs/heads/master", "c1");
+    test.wait_transition("prod", 2);
+    fixture.apply("refs/heads/master", "c2");
+    test.wait_transition("prod", 3)
         .wait_env_rollout_done("prod");
 
     eprintln!("Playground running");
