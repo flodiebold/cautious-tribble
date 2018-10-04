@@ -150,7 +150,9 @@ class Page extends React.Component<{}, { tab: number; data: IUiData }> {
             tab: 0
         };
 
-        const ws = new WebSocket("ws://" + document.location.host + "/api");
+        const host = document.location ? document.location.host : "";
+
+        const ws = new WebSocket("ws://" + host + "/api");
 
         ws.onmessage = this.handleWebSocketMessage;
     }
