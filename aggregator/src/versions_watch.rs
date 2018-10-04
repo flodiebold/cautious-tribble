@@ -23,7 +23,11 @@ fn analyze_commit<'repo>(
 ) -> Result<ResourceRepoCommit, Error> {
     let mut changes = Vec::with_capacity(2);
 
-    let envs = [PathBuf::from("dev"), PathBuf::from("prod")]; // FIXME
+    let envs = [
+        PathBuf::from("latest"),
+        PathBuf::from("dev"),
+        PathBuf::from("prod"),
+    ]; // FIXME
 
     for env_path in &envs {
         repo.walk_commit(
