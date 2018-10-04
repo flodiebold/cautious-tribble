@@ -516,7 +516,7 @@ fn check_health(url: &str) -> bool {
 
     eprintln!("response status: {:?}", response.status());
 
-    response.status() == reqwest::StatusCode::Ok
+    response.status() == reqwest::StatusCode::OK
 }
 
 fn terminate_child(child: &Child) -> Result<(), Error> {
