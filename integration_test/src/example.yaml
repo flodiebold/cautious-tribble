@@ -1,0 +1,111 @@
+commits:
+  - files:
+      latest/version/s1.yaml: |
+        version: 23
+        repo: git://repo
+        image: exampleservice:23
+      dev/deployable/s1-service.yaml: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: s1-service
+        spec:
+          type: LoadBalancer
+          selector:
+            app: s1
+          ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+      prod/deployable/s1-service.yaml: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: s1-service
+        spec:
+          type: LoadBalancer
+          selector:
+            app: s1
+          ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+      dev/version/s1.yaml: |
+        version: 23
+        repo: git://repo
+        image: exampleservice:23
+      dev/base/s1.yaml: |
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: s1
+          labels:
+            app: s1
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: s1
+          template:
+            metadata:
+              labels:
+                app: s1
+            spec:
+              containers:
+              - name: service
+                image: exampleservice:$version
+                readinessProbe:
+                  httpGet:
+                    path: /answer
+                    port: 80
+                  initialDelaySeconds: 0
+                  timeoutSeconds: 1
+                ports:
+                - containerPort: 80
+      prod/base/s1.yaml: |
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: s1
+          labels:
+            app: s1
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: s1
+          template:
+            metadata:
+              labels:
+                app: s1
+            spec:
+              containers:
+              - name: service
+                image: exampleservice:$version
+                readinessProbe:
+                  httpGet:
+                    path: /answer
+                    port: 80
+                  initialDelaySeconds: 0
+                  timeoutSeconds: 1
+                ports:
+                - containerPort: 80
+    message: |
+      Base commit
+    name: base
+  - files:
+      latest/version/s1.yaml: |
+        version: 42
+        repo: git://repo
+        image: exampleservice:42
+    message: |
+      Update s1 to 42
+    name: c1
+  - files:
+      latest/version/s1.yaml: |
+        version: 43
+        repo: git://repo
+        image: exampleservice:43
+    message: |
+      Update s1 to 43
+    name: c2

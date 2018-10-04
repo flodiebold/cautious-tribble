@@ -59,6 +59,7 @@ impl RepoTemplate {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct Commit {
     files: HashMap<PathBuf, String>,
+    message: Option<String>,
     name: Option<String>,
     parent: Option<String>,
 }
@@ -141,14 +142,17 @@ impl Commit {
         } else {
             vec![]
         };
+        let message = self.message.clone().unwrap_or_else(|| {
+            format!(
+                "Commit {}",
+                self.name.as_ref().map(|s| &**s).unwrap_or("(unnamed)")
+            )
+        });
         let commit = repo.commit(
             None,
             &signature,
             &signature,
-            &format!(
-                "Commit {}",
-                self.name.as_ref().map(|s| &**s).unwrap_or("(unnamed)")
-            ),
+            &message,
             &tree,
             &parent_commits,
         )?;

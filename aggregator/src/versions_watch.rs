@@ -5,7 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use failure::Error;
-use git2::{Commit, Oid};
+use git2::{Commit, Oid, Sort};
 use serde_yaml;
 
 use common::aggregator::{
@@ -23,7 +23,11 @@ fn analyze_commit<'repo>(
 ) -> Result<ResourceRepoCommit, Error> {
     let mut changes = Vec::with_capacity(2);
 
-    let envs = [PathBuf::from("dev"), PathBuf::from("prod")]; // FIXME
+    let envs = [
+        PathBuf::from("latest"),
+        PathBuf::from("dev"),
+        PathBuf::from("prod"),
+    ]; // FIXME
 
     for env_path in &envs {
         repo.walk_commit(
@@ -156,6 +160,7 @@ fn analyze_commits(
     to: Oid,
 ) -> Result<(), Error> {
     let mut revwalk = repo.repo.revwalk()?;
+    revwalk.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE);
     revwalk.push(to)?;
     if let Some(from) = from {
         revwalk.hide(from)?;

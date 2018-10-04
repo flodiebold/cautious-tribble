@@ -43,7 +43,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                     xmlns="http://www.w3.org/2000/svg"
                     style={{ width: 200, height: 50 }}
                 >
-                    {this.props.versions.map((v, i) => (
+                    {this.props.versions.reverse().map((v, i) => (
                         <circle
                             cx={30 + i * 25}
                             cy={25}
