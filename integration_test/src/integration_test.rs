@@ -9,6 +9,7 @@ use std::process::{Child, Command, Stdio};
 
 use failure::Error;
 use git2;
+use hyper;
 use indexmap::IndexMap;
 use nix;
 use rand::{self, Rng};
@@ -531,14 +532,29 @@ fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
     use std::io::ErrorKind::*;
     match result {
         Ok(_) => false,
-        Err(error) => match error
-            .get_ref()
-            .and_then(|e| e.downcast_ref::<std::io::Error>())
-            .map(|e| e.kind())
-        {
-            Some(BrokenPipe) | Some(ConnectionRefused) | Some(WouldBlock) => true,
-            _ => false,
-        },
+        Err(error) => {
+            // FIXME this is really ugly
+            match error
+                .get_ref()
+                .and_then(|e| e.downcast_ref::<std::io::Error>())
+                .map(|e| e.kind())
+            {
+                Some(BrokenPipe) | Some(ConnectionRefused) | Some(WouldBlock) => return true,
+                _ => {}
+            };
+
+            match error
+                .get_ref()
+                .and_then(|e| e.downcast_ref::<hyper::Error>())
+                .and_then(|e| e.cause2())
+                .and_then(|e| e.downcast_ref::<std::io::Error>())
+                .map(|e| e.kind())
+            {
+                Some(BrokenPipe) | Some(ConnectionRefused) | Some(WouldBlock) => return true,
+                _ => {}
+            };
+            false
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 
 extern crate failure;
 extern crate git2;
+extern crate hyper;
 extern crate indexmap;
 extern crate nix;
 extern crate rand;

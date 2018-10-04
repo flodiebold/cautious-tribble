@@ -7,6 +7,7 @@ authors = ["Florian Diebold <flodiebold@gmail.com>"]
 tempfile = "3"
 nix = "0.11"
 reqwest = "0.9"
+hyper = "0.12"
 failure = "0.1"
 rand = "0.5"
 serde = "1.0"
