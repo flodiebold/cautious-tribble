@@ -31,11 +31,14 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
         });
     };
 
-    public handlePopoverClose = () => {
-        this.setState({ popoverElem: null });
+    public handlePopoverClose = (event: React.MouseEvent) => {
+        if (this.state.popoverElem === event.currentTarget) {
+            this.setState({ popoverElem: null });
+        }
     };
 
     public render() {
+        const reversed = this.props.versions.slice().reverse();
         return (
             <div>
                 <svg
@@ -43,14 +46,25 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                     xmlns="http://www.w3.org/2000/svg"
                     style={{ width: 200, height: 50 }}
                 >
-                    {this.props.versions.reverse().map((v, i) => (
+                    {reversed.length > 0 && (
+                        <line
+                            x1={30}
+                            y1={25}
+                            x2={5 + reversed.length * 25}
+                            y2={25}
+                            stroke="darkGreen"
+                            strokeWidth={2}
+                        />
+                    )}
+                    {reversed.map((v, i) => (
                         <circle
+                            key={v.version}
                             cx={30 + i * 25}
                             cy={25}
-                            r={10}
+                            r={8}
                             fill="green"
                             stroke="darkGreen"
-                            strokeWidth={3}
+                            strokeWidth={2}
                             onMouseEnter={this.handlePopoverOpen.bind(this, v)}
                             onMouseLeave={this.handlePopoverClose}
                         />
@@ -99,7 +113,7 @@ export class ResourcesView extends React.Component<IResourcesViewProps> {
                 v => resource.versions[v]
             );
             lines.push(
-                <TableRow>
+                <TableRow key={resource.name}>
                     <TableCell>{resource.name}</TableCell>
                     <TableCell>
                         <pre>{JSON.stringify(statusByEnv, null, 4)}</pre>
