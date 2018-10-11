@@ -17,12 +17,13 @@ interface IHistoryViewProps {
 export class HistoryView extends React.Component<IHistoryViewProps> {
     public render() {
         const history = this.props.data.history;
+        const reversed = this.props.data.history.slice().reverse();
         return (
             <Grid container spacing={16} style={{ padding: 16 }}>
                 <Grid item xs={12}>
                     <Paper>
                         <Table>
-                            {history.reverse().map(commit => (
+                            {reversed.map(commit => (
                                 <TableRow>
                                     <TableCell>t</TableCell>
                                     <TableCell
