@@ -67,6 +67,8 @@ fn serve(config: Config) -> Result<(), Error> {
     let deployer_watch = deployer_watch::start(service_state.clone());
     let transitioner_watch = transitioner_watch::start(service_state.clone());
 
+    info!("Aggregator running.");
+
     api.join().unwrap();
     deployer_watch.join().unwrap();
     transitioner_watch.join().unwrap();
