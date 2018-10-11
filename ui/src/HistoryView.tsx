@@ -23,21 +23,27 @@ export class HistoryView extends React.Component<IHistoryViewProps> {
                 <Grid item xs={12}>
                     <Paper>
                         <Table>
-                            {reversed.map(commit => (
-                                <TableRow>
-                                    <TableCell>t</TableCell>
-                                    <TableCell
-                                        style={{ whiteSpace: "pre-line" }}
-                                    >
-                                        {commit.message}
-                                    </TableCell>
-                                    <TableCell>
-                                        <pre>
-                                            {JSON.stringify(commit, null, 4)}
-                                        </pre>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            <TableBody>
+                                {reversed.map(commit => (
+                                    <TableRow key={commit.id}>
+                                        <TableCell>t</TableCell>
+                                        <TableCell
+                                            style={{ whiteSpace: "pre-line" }}
+                                        >
+                                            {commit.message}
+                                        </TableCell>
+                                        <TableCell>
+                                            <pre>
+                                                {JSON.stringify(
+                                                    commit,
+                                                    null,
+                                                    4
+                                                )}
+                                            </pre>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
                         </Table>
                     </Paper>
                 </Grid>
