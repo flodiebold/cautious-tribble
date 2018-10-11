@@ -46,15 +46,25 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                     xmlns="http://www.w3.org/2000/svg"
                     style={{ width: 200, height: 50 }}
                 >
+                    {reversed.length > 0 && (
+                        <line
+                            x1={30}
+                            y1={25}
+                            x2={5 + reversed.length * 25}
+                            y2={25}
+                            stroke="darkGreen"
+                            strokeWidth={2}
+                        />
+                    )}
                     {reversed.map((v, i) => (
                         <circle
                             key={v.version}
                             cx={30 + i * 25}
                             cy={25}
-                            r={10}
+                            r={8}
                             fill="green"
                             stroke="darkGreen"
-                            strokeWidth={3}
+                            strokeWidth={2}
                             onMouseEnter={this.handlePopoverOpen.bind(this, v)}
                             onMouseLeave={this.handlePopoverClose}
                         />
