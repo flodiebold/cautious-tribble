@@ -51,6 +51,7 @@
  - report errors in yaml parsing etc. on the deployable status
 ** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes
  - that means more state though... maybe just rely on validation
+ - maybe do exponential backoff for 400s
 ** TODO integration-test configmap & secret deployment
 ** TODO reload config on every loop
 ** TODO fix signal handling
@@ -123,13 +124,14 @@ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/sta
  - report time of last actual run for each transition
  - report commit ID of last actual run for each transition
  - report time and status of last check for each transition
-** TODO more details for Blocked and Failed transition status
-** TODO add manual confirm check
-** TODO add informative trailers to created commits
+** DONE add informative trailers to created commits
+   CLOSED: [2018-10-14 So 19:35]
 DM-Type: Transition
 DM-Transition-Name: pp
 DM-Source: dev
 DM-Target: pp
+** TODO more details for Blocked and Failed transition status
+** TODO add manual confirm check
 ** TODO Copy logs from commits when transitioning
 ** TODO add per-resource locks
 ** TODO handle remote callbacks during push and use push_update_reference
@@ -233,15 +235,23 @@ warp: bind_with_graceful_shutdown
    CLOSED: [2018-08-30 Do 20:38]
 ** DONE show list of resources
    CLOSED: [2018-09-04 Di 15:27]
+** DONE show histories for resources
+   CLOSED: [2018-10-14 So 19:33]
 ** TODO show deployment status of each resource
+ - show version deployed according to version repo as bubble
+ - show spinner if still deploying (including if the deployer hasn't caught up yet)
+ - show error symbol for errors
 ** TODO show deployment status details (e.g. error messages)
-** TODO show histories for resources
- - aggregate from commits changing either version or base
+ - resource details dialog
+** TODO show base data history for resource
+ - needs to be per env
+ - resource details dialog?
 ** TODO allow reverting resources to a previous version
 ** TODO show transition status
  - including detailed check status
 ** TODO show version history of an env
- - separate tab?
+ - allow filtering history tab by env
+** TODO allow filtering history tab by resource?
 ** TODO allow locking environments
 ** TODO allow locking resources
 ** TODO allow searching resources by labels
@@ -261,7 +271,8 @@ warp: bind_with_graceful_shutdown
 ** DONE set up bors
    CLOSED: [2018-08-30 Do 20:20]
 https://bors.tech/
-** TODO script to automatically set up 'playground'
+** DONE script to automatically set up 'playground'
+   CLOSED: [2018-10-14 So 19:42]
  - all parts running
  - versions repo set up & some resources defined
  - automatically recompile & restart services when making changes
