@@ -15,8 +15,7 @@ indexmap = { version = "1", features = ["serde-1"] }
 
 chrono = { version = "0.4", features = ["serde"] }
 
-openssl = { version = "=0.10.12", features = ["vendored"] }
-openssl-sys = "=0.9.36"
+openssl = { version = "0.10", features = ["vendored"] }
 
 [dev-dependencies]
 git_fixture = { path = "../git_fixture" }
