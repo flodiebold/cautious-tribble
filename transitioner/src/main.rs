@@ -7,7 +7,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-#[macro_use]
 extern crate structopt;
 #[macro_use]
 extern crate log;
