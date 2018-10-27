@@ -19,7 +19,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
         let service_state_1 = service_state.clone();
         let state = warp::any().map(move || &*service_state_1);
         let health = warp::path("health")
-            .and(warp::index())
+            .and(warp::path::end())
             .and(warp::get2())
             .and(state.clone())
             .map(health);
@@ -78,7 +78,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
             })
         });
         let api = warp::path("api");
-        let ws = api.and(warp::index()).and(ws_handler);
+        let ws = api.and(warp::path::end()).and(ws_handler);
         let routes = health.or(ws);
         warp::serve(routes).run(([0, 0, 0, 0], port));
     })
