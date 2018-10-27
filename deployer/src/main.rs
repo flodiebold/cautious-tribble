@@ -11,10 +11,10 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
-extern crate serde_yaml;
-extern crate structopt;
 extern crate crossbeam;
 extern crate regex;
+extern crate serde_yaml;
+extern crate structopt;
 extern crate warp;
 
 extern crate common;
