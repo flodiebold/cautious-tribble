@@ -1,19 +1,10 @@
-extern crate git2;
-#[macro_use]
-extern crate failure;
-extern crate serde;
-extern crate tempfile;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_yaml;
-
-extern crate common;
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use serde_derive::{Deserialize, Serialize};
+use failure::{Error, bail, format_err};
+
 use common::git::TreeZipper;
-use failure::Error;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RepoTemplate {
