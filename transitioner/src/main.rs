@@ -331,7 +331,8 @@ mod test {
             &fixture.repo,
             &state,
             test_time(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(result, TransitionResult::Skipped(SkipReason::SourceMissing));
         assert_eq!(
@@ -410,7 +411,8 @@ mod test {
         let config = make_config(
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -432,7 +434,8 @@ mod test {
         let config = make_config(
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -453,7 +456,8 @@ mod test {
         let config = make_config(
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -474,7 +478,8 @@ mod test {
         let config = make_config(
             include_str!("./fixtures/three_envs_config.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -500,7 +505,8 @@ mod test {
         let config = make_config(
             include_str!("./fixtures/timed_transition_config.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -515,7 +521,8 @@ mod test {
             &fixture.repo,
             &state,
             "2018-01-01T00:00:00Z".parse().unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(
             result,
@@ -538,7 +545,8 @@ mod test {
         let config = make_config(
             include_str!("./fixtures/timed_transition_config.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -551,7 +559,8 @@ mod test {
             &fixture.repo,
             &state,
             "2018-01-01T00:00:01Z".parse().unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }
@@ -560,12 +569,14 @@ mod test {
     fn test_timed_transition_without_schedule() {
         let fixture = RepoFixture::from_str(include_str!(
             "./fixtures/timed_transition_pending_no_schedule.yaml"
-        )).unwrap();
+        ))
+        .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config = make_config(
             include_str!("./fixtures/timed_transition_config_no_schedule.yaml"),
             &fixture.repo,
-        ).unwrap();
+        )
+        .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let state = ServiceState {
@@ -578,7 +589,8 @@ mod test {
             &fixture.repo,
             &state,
             "2018-01-01T00:00:01Z".parse().unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         fixture.assert_ref_matches("refs/dm_head", "expected");
     }

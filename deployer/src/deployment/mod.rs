@@ -148,7 +148,8 @@ fn merge_resource(
                 let replaced = regex
                     .replace_all(&s, move |_cap: &regex::Captures<'_>| {
                         version_content.get("version").cloned().unwrap_or_default()
-                    }).into_owned();
+                    })
+                    .into_owned();
                 *s = replaced;
             }
             Value::Array(s) => {
@@ -225,15 +226,12 @@ pub fn check_rollout_status(
                 status,
                 version,
                 expected_version,
-            }
-                if version == expected_version =>
-            {
-                status.clone().into()
-            }
+            } if version == expected_version => status.clone().into(),
             ResourceState::Deployed { status, .. } => {
                 RolloutStatus::Outdated.combine(status.clone().into())
             }
-        }).fold(RolloutStatus::Clean, RolloutStatus::combine);
+        })
+        .fold(RolloutStatus::Clean, RolloutStatus::combine);
 
     Ok((combined, current_state))
 }
@@ -307,7 +305,8 @@ mod test {
     fn test_get_resources_no_resources() {
         let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_resources_no_resources.yaml"
-        )).unwrap();
+        ))
+        .unwrap();
         let result =
             get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
         assert!(result.is_some());
@@ -366,7 +365,8 @@ mod test {
     fn test_get_resources_separated() {
         let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_resources_separated.yaml"
-        )).unwrap();
+        ))
+        .unwrap();
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
         let result =
             get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
@@ -436,7 +436,8 @@ mod test {
     fn test_get_resources_changed() {
         let fixture = git_fixture::RepoFixture::from_str(include_str!(
             "./fixtures/get_resources_changed.yaml"
-        )).unwrap();
+        ))
+        .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let first = repo::oid_to_id(fixture.get_commit("first").unwrap());
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
@@ -444,7 +445,8 @@ mod test {
             &make_resource_repo(fixture, "head"),
             "available",
             Some(first),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
         info.resources.sort_by_key(|d| d.name.clone());
@@ -467,7 +469,8 @@ mod test {
             &make_resource_repo(fixture, "head"),
             "available",
             Some(first),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(result.is_some());
         let mut info = result.unwrap();
         info.resources.sort_by_key(|d| d.name.clone());

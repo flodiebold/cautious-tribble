@@ -67,7 +67,8 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                     trace!("Websocket message: {:?}", msg);
 
                     future::ok(())
-                }).then(|r| {
+                })
+                .then(|r| {
                     if let Err(e) = r {
                         info!("Websocket closed with error: {}", e);
                     } else {

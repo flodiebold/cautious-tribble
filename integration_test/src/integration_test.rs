@@ -135,7 +135,8 @@ impl IntegrationTest {
                 "create",
                 "namespace",
                 &namespace,
-            ]).current_dir(self.dir.path())
+            ])
+            .current_dir(self.dir.path())
             .status()
             .unwrap();
 
@@ -183,7 +184,8 @@ impl IntegrationTest {
                 &namespace,
                 "apply",
                 "-f",
-            ]).arg(yaml_path)
+            ])
+            .arg(yaml_path)
             .current_dir(self.dir.path())
             .status()
             .unwrap();
@@ -205,13 +207,16 @@ impl IntegrationTest {
             .replace(
                 "%%deployer_port%%",
                 &self.get_port(TestService::Deployer).to_string(),
-            ).replace(
+            )
+            .replace(
                 "%%transitioner_port%%",
                 &self.get_port(TestService::Transitioner).to_string(),
-            ).replace(
+            )
+            .replace(
                 "%%aggregator_port%%",
                 &self.get_port(TestService::Aggregator).to_string(),
-            ).replace("%%suffix%%", &self.suffix)
+            )
+            .replace("%%suffix%%", &self.suffix)
             .replace(
                 "%%versions_checkout_path%%",
                 &format!("./versions_checkout_{:?}", service),
@@ -325,7 +330,8 @@ impl IntegrationTest {
                 "-n",
                 &namespace,
                 svc,
-            ]).output()
+            ])
+            .output()
             .expect("running minikube");
 
         if !output.status.success() {
@@ -456,7 +462,8 @@ impl IntegrationTest {
                     "delete",
                     "namespace",
                     &namespace,
-                ]).current_dir(self.dir.path())
+                ])
+                .current_dir(self.dir.path())
                 .status();
         }
     }

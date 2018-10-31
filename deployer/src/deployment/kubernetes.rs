@@ -57,7 +57,8 @@ impl KubernetesDeployer {
                 &self.kubeconf,
                 "-f",
                 "-",
-            ]).stdin(Stdio::piped())
+            ])
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
