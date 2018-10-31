@@ -40,7 +40,7 @@ mod api;
 mod config;
 mod deployment;
 
-use config::Config;
+use crate::config::Config;
 
 #[derive(Debug, StructOpt)]
 struct Options {

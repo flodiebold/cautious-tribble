@@ -14,40 +14,34 @@ interface IHistoryViewProps {
     data: IUiData;
 }
 
-export class HistoryView extends React.Component<IHistoryViewProps> {
-    public render() {
-        const history = this.props.data.history;
-        const reversed = this.props.data.history.slice().reverse();
-        return (
-            <Grid container spacing={16} style={{ padding: 16 }}>
-                <Grid item xs={12}>
-                    <Paper>
-                        <Table>
-                            <TableBody>
-                                {reversed.map(commit => (
-                                    <TableRow key={commit.id}>
-                                        <TableCell>t</TableCell>
-                                        <TableCell
-                                            style={{ whiteSpace: "pre-line" }}
-                                        >
-                                            {commit.message}
-                                        </TableCell>
-                                        <TableCell>
-                                            <pre>
-                                                {JSON.stringify(
-                                                    commit,
-                                                    null,
-                                                    4
-                                                )}
-                                            </pre>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </Paper>
-                </Grid>
+export function HistoryView(props: IHistoryViewProps) {
+    const history = props.data.history;
+    const reversed = props.data.history.slice().reverse();
+    return (
+        <Grid container spacing={16} style={{ padding: 16 }}>
+            <Grid item xs={12}>
+                <Paper>
+                    <Table>
+                        <TableBody>
+                            {reversed.map(commit => (
+                                <TableRow key={commit.id}>
+                                    <TableCell>t</TableCell>
+                                    <TableCell
+                                        style={{ whiteSpace: "pre-line" }}
+                                    >
+                                        {commit.message}
+                                    </TableCell>
+                                    <TableCell>
+                                        <pre>
+                                            {JSON.stringify(commit, null, 4)}
+                                        </pre>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </Paper>
             </Grid>
-        );
-    }
+        </Grid>
+    );
 }

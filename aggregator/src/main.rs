@@ -37,7 +37,7 @@ mod deployer_watch;
 mod transitioner_watch;
 mod versions_watch;
 
-use config::Config;
+use crate::config::Config;
 
 #[derive(Debug, StructOpt)]
 struct Options {

@@ -17,4 +17,4 @@ pub mod git;
 pub mod repo;
 pub mod transitions;
 
-pub use config::Config;
+pub use crate::config::Config;

@@ -9,7 +9,7 @@ use common::aggregator::Message;
 
 use super::ServiceState;
 
-fn health(_state: &ServiceState) -> impl warp::Reply {
+fn health(_state: Arc<ServiceState>) -> impl warp::Reply {
     warp::reply::json(&json!({}))
 }
 
@@ -17,7 +17,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let port = service_state.config.common.api_port.unwrap_or(9001);
         let service_state_1 = service_state.clone();
-        let state = warp::any().map(move || &*service_state_1);
+        let state = warp::any().map(move || service_state_1.clone());
         let health = warp::path("health")
             .and(warp::path::end())
             .and(warp::get2())

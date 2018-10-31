@@ -7,7 +7,7 @@ use serde_yaml;
 
 use common;
 
-use deployment::{kubernetes, mock, Deployer};
+use crate::deployment::{kubernetes, mock, Deployer};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]

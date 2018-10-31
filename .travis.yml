@@ -13,7 +13,7 @@ matrix:
     # warnings check
   - name: "Warnings"
     env: RUSTFLAGS="-D warnings"
-    rust: stable
+    rust: beta # until 2018 edition is stable
     script:
       - cargo check --tests
   - name: "Rustfmt"
@@ -39,7 +39,7 @@ matrix:
   - name: "Stable build & test including minikube"
     env:
       - CHANGE_MINIKUBE_NONE_USER=true
-    rust: stable
+    rust: beta # until 2018 edition is stable
     install:
       - rustc -Vv
       - cargo -V

@@ -10,7 +10,7 @@ use common::chrono::{self, Utc};
 use common::transitions::AllTransitionStatus;
 
 use super::ServiceState;
-use config::Config;
+use crate::config::Config;
 
 fn get_current_transitioner_status(config: &Config) -> Result<AllTransitionStatus, Error> {
     if let Some(transitioner_url) = config.transitioner_url.as_ref() {
