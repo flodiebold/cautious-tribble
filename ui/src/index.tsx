@@ -78,51 +78,54 @@ export interface IResourceStatus {
     version_by_env: { [env: string]: string };
 }
 
-type IChangeVersion = {
+export type IChangeVersion = {
     change: "Version";
 } & IResourceVersion;
 
-interface IChangeDeployable {
+export interface IChangeDeployable {
     change: "Deployable";
     resource: string;
     env: string;
     content_id: string;
 }
 
-interface IChangeBaseData {
+export interface IChangeBaseData {
     change: "BaseData";
     resource: string;
     env: string;
     content_id: string;
 }
 
-interface IVersionDeployed {
+export interface IVersionDeployed {
     change: "VersionDeployed";
     resource: string;
     env: string;
     version_id: string;
 }
 
-type ResourceRepoChange =
+export type ResourceRepoChange =
     | IChangeVersion
     | IChangeDeployable
     | IChangeBaseData
     | IVersionDeployed;
 
-interface IResourceRepoCommit {
+export interface IResourceRepoCommit {
     id: string;
     message: string;
+    author_name: string;
+    author_email: string;
+    time: string;
     changes: ResourceRepoChange[];
 }
 
-interface IVersionsMessage {
+export interface IVersionsMessage {
     type: "Versions";
     counter: number;
     resources: { [name: string]: IResourceStatus };
     history: IResourceRepoCommit[];
 }
 
-type Message =
+export type Message =
     | IFullStatusMessage
     | IDeployerStatusMessage
     | ITransitionStatusMessage

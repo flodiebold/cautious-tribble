@@ -15,9 +15,9 @@ pub enum TransitionResult {
     Skipped(SkipReason),
     /// The transition might be applicable soon, and the source env should not
     /// be changed until then.
-    Blocked,
+    Blocked { message: String },
     /// A precondition check was negative.
-    CheckFailed,
+    CheckFailed { message: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

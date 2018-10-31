@@ -8,10 +8,25 @@ import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 
-import { IUiData } from "./index";
+import { IResourceRepoCommit, IUiData } from "./index";
 
 interface IHistoryViewProps {
     data: IUiData;
+}
+
+function CommitRow({ commit }: { commit: IResourceRepoCommit }) {
+    const time = new Date(commit.time);
+    return (
+        <TableRow key={commit.id}>
+            <TableCell>{time.toLocaleString()}</TableCell>
+            <TableCell style={{ whiteSpace: "pre-line" }}>
+                {commit.message}
+            </TableCell>
+            <TableCell>
+                <pre>{JSON.stringify(commit, null, 4)}</pre>
+            </TableCell>
+        </TableRow>
+    );
 }
 
 export function HistoryView(props: IHistoryViewProps) {
@@ -24,19 +39,7 @@ export function HistoryView(props: IHistoryViewProps) {
                     <Table>
                         <TableBody>
                             {reversed.map(commit => (
-                                <TableRow key={commit.id}>
-                                    <TableCell>t</TableCell>
-                                    <TableCell
-                                        style={{ whiteSpace: "pre-line" }}
-                                    >
-                                        {commit.message}
-                                    </TableCell>
-                                    <TableCell>
-                                        <pre>
-                                            {JSON.stringify(commit, null, 4)}
-                                        </pre>
-                                    </TableCell>
-                                </TableRow>
+                                <CommitRow commit={commit} />
                             ))}
                         </TableBody>
                     </Table>

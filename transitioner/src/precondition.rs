@@ -15,8 +15,8 @@ pub enum Precondition {
 pub enum PreconditionResult {
     Success,
     // TODO return more information here
-    Blocked,
-    Failed,
+    Blocked { message: String },
+    Failed { message: String },
 }
 
 pub fn check_precondition(
@@ -39,7 +39,9 @@ fn check_source_clean(
         error!(
             "Transition failed: SourceClean check failed because no deployer url is configured!"
         );
-        return Ok(PreconditionResult::Failed);
+        return Ok(PreconditionResult::Failed {
+            message: "no deployer url configured".to_string(),
+        });
     };
     let url = format!("{}/status", deployer_url);
     let status: AllDeployerStatus = service_state
@@ -52,26 +54,32 @@ fn check_source_clean(
     let env_status = if let Some(env_status) = status.deployers.get(&transition.source) {
         env_status
     } else {
-        info!("Transition blocked: Deployer does not yet know about source env");
-        return Ok(PreconditionResult::Blocked);
+        return Ok(PreconditionResult::Blocked {
+            message: "deployer does not yet know about source env".to_string(),
+        });
     };
 
     if env_status.deployed_version != transition.current_version {
-        info!(
-            "Transition blocked: Deployer is on version {}, we're on version {}",
-            env_status.deployed_version, transition.current_version
-        );
-        return Ok(PreconditionResult::Blocked);
+        return Ok(PreconditionResult::Blocked {
+            message: format!(
+                "deployer is on version {}, we're on version {}",
+                env_status.deployed_version, transition.current_version
+            ),
+        });
     }
 
     match env_status.rollout_status {
         RolloutStatus::InProgress => {
             info!("Transition blocked: Rollout still in progress");
-            Ok(PreconditionResult::Blocked)
+            Ok(PreconditionResult::Blocked {
+                message: "rollout still in progress".to_string(),
+            })
         }
         RolloutStatus::Outdated => {
             info!("Transition blocked: Changes pending");
-            Ok(PreconditionResult::Blocked)
+            Ok(PreconditionResult::Blocked {
+                message: "changes pending".to_string(),
+            })
         }
         RolloutStatus::Clean => {
             info!("SourceClean check ok");
@@ -79,7 +87,9 @@ fn check_source_clean(
         }
         RolloutStatus::Failed => {
             warn!("Transition failed: Source rollout failed");
-            Ok(PreconditionResult::Failed)
+            Ok(PreconditionResult::Failed {
+                message: "rollout failed".to_string(),
+            })
         }
     }
 }

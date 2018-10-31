@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use serde_derive::{Deserialize, Serialize};
 
@@ -49,6 +50,7 @@ pub enum ResourceRepoChange {
     VersionDeployed {
         resource: ResourceId,
         env: EnvName,
+        previous_version_id: Option<Id>,
         version_id: Id,
     }, // TODO existing version deployed to new env (outside of transition)
        // TODO locks/unlocks
@@ -59,8 +61,9 @@ pub enum ResourceRepoChange {
 pub struct ResourceRepoCommit {
     pub id: Id,
     pub message: String,
-    // TODO add time
-    // TODO author
+    pub time: DateTime<Utc>,
+    pub author_name: String,
+    pub author_email: String,
     // TODO transition info, if applicable
     pub changes: Vec<ResourceRepoChange>,
 }
@@ -112,6 +115,7 @@ impl VersionsAnalysis {
                     resource: resource_id,
                     env,
                     version_id,
+                    ..
                 } => {
                     let resource = self.get_resource(resource_id);
                     resource.version_by_env.insert(env.clone(), *version_id);
