@@ -178,11 +178,11 @@ fn run_transition(
 
     for precondition in &transition.preconditions {
         match precondition::check_precondition(&pending_transition, precondition, service_state)? {
-            PreconditionResult::Blocked => {
-                return Ok(TransitionResult::Blocked);
+            PreconditionResult::Blocked { message } => {
+                return Ok(TransitionResult::Blocked { message });
             }
-            PreconditionResult::Failed => {
-                return Ok(TransitionResult::CheckFailed);
+            PreconditionResult::Failed { message } => {
+                return Ok(TransitionResult::CheckFailed { message });
             }
             PreconditionResult::Success => {}
         }
@@ -235,8 +235,8 @@ fn run_one_transition(
             TransitionResult::Success { .. } => break,
             TransitionResult::Skipped(..) => continue,
             // TODO we could instead just block transitions that touch the source env
-            TransitionResult::Blocked => break,
-            TransitionResult::CheckFailed => continue,
+            TransitionResult::Blocked { .. } => break,
+            TransitionResult::CheckFailed { .. } => continue,
         }
     }
     Ok(())

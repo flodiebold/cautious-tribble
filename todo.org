@@ -130,14 +130,16 @@ DM-Type: Transition
 DM-Transition-Name: pp
 DM-Source: dev
 DM-Target: pp
-** TODO more details for Blocked and Failed transition status
+** DONE more details for Blocked and Failed transition status
+   CLOSED: [2018-10-31 Mi 20:40]
 ** TODO add unlock after transition
+** TODO allow restricting transitions to subdirs
 ** TODO Copy logs from commits when transitioning
+  - maybe the aggregator is a better place for that
 ** TODO add per-resource locks
 ** TODO handle remote callbacks during push and use push_update_reference
  - and handle push conficts
 ** TODO don't transition resources that don't have a base file in the target env
-** TODO allow restricting transitions to subdirs
 ** TODO add manual confirm check
 ** TODO add jenkins checks
 ** TODO add k8s job checks
