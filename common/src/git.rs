@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
-use failure::{Error, ResultExt};
+use failure::{format_err, Error, ResultExt};
 use git2::{self, Blob, Commit, ObjectType, Repository, Tree, TreeBuilder, TreeEntry};
 
 pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {

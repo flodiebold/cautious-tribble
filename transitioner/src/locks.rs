@@ -1,6 +1,6 @@
 use failure::{Error, ResultExt};
 use git2::Repository;
-use serde_yaml;
+use serde_derive::{Deserialize, Serialize};
 
 use common::git::{self, TreeZipper};
 

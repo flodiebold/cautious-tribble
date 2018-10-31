@@ -1,20 +1,5 @@
 #![allow(unused)]
 
-extern crate failure;
-extern crate git2;
-extern crate hyper;
-extern crate indexmap;
-extern crate nix;
-extern crate rand;
-pub extern crate reqwest;
-extern crate serde_json;
-extern crate signal_hook;
-extern crate tempfile;
-extern crate websocket;
-
-extern crate common;
-extern crate git_fixture;
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;

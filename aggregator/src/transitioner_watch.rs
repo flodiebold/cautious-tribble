@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use failure::Error;
+use failure::{bail, Error};
+use log::{error, trace};
 use reqwest;
 
 use common::aggregator::Message;

@@ -2,7 +2,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use failure::Error;
+use failure::{bail, format_err, Error};
 use serde;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -315,14 +315,16 @@ mod test {
             repo.get(Path::new("a/b/1"))
                 .expect("no error")
                 .expect("file exists"),
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(s1, "yy");
 
         let s2 = String::from_utf8(
             repo.get(Path::new("a/b/2"))
                 .expect("no error")
                 .expect("file exists"),
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(s2, "blubb");
     }
 
@@ -339,7 +341,8 @@ mod test {
         repo.walk(Path::new(""), |e| {
             found.push(e);
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
         found.sort_by_key(|e| e.path.clone());
         assert_eq!(found.len(), 4);
 
@@ -371,7 +374,8 @@ mod test {
         repo.walk(Path::new("a"), |e| {
             found.push(e);
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
         found.sort_by_key(|e| e.path.clone());
         assert_eq!(found.len(), 3);
 
@@ -384,7 +388,8 @@ mod test {
         repo.walk(Path::new("a/b"), |e| {
             found.push(e);
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
         found.sort_by_key(|e| e.path.clone());
         assert_eq!(found.len(), 2);
 

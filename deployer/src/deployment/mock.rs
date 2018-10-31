@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use failure::Error;
-use serde_json;
+use serde_derive::{Deserialize, Serialize};
 
 use common::deployment::{ResourceState, RolloutStatusReason};
 use common::repo::Id;

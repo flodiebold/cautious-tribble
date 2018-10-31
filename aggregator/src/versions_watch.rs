@@ -4,8 +4,9 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use failure::Error;
+use failure::{format_err, Error};
 use git2::{Commit, Oid, Sort};
+use log::error;
 use serde_yaml;
 
 use common::aggregator::{

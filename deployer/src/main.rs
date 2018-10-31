@@ -1,26 +1,3 @@
-extern crate env_logger;
-#[macro_use]
-extern crate failure;
-extern crate git2;
-extern crate k8s_openapi;
-extern crate kubeclient;
-#[macro_use]
-extern crate log;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_json;
-extern crate crossbeam;
-extern crate regex;
-extern crate serde_yaml;
-extern crate structopt;
-extern crate warp;
-
-extern crate common;
-#[cfg(test)]
-extern crate git_fixture;
-
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -31,6 +8,7 @@ use std::time::Duration;
 
 use crossbeam::atomic::ArcCell;
 use failure::Error;
+use log::error;
 use structopt::StructOpt;
 
 use common::deployment::AllDeployerStatus;
