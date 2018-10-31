@@ -2,10 +2,8 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use failure::Error;
-use regex;
-use serde_json;
-use serde_yaml;
+use failure::{bail, format_err, Error};
+use log::{debug, error, info, warn};
 
 use common::deployment::{DeployerStatus, ResourceState, RolloutStatus};
 use common::repo::{Id, ResourceRepo};
@@ -292,6 +290,7 @@ mod test {
     use super::*;
     use common::repo;
     use git_fixture;
+    use serde_json::json;
     use std::path::Path;
 
     fn make_resource_repo(git_fixture: git_fixture::RepoFixture, head: &str) -> impl ResourceRepo {

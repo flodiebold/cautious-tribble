@@ -2,12 +2,14 @@ use kubeclient::clients::KubeClient;
 use kubeclient::resources::Deployment;
 use std::collections::HashMap;
 
-use failure::{Error, ResultExt};
+use failure::{bail, format_err, Error, ResultExt};
 use k8s_openapi::v1_10::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kubeclient::clients::ReadClient;
 use kubeclient::resources::{Kind, Resource as KubeResource};
 use kubeclient::Kubernetes;
-use serde_json;
+use log::{debug, info, warn};
+use serde_derive::{Deserialize, Serialize};
+use serde_json::json;
 
 use common::deployment::{ResourceState, RolloutStatusReason};
 use common::repo::Id;
