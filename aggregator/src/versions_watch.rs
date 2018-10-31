@@ -13,6 +13,7 @@ use common::aggregator::{
     EnvName, Message, ResourceId, ResourceRepoChange, ResourceRepoCommit, ResourceVersion,
     VersionsAnalysis,
 };
+use common::chrono::{TimeZone, Utc};
 use common::repo::{self, GitResourceRepo, ResourceRepo};
 
 use super::ServiceState;
@@ -65,16 +66,19 @@ fn analyze_commit<'repo>(
                         version,
                     });
                 }
-                if analysis
+                let previous_version_id = analysis
                     .resources
                     .get(&resource_id)
                     .and_then(|r| r.version_by_env.get(&env))
-                    .map(|v| *v != entry.content_id)
+                    .map(|v| *v);
+                if previous_version_id
+                    .map(|v| v != entry.content_id)
                     .unwrap_or(true)
                 {
                     changes.push(ResourceRepoChange::VersionDeployed {
                         resource: resource_id,
                         env,
+                        previous_version_id,
                         version_id: entry.content_id,
                     });
                 }
@@ -150,6 +154,20 @@ fn analyze_commit<'repo>(
     Ok(ResourceRepoCommit {
         id: repo::oid_to_id(commit.id()),
         message: commit.message().unwrap_or("[invalid utf8]").to_string(),
+        author_name: commit
+            .author()
+            .name()
+            .unwrap_or("[invalid utf8]")
+            .to_string(),
+        author_email: commit
+            .author()
+            .email()
+            .unwrap_or("[invalid utf8]")
+            .to_string(),
+        time: Utc
+            .timestamp_opt(commit.author().when().seconds(), 0)
+            .single()
+            .unwrap_or_else(|| Utc.timestamp(0, 0)),
         changes,
     })
 }

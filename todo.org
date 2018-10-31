@@ -131,18 +131,18 @@ DM-Transition-Name: pp
 DM-Source: dev
 DM-Target: pp
 ** TODO more details for Blocked and Failed transition status
-** TODO add manual confirm check
+** TODO add unlock after transition
 ** TODO Copy logs from commits when transitioning
 ** TODO add per-resource locks
 ** TODO handle remote callbacks during push and use push_update_reference
  - and handle push conficts
 ** TODO don't transition resources that don't have a base file in the target env
-** TODO add unlock after transition
+** TODO allow restricting transitions to subdirs
+** TODO add manual confirm check
 ** TODO add jenkins checks
 ** TODO add k8s job checks
 ** TODO fix signal handling
 ** TODO reload config on every loop
-** TODO allow restricting transitions to subdirs
 ** TODO make runnable as CLI tool
 ** TODO add dry run mode
 ** TODO don't log stack traces for connection failures etc.
@@ -253,6 +253,7 @@ warp: bind_with_graceful_shutdown
  - allow filtering history tab by env
 ** TODO allow filtering history tab by resource?
 ** TODO allow locking environments
+ - require giving message
 ** TODO allow locking resources
 ** TODO allow searching resources by labels
 ** TODO add unit tests
