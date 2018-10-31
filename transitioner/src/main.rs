@@ -1,27 +1,3 @@
-#[macro_use]
-extern crate failure;
-extern crate git2;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_json;
-extern crate serde_yaml;
-extern crate structopt;
-#[macro_use]
-extern crate log;
-extern crate chrono;
-extern crate cron;
-extern crate crossbeam;
-extern crate env_logger;
-extern crate indexmap;
-extern crate reqwest;
-extern crate warp;
-
-extern crate common;
-#[cfg(test)]
-extern crate git_fixture;
-
 use std::fmt::Write;
 use std::path::PathBuf;
 use std::process;
@@ -32,9 +8,11 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use cron::Schedule;
-use failure::Error;
+use failure::{bail, Error};
 use git2::{ObjectType, Repository, Signature};
 use indexmap::IndexMap;
+use log::{error, info};
+use serde_derive::Deserialize;
 use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};

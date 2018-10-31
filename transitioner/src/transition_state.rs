@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use failure::{Error, ResultExt};
 use git2::{Repository, TreeBuilder};
-use serde_yaml;
+use serde_derive::{Deserialize, Serialize};
 
 use common::git::{self, TreeZipper};
 

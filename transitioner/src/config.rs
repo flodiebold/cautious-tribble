@@ -3,7 +3,7 @@ use std::path::Path;
 
 use failure::Error;
 use indexmap::IndexMap;
-use serde_yaml;
+use serde_derive::Deserialize;
 
 use common;
 
