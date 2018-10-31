@@ -8,10 +8,15 @@ import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 
-import { IDeployerResourceState, IResourceVersion, IUiData } from "./index";
+import {
+    IDeployerResourceState,
+    IResourceStatus,
+    IResourceVersion,
+    IUiData
+} from "./index";
 
 interface IResourceHistoryProps {
-    versions: IResourceVersion[];
+    resourceStatus: IResourceStatus;
     statusByEnv: Array<{ env: string; status: IDeployerResourceState }>;
 }
 
@@ -38,37 +43,77 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
     };
 
     public render() {
-        const reversed = this.props.versions.slice().reverse();
+        const resource = this.props.resourceStatus;
+        const versions = Object.keys(resource.versions)
+            .map(v => resource.versions[v])
+            .reverse();
+        let x = 30;
+        const versionsAndEnvs = [];
+        for (const v of versions) {
+            for (const env of Object.keys(resource.version_by_env)) {
+                if (resource.version_by_env[env] === v.version_id) {
+                    const w = 50;
+                    versionsAndEnvs.push(
+                        <g>
+                            <rect
+                                key={env}
+                                x={x - 8}
+                                y={25 - 8}
+                                width={w}
+                                height={16}
+                                fill="green"
+                                stroke="darkGreen"
+                                strokeWidth={2}
+                                rx={6}
+                                ry={6}
+                            />
+                            <text
+                                fill="white"
+                                textAnchor="start"
+                                alignmentBaseline="middle"
+                                x={x - 2}
+                                y={25}
+                            >
+                                {env}
+                            </text>
+                        </g>
+                    );
+                    x += w + 9;
+                }
+            }
+            versionsAndEnvs.push(
+                <circle
+                    key={v.version}
+                    cx={x}
+                    cy={25}
+                    r={8}
+                    fill="green"
+                    stroke="darkGreen"
+                    strokeWidth={2}
+                    onMouseEnter={this.handlePopoverOpen.bind(this, v)}
+                    onMouseLeave={this.handlePopoverClose}
+                />
+            );
+            x += 25;
+        }
         return (
             <div>
                 <svg
-                    viewBox="0 0 200 50"
+                    viewBox={`0 0 ${x + 25} 50`}
                     xmlns="http://www.w3.org/2000/svg"
-                    style={{ width: 200, height: 50 }}
+                    style={{ width: x + 25, height: 50 }}
                 >
-                    {reversed.length > 0 && (
+                    {x > 55 && (
                         <line
                             x1={30}
                             y1={25}
-                            x2={5 + reversed.length * 25}
+                            x2={x - 25}
                             y2={25}
                             stroke="darkGreen"
                             strokeWidth={2}
                         />
                     )}
-                    {reversed.map((v, i) => (
-                        <circle
-                            key={v.version}
-                            cx={30 + i * 25}
-                            cy={25}
-                            r={8}
-                            fill="green"
-                            stroke="darkGreen"
-                            strokeWidth={2}
-                            onMouseEnter={this.handlePopoverOpen.bind(this, v)}
-                            onMouseLeave={this.handlePopoverClose}
-                        />
-                    ))}
+                    {versionsAndEnvs}
                 </svg>
                 <Popover
                     style={{ top: 10, pointerEvents: "none" }}
@@ -104,9 +149,6 @@ export function ResourcesView(props: IResourcesViewProps) {
             env,
             status: props.data.deployers[env].status_by_resource[name]
         }));
-        const versions = Object.keys(resource.versions).map(
-            v => resource.versions[v]
-        );
         lines.push(
             <TableRow key={resource.name}>
                 <TableCell>{resource.name}</TableCell>
@@ -118,7 +160,7 @@ export function ResourcesView(props: IResourcesViewProps) {
                 </TableCell>
                 <TableCell>
                     <ResourceHistory
-                        versions={versions}
+                        resourceStatus={resource}
                         statusByEnv={statusByEnv}
                     />
                 </TableCell>

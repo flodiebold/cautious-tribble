@@ -11,9 +11,6 @@ mod integration_test;
 use crate::integration_test::*;
 
 fn main() -> Result<(), Error> {
-    let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(2, Arc::clone(&term))?; // int
-    signal_hook::flag::register(15, Arc::clone(&term))?; // term
     let mut test = IntegrationTest::new_playground();
     let fixture = test.git_fixture(include_str!("./example.yaml"));
     fixture.set_ref("refs/heads/master", "base").unwrap();
@@ -31,6 +28,10 @@ fn main() -> Result<(), Error> {
         .wait_env_rollout_done("prod");
 
     eprintln!("Playground running");
+
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(2, Arc::clone(&term))?; // int
+    signal_hook::flag::register(15, Arc::clone(&term))?; // term
 
     loop {
         thread::sleep(std::time::Duration::from_millis(1000));

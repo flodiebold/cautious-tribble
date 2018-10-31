@@ -92,8 +92,8 @@ impl IntegrationTest {
     pub fn new_playground() -> IntegrationTest {
         let root = executable_root();
         let dir = tempfile::Builder::new()
-            .prefix("playground")
-            .rand_bytes(0)
+            .prefix("playground_")
+            .rand_bytes(2)
             .tempdir_in("")
             .unwrap();
         eprintln!("temp dir for test: {:?}", dir.path());
