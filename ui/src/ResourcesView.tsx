@@ -96,46 +96,40 @@ interface IResourcesViewProps {
     data: IUiData;
 }
 
-export class ResourcesView extends React.Component<IResourcesViewProps> {
-    public render() {
-        const lines = [];
-        for (const name of Object.keys(this.props.data.resources)) {
-            const resource = this.props.data.resources[name];
-            const statusByEnv = Object.keys(this.props.data.deployers).map(
-                env => ({
-                    env,
-                    status: this.props.data.deployers[env].status_by_resource[
-                        name
-                    ]
-                })
-            );
-            const versions = Object.keys(resource.versions).map(
-                v => resource.versions[v]
-            );
-            lines.push(
-                <TableRow key={resource.name}>
-                    <TableCell>{resource.name}</TableCell>
-                    <TableCell>
-                        <pre>{JSON.stringify(statusByEnv, null, 4)}</pre>
-                    </TableCell>
-                    <TableCell>
-                        <pre>{JSON.stringify(resource, null, 4)}</pre>
-                    </TableCell>
-                    <TableCell>
-                        <ResourceHistory
-                            versions={versions}
-                            statusByEnv={statusByEnv}
-                        />
-                    </TableCell>
-                </TableRow>
-            );
-        }
-        return (
-            <Paper>
-                <Table>
-                    <TableBody>{lines}</TableBody>
-                </Table>
-            </Paper>
+export function ResourcesView(props: IResourcesViewProps) {
+    const lines = [];
+    for (const name of Object.keys(props.data.resources)) {
+        const resource = props.data.resources[name];
+        const statusByEnv = Object.keys(props.data.deployers).map(env => ({
+            env,
+            status: props.data.deployers[env].status_by_resource[name]
+        }));
+        const versions = Object.keys(resource.versions).map(
+            v => resource.versions[v]
+        );
+        lines.push(
+            <TableRow key={resource.name}>
+                <TableCell>{resource.name}</TableCell>
+                <TableCell>
+                    <pre>{JSON.stringify(statusByEnv, null, 4)}</pre>
+                </TableCell>
+                <TableCell>
+                    <pre>{JSON.stringify(resource, null, 4)}</pre>
+                </TableCell>
+                <TableCell>
+                    <ResourceHistory
+                        versions={versions}
+                        statusByEnv={statusByEnv}
+                    />
+                </TableCell>
+            </TableRow>
         );
     }
+    return (
+        <Paper>
+            <Table>
+                <TableBody>{lines}</TableBody>
+            </Table>
+        </Paper>
+    );
 }
