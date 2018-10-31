@@ -9,7 +9,7 @@ use common::aggregator::Message;
 use common::deployment::AllDeployerStatus;
 
 use super::ServiceState;
-use config::Config;
+use crate::config::Config;
 
 fn get_current_deployer_status(config: &Config) -> Result<AllDeployerStatus, Error> {
     if let Some(deployer_url) = config.deployer_url.as_ref() {

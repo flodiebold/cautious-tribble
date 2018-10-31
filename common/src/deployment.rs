@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use repo::Id;
+use crate::repo::Id;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RolloutStatus {

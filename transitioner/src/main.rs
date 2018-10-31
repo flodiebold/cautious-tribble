@@ -50,9 +50,9 @@ mod locks;
 mod precondition;
 mod transition_state;
 
-use config::Config;
-use precondition::{Precondition, PreconditionResult};
-use transition_state::{TransitionState, TransitionStates};
+use crate::config::Config;
+use crate::precondition::{Precondition, PreconditionResult};
+use crate::transition_state::{TransitionState, TransitionStates};
 
 #[derive(Debug, StructOpt)]
 struct Options {

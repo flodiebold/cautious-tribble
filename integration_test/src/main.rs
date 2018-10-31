@@ -23,7 +23,7 @@ use failure::Error;
 
 mod integration_test;
 
-use integration_test::*;
+use crate::integration_test::*;
 
 fn main() -> Result<(), Error> {
     let term = Arc::new(AtomicBool::new(false));

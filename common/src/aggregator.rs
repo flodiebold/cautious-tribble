@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use indexmap::IndexMap;
 
-use deployment::AllDeployerStatus;
-use repo::Id;
-use transitions::AllTransitionStatus;
+use crate::deployment::AllDeployerStatus;
+use crate::repo::Id;
+use crate::transitions::AllTransitionStatus;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceVersion {

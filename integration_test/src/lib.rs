@@ -14,4 +14,4 @@ extern crate git_fixture;
 
 mod integration_test;
 
-pub use integration_test::*;
+pub use crate::integration_test::*;
