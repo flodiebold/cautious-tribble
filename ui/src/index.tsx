@@ -71,7 +71,7 @@ export interface IResourceVersion {
     version: string;
 }
 
-interface IResourceStatus {
+export interface IResourceStatus {
     name: string;
     versions: { [id: string]: IResourceVersion };
     base_data: { [env: string]: string };
