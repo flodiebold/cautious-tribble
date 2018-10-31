@@ -1,32 +1,10 @@
-extern crate env_logger;
-#[macro_use]
-extern crate failure;
-extern crate git2;
-#[macro_use]
-extern crate log;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_json;
-extern crate bus;
-extern crate crossbeam;
-extern crate futures;
-extern crate reqwest;
-extern crate serde_yaml;
-extern crate structopt;
-extern crate warp;
-
-extern crate common;
-#[cfg(test)]
-extern crate git_fixture;
-
 use std::path::PathBuf;
 use std::process;
 use std::sync::{Arc, Mutex, RwLock};
 
 use bus::Bus;
 use failure::Error;
+use log::info;
 use structopt::StructOpt;
 
 use common::aggregator::{FullStatus, Message};

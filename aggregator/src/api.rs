@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::thread;
 
 use futures::future;
-use serde_json;
+use log::{debug, info, trace};
+use serde_json::json;
 use warp::{self, Filter, Future, Sink, Stream};
 
 use common::aggregator::Message;

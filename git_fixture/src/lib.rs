@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use failure::{bail, format_err, Error};
 use serde_derive::{Deserialize, Serialize};
-use failure::{Error, bail, format_err};
 
 use common::git::TreeZipper;
 
