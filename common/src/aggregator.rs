@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::deployment::AllDeployerStatus;
 use crate::repo::Id;

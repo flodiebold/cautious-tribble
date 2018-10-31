@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
+use serde_derive::{Deserialize, Serialize};
 
 use super::repo::Id;
 
