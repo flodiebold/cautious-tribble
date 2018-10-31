@@ -19,12 +19,12 @@ pub fn start(service_state: Arc<ServiceState>) {
         let port = service_state.config.common.api_port.unwrap_or(9001);
         let state = warp::any().map(move || &*service_state);
         let health = warp::path("health")
-            .and(warp::index())
+            .and(warp::path::end())
             .and(warp::get2())
             .and(state.clone())
             .map(health);
         let status = warp::path("status")
-            .and(warp::index())
+            .and(warp::path::end())
             .and(warp::get2())
             .and(state)
             .map(status);

@@ -261,6 +261,8 @@ warp: bind_with_graceful_shutdown
 ** resources tab
 ** history tab
   - filter by env, event type, resources
+*** TODO remove trailers from messages
+*** TODO add times
 * general
 ** DONE set up rustfmt
    CLOSED: [2018-07-21 Sa 14:55]

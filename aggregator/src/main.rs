@@ -9,13 +9,12 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
-extern crate serde_yaml;
-#[macro_use]
-extern crate structopt;
 extern crate bus;
 extern crate crossbeam;
 extern crate futures;
 extern crate reqwest;
+extern crate serde_yaml;
+extern crate structopt;
 extern crate warp;
 
 extern crate common;
