@@ -154,12 +154,6 @@ export function ResourcesView(props: IResourcesViewProps) {
             <TableRow key={resource.name}>
                 <TableCell>{resource.name}</TableCell>
                 <TableCell>
-                    <pre>{JSON.stringify(statusByEnv, null, 4)}</pre>
-                </TableCell>
-                <TableCell>
-                    <pre>{JSON.stringify(resource, null, 4)}</pre>
-                </TableCell>
-                <TableCell>
                     <ResourceHistory
                         resourceStatus={resource}
                         statusByEnv={statusByEnv}

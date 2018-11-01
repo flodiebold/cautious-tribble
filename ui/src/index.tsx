@@ -100,6 +100,7 @@ export interface IVersionDeployed {
     change: "VersionDeployed";
     resource: string;
     env: string;
+    previous_version_id: string | null;
     version_id: string;
 }
 
