@@ -69,6 +69,7 @@ export interface IResourceVersion {
     version_id: string;
     introduced_in: string;
     version: string;
+    change_log: string;
 }
 
 export interface IResourceStatus {

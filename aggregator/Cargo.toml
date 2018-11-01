@@ -23,6 +23,8 @@ bus = "2"
 log = "0.4"
 env_logger = "0.5"
 
+regex = "1"
+
 common = { path = "../common" }
 
 [dev-dependencies]

@@ -100,6 +100,9 @@ commits:
         image: exampleservice:42
     message: |
       Update s1 to 42
+
+      42
+        Changelog of version 42.
     name: c1
   - files:
       latest/version/s1.yaml: |
@@ -108,4 +111,7 @@ commits:
         image: exampleservice:43
     message: |
       Update s1 to 43
+
+      43
+        Changelog of version 43.
     name: c2
