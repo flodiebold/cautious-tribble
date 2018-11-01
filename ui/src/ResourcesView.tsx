@@ -32,7 +32,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
     ) => {
         this.setState({
             popoverElem: event.currentTarget,
-            popoverText: version.version
+            popoverText: version.change_log
         });
     };
 
@@ -117,7 +117,11 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                     {versionsAndEnvs}
                 </svg>
                 <Popover
-                    style={{ top: 10, pointerEvents: "none" }}
+                    style={{
+                        top: 10,
+                        pointerEvents: "none",
+                        whiteSpace: "pre"
+                    }}
                     open={!!this.state.popoverElem}
                     anchorEl={this.state.popoverElem}
                     anchorOrigin={{
