@@ -47,70 +47,71 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
         const versions = Object.keys(resource.versions)
             .map(v => resource.versions[v])
             .reverse();
-        let x = 30;
+        let x = 2;
         const versionsAndEnvs = [];
+        const r = 15;
         for (const v of versions) {
             for (const env of Object.keys(resource.version_by_env)) {
                 if (resource.version_by_env[env] === v.version_id) {
-                    const w = 50;
+                    const w = env.length * 8;
                     versionsAndEnvs.push(
                         <g>
                             <rect
                                 key={env}
-                                x={x - 8}
-                                y={25 - 8}
+                                x={x}
+                                y={2}
                                 width={w}
-                                height={16}
-                                fill="green"
-                                stroke="darkGreen"
+                                height={r * 2}
+                                fill="#8C7"
+                                stroke="#232"
                                 strokeWidth={2}
-                                rx={6}
-                                ry={6}
+                                rx={10}
+                                ry={10}
                             />
                             <text
-                                fill="white"
+                                fontFamily="monospace"
+                                stroke="#232"
                                 textAnchor="start"
                                 alignmentBaseline="middle"
-                                x={x - 2}
-                                y={25}
+                                x={x + 2}
+                                y={r + 2}
                             >
                                 {env}
                             </text>
                         </g>
                     );
-                    x += w + 9;
+                    x += w + 4;
                 }
             }
             versionsAndEnvs.push(
                 <circle
                     key={v.version}
-                    cx={x}
-                    cy={25}
+                    cx={x + 8 + 2}
+                    cy={r + 2}
                     r={8}
-                    fill="green"
-                    stroke="darkGreen"
+                    fill="#8C7"
+                    stroke="#232"
                     strokeWidth={2}
                     onMouseEnter={this.handlePopoverOpen.bind(this, v)}
                     onMouseLeave={this.handlePopoverClose}
                 />
             );
-            x += 25;
+            x += 8 * 2 + 4;
         }
         return (
             <div>
                 <svg
-                    viewBox={`0 0 ${x + 25} 50`}
+                    viewBox={`0 0 ${x + r * 2 + 4} ${r * 2 + 4}`}
                     xmlns="http://www.w3.org/2000/svg"
-                    style={{ width: x + 25, height: 50 }}
+                    style={{ width: x + r * 2 + 4, height: r * 2 + 4 }}
                 >
                     {x > 55 && (
                         <line
-                            x1={30}
-                            y1={25}
-                            x2={x - 25}
-                            y2={25}
-                            stroke="darkGreen"
-                            strokeWidth={2}
+                            x1={r}
+                            y1={r + 2}
+                            x2={x - r}
+                            y2={r + 2}
+                            stroke="black"
                         />
                     )}
                     {versionsAndEnvs}
