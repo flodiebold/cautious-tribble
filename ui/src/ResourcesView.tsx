@@ -14,6 +14,7 @@ import {
     IResourceVersion,
     IUiData
 } from "./index";
+import { VersionDialog } from "./VersionDialog";
 
 interface IResourceHistoryProps {
     resourceStatus: IResourceStatus;
@@ -23,7 +24,8 @@ interface IResourceHistoryProps {
 class ResourceHistory extends React.Component<IResourceHistoryProps> {
     public state = {
         popoverElem: null,
-        popoverText: null
+        popoverText: null,
+        showingVersionDialogFor: null
     };
 
     public handlePopoverOpen = (
@@ -40,6 +42,10 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
         if (this.state.popoverElem === event.currentTarget) {
             this.setState({ popoverElem: null });
         }
+    };
+
+    public handleVersionClick = (version: IResourceVersion) => {
+        this.setState({ showingVersionDialogFor: version });
     };
 
     public render() {
@@ -97,10 +103,15 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                     strokeWidth={2}
                     onMouseEnter={this.handlePopoverOpen.bind(this, v)}
                     onMouseLeave={this.handlePopoverClose}
+                    onClick={this.handleVersionClick.bind(this, v)}
                 />
             );
             x += 8 * 2 + 4;
         }
+        const showingVersionDialogFor = this.state.showingVersionDialogFor;
+        const deployableEnvs = Object.keys(resource.version_by_env).filter(
+            env => env !== "latest" // FIXME
+        );
         return (
             <div>
                 <svg
@@ -140,6 +151,16 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                 >
                     {this.state.popoverText}
                 </Popover>
+                {showingVersionDialogFor && (
+                    <VersionDialog
+                        version={showingVersionDialogFor}
+                        resource={resource.name}
+                        onClose={() =>
+                            this.setState({ showingVersionDialogFor: null })
+                        }
+                        deployableEnvs={deployableEnvs}
+                    />
+                )}
             </div>
         );
     }
