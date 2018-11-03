@@ -81,6 +81,7 @@ export interface IResourceStatus {
 
 export type IChangeVersion = {
     change: "Version";
+    resource: string;
 } & IResourceVersion;
 
 export interface IChangeDeployable {

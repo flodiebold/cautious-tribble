@@ -31,9 +31,11 @@ function getGroup(change: ResourceRepoChange): [string, string] | null {
                 return [`Updated on ${change.env}:`, change.resource];
             }
 
+        case "Version":
+            return [`New version for ${change.resource}:`, change.version];
+
         case "BaseData":
         case "Deployable":
-        case "Version":
         default:
             return null;
     }
