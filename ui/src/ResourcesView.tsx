@@ -52,7 +52,10 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
         const r = 15;
         for (const v of versions) {
             for (const env of Object.keys(resource.version_by_env)) {
-                if (resource.version_by_env[env] === v.version_id) {
+                if (
+                    resource.version_by_env[env] === v.version_id &&
+                    env !== "latest" // FIXME
+                ) {
                     const w = env.length * 8;
                     versionsAndEnvs.push(
                         <g>

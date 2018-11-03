@@ -239,8 +239,9 @@ warp: bind_with_graceful_shutdown
    CLOSED: [2018-09-04 Di 15:27]
 ** DONE show histories for resources
    CLOSED: [2018-10-14 So 19:33]
+** DONE show version deployed according to version repo as bubble
+   CLOSED: [2018-11-03 Sa 11:50]
 ** TODO show deployment status of each resource
- - show version deployed according to version repo as bubble
  - show spinner if still deploying (including if the deployer hasn't caught up yet)
  - show error symbol for errors
 ** TODO show deployment status details (e.g. error messages)
@@ -251,6 +252,8 @@ warp: bind_with_graceful_shutdown
 ** TODO allow reverting resources to a previous version
 ** TODO show transition status
  - including detailed check status
+** TODO show lock status of each env
+** TODO show lock status of each resource
 ** TODO show version history of an env
  - allow filtering history tab by env
 ** TODO allow filtering history tab by resource?
@@ -258,6 +261,9 @@ warp: bind_with_graceful_shutdown
  - require giving message
 ** TODO allow locking resources
 ** TODO allow searching resources by labels
+** TODO fix hack hiding 'latest'
+ - both in resource view (bubbles) and in history view ("updated on" lines)
+ - maybe instead base it on whether there's a deployer for the env?
 ** TODO add unit tests
 ** TODO reconnect websocket after losing connection
 ** TODO oauth support

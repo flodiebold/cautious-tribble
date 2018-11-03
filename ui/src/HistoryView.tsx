@@ -22,6 +22,9 @@ interface IHistoryViewProps {
 function getGroup(change: ResourceRepoChange): [string, string] | null {
     switch (change.change) {
         case "VersionDeployed":
+            if (change.env === "latest") {
+                return null; // FIXME
+            }
             if (change.previous_version_id === null) {
                 return [`Newly deployed to ${change.env}:`, change.resource];
             } else {
