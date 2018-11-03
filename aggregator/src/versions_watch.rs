@@ -169,10 +169,13 @@ fn analyze_commit<'repo>(
                         version: version_name.clone(),
                         change_log,
                     };
-                    changes.push(ResourceRepoChange::Version {
+                    let change = ResourceRepoChange::Version {
                         resource: resource_id.clone(),
                         version,
-                    });
+                    };
+                    if !changes.contains(&change) {
+                        changes.push(change);
+                    }
                 }
                 let previous_version_id = analysis
                     .resources
