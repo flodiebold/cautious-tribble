@@ -69,6 +69,7 @@ export interface IResourceVersion {
     version_id: string;
     introduced_in: string;
     version: string;
+    change_log: string;
 }
 
 export interface IResourceStatus {
@@ -80,6 +81,7 @@ export interface IResourceStatus {
 
 export type IChangeVersion = {
     change: "Version";
+    resource: string;
 } & IResourceVersion;
 
 export interface IChangeDeployable {
@@ -100,6 +102,7 @@ export interface IVersionDeployed {
     change: "VersionDeployed";
     resource: string;
     env: string;
+    previous_version_id: string | null;
     version_id: string;
 }
 

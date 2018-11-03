@@ -8,14 +8,59 @@ import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 
-import { IResourceRepoCommit, IUiData } from "./index";
+import {
+    IResourceRepoCommit,
+    IUiData,
+    IVersionDeployed,
+    ResourceRepoChange
+} from "./index";
 
 interface IHistoryViewProps {
     data: IUiData;
 }
 
+function getGroup(change: ResourceRepoChange): [string, string] | null {
+    switch (change.change) {
+        case "VersionDeployed":
+            if (change.env === "latest") {
+                return null; // FIXME
+            }
+            if (change.previous_version_id === null) {
+                return [`Newly deployed to ${change.env}:`, change.resource];
+            } else {
+                return [`Updated on ${change.env}:`, change.resource];
+            }
+
+        case "Version":
+            return [`New version for ${change.resource}:`, change.version];
+
+        case "BaseData":
+        case "Deployable":
+        default:
+            return null;
+    }
+}
+
 function CommitRow({ commit }: { commit: IResourceRepoCommit }) {
     const time = new Date(commit.time);
+    const groupedChanges = commit.changes.reduce((groups, c) => {
+        const groupResult = getGroup(c);
+        if (!groupResult) {
+            return groups;
+        }
+        const [group, value] = groupResult;
+        if (!groups.has(group)) {
+            groups.set(group, []);
+        }
+        groups.get(group).push(value);
+        return groups;
+    }, new Map());
+    const newlyDeployed = commit.changes
+        .filter(
+            c =>
+                c.change === "VersionDeployed" && c.previous_version_id === null
+        )
+        .map(c => (c as IVersionDeployed).resource);
     return (
         <TableRow key={commit.id}>
             <TableCell>{time.toLocaleString()}</TableCell>
@@ -23,7 +68,11 @@ function CommitRow({ commit }: { commit: IResourceRepoCommit }) {
                 {commit.message}
             </TableCell>
             <TableCell>
-                <pre>{JSON.stringify(commit, null, 4)}</pre>
+                {[...groupedChanges.entries()].map(([typ, group]) => (
+                    <p>
+                        {typ} {group.join(", ")}
+                    </p>
+                ))}
             </TableCell>
         </TableRow>
     );

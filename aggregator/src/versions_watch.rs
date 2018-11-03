@@ -7,6 +7,7 @@ use std::time::Duration;
 use failure::{format_err, Error};
 use git2::{Commit, Oid, Sort};
 use log::error;
+use regex::Regex;
 use serde_yaml;
 
 use common::aggregator::{
@@ -17,6 +18,107 @@ use common::chrono::{TimeZone, Utc};
 use common::repo::{self, GitResourceRepo, ResourceRepo};
 
 use super::ServiceState;
+
+fn remove_trailers(mut msg: String) -> (String, HashMap<String, String>) {
+    // TODO: handle multiline etc.
+    let r = Regex::new(r"\s*(?m)^([a-zA-Z-]+)\s*:\s*(.*)$\s*\z").unwrap();
+    let mut trailers = HashMap::new();
+    while let Some(m) = r.captures(&msg) {
+        let start = m.get(0).expect("first group always exists").start();
+        let key = m[1].to_string();
+        let value = m[2].to_string();
+        trailers.insert(key, value);
+        msg.truncate(start);
+    }
+    (msg, trailers)
+}
+
+fn split_log_message(msg: &str) -> (String, Option<String>) {
+    let r = Regex::new(r"(?m)\n\s*\n").unwrap();
+    let (header, body) = if let Some(m) = r.find(msg) {
+        let pos = m.start();
+        let body = msg[m.end()..].trim().to_string();
+        if !body.is_empty() {
+            (&msg[..pos], Some(body))
+        } else {
+            (&msg[..pos], None)
+        }
+    } else {
+        (msg, None)
+    };
+
+    (header.trim().replace('\n', " "), body)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn remove_trailers_noop() {
+        let s = r"Foo bar
+Baz.";
+        let (s2, trailers) = remove_trailers(s.to_string());
+        assert_eq!(s, s2);
+        assert!(trailers.is_empty());
+    }
+    #[test]
+    fn remove_trailers_one() {
+        let s = r"Foo bar
+Baz.
+
+DM-Transition: blubb
+
+";
+        let (s2, trailers) = remove_trailers(s.to_string());
+        assert_eq!("Foo bar\nBaz.", s2);
+        assert_eq!(trailers["DM-Transition"], "blubb");
+    }
+    #[test]
+    fn remove_trailers_multiple() {
+        let s = r"Foo bar
+Baz.
+
+DM-Transition: blubb
+
+DM-Source: foo
+DM-Target: bar
+
+";
+        let (s2, trailers) = remove_trailers(s.to_string());
+        assert_eq!("Foo bar\nBaz.", s2);
+        assert_eq!(trailers["DM-Transition"], "blubb");
+        assert_eq!(trailers["DM-Source"], "foo");
+        assert_eq!(trailers["DM-Target"], "bar");
+    }
+
+    #[test]
+    fn split_log_message_noop() {
+        let s = "Foo bar baz.";
+        let (header, body) = split_log_message(s);
+        assert_eq!(header, s);
+        assert_eq!(body, None);
+    }
+
+    #[test]
+    fn split_log_message_merge_lines() {
+        let s = "Foo bar
+baz.";
+        let (header, body) = split_log_message(s);
+        assert_eq!(header, "Foo bar baz.");
+        assert_eq!(body, None);
+    }
+
+    #[test]
+    fn split_log_message_1() {
+        let s = "Foo bar
+
+baz.";
+        let (header, body) = split_log_message(s);
+        assert_eq!(header, "Foo bar");
+        assert_eq!(body.unwrap(), "baz.");
+    }
+}
 
 fn analyze_commit<'repo>(
     repo: &'repo GitResourceRepo,
@@ -30,6 +132,10 @@ fn analyze_commit<'repo>(
         PathBuf::from("dev"),
         PathBuf::from("prod"),
     ]; // FIXME
+
+    let msg = commit.message().unwrap_or("[invalid utf8]").to_string();
+    let (msg, _trailers) = remove_trailers(msg);
+    let (msg_header, msg_body) = split_log_message(&msg);
 
     for env_path in &envs {
         repo.walk_commit(
@@ -56,15 +162,20 @@ fn analyze_commit<'repo>(
                     .unwrap_or(true)
                 {
                     let version_name = content.get("version").expect("FIXME");
+                    let change_log = msg_body.clone().unwrap_or_else(String::new);
                     let version = ResourceVersion {
                         version_id: entry.content_id,
                         introduced_in: repo::oid_to_id(commit.id()),
                         version: version_name.clone(),
+                        change_log,
                     };
-                    changes.push(ResourceRepoChange::Version {
+                    let change = ResourceRepoChange::Version {
                         resource: resource_id.clone(),
                         version,
-                    });
+                    };
+                    if !changes.contains(&change) {
+                        changes.push(change);
+                    }
                 }
                 let previous_version_id = analysis
                     .resources
@@ -153,7 +264,7 @@ fn analyze_commit<'repo>(
 
     Ok(ResourceRepoCommit {
         id: repo::oid_to_id(commit.id()),
-        message: commit.message().unwrap_or("[invalid utf8]").to_string(),
+        message: msg_header,
         author_name: commit
             .author()
             .name()

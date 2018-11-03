@@ -13,6 +13,7 @@ pub struct ResourceVersion {
     pub version_id: Id,
     pub introduced_in: Id,
     pub version: String,
+    pub change_log: String,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
