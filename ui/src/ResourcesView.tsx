@@ -67,7 +67,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                         <g>
                             <rect
                                 key={env}
-                                x={x}
+                                x={x + 2}
                                 y={2}
                                 width={w}
                                 height={r * 2}
@@ -82,7 +82,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                                 stroke="#232"
                                 textAnchor="start"
                                 alignmentBaseline="middle"
-                                x={x + 2}
+                                x={x + 4}
                                 y={r + 2}
                             >
                                 {env}
@@ -109,9 +109,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
             x += 8 * 2 + 4;
         }
         const showingVersionDialogFor = this.state.showingVersionDialogFor;
-        const deployableEnvs = Object.keys(resource.version_by_env).filter(
-            env => env !== "latest" // FIXME
-        );
+        const deployableEnvs = Object.keys(resource.version_by_env);
         return (
             <div>
                 <svg

@@ -181,7 +181,7 @@ i.e. validation failures in latest should prevent only those services from being
 ** playground
 *** TODO allow using real kubernetes
 *** TODO allow using different config?
-*** TODO restart services when they are rebuilt
+*** TODO restart services when they are rebuilt (or killed for any reason)
 ** test cases
 *** deployer
 **** when I add a service in dev, the deployer deploys it

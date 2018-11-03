@@ -1,6 +1,6 @@
 export interface IDeploymentData {
     message: string;
-    deployments: { resource: string; version_id: string; env: string }[];
+    deployments: Array<{ resource: string; version_id: string; env: string }>;
 }
 
 export function deploy(data: IDeploymentData): Promise<void> {

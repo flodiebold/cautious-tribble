@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import Button from "@material-ui/core/Button";
 import Checkbox from "@material-ui/core/Checkbox";
+import CircularProgress from "@material-ui/core/CircularProgress";
 import Dialog from "@material-ui/core/Dialog";
 import DialogActions from "@material-ui/core/DialogActions";
 import DialogContent from "@material-ui/core/DialogContent";
@@ -17,7 +18,6 @@ import FormHelperText from "@material-ui/core/FormHelperText";
 import FormLabel from "@material-ui/core/FormLabel";
 import TextField from "@material-ui/core/TextField";
 import withMobileDialog from "@material-ui/core/withMobileDialog";
-import CircularProgress from "@material-ui/core/CircularProgress";
 
 import { IResourceVersion } from ".";
 import { deploy } from "./api";
@@ -60,7 +60,7 @@ export function VersionDialog(props: IVersionDialogProps) {
             props.onClose();
         } catch (e) {
             // TODO handle error
-            console.error("error deploying", e);
+            console.error("error deploying", e); // tslint:disable-line
         } finally {
             setDeploying(false);
         }
