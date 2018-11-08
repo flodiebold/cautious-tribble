@@ -62,14 +62,14 @@ function CommitRow({ commit }: { commit: IResourceRepoCommit }) {
         )
         .map(c => (c as IVersionDeployed).resource);
     return (
-        <TableRow key={commit.id}>
+        <TableRow>
             <TableCell>{time.toLocaleString()}</TableCell>
             <TableCell style={{ whiteSpace: "pre-line" }}>
                 {commit.message}
             </TableCell>
             <TableCell>
                 {[...groupedChanges.entries()].map(([typ, group]) => (
-                    <p>
+                    <p key={typ}>
                         {typ} {group.join(", ")}
                     </p>
                 ))}
@@ -88,7 +88,7 @@ export function HistoryView(props: IHistoryViewProps) {
                     <Table>
                         <TableBody>
                             {reversed.map(commit => (
-                                <CommitRow commit={commit} />
+                                <CommitRow key={commit.id} commit={commit} />
                             ))}
                         </TableBody>
                     </Table>

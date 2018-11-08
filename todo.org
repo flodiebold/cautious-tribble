@@ -213,11 +213,9 @@ i.e. validation failures in latest should prevent only those services from being
    - metadata / labels (only from latest env?)
  - aggregated / interpreted changes (see below)
 ** TODO fix cpu usage / refactor message distribution
+** TODO fix hardcoded list of envs
 ** TODO test commit analysis
 ** TODO integrationtest websocket updates
-** TODO more resource info
- - type
- - metadata / labels
 ** TODO further commit analysis
  - transition info from commit message trailers
  - locks/unlocks
@@ -233,6 +231,9 @@ i.e. validation failures in latest should prevent only those services from being
 warp: bind_with_graceful_shutdown
 ** TODO add endpoints to lock envs & resources
 ** TODO add endpoint to create new version
+** TODO more resource info
+ - type
+ - metadata / labels
 ** TODO include current state in served UI html
 ** TODO make sure aggregator & ui work and make sense without transitioner
 * ui
@@ -276,8 +277,10 @@ warp: bind_with_graceful_shutdown
 ** resources tab
 ** history tab
   - filter by env, event type, resources
-*** TODO remove trailers from messages
-*** TODO add times
+*** DONE remove trailers from messages
+    CLOSED: [2018-11-08 Do 20:10]
+*** DONE add times
+    CLOSED: [2018-11-08 Do 20:10]
 * general
 ** DONE set up rustfmt
    CLOSED: [2018-07-21 Sa 14:55]
