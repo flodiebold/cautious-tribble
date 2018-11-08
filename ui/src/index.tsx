@@ -115,6 +115,7 @@ export type ResourceRepoChange =
 export interface IResourceRepoCommit {
     id: string;
     message: string;
+    long_message: string;
     author_name: string;
     author_email: string;
     time: string;

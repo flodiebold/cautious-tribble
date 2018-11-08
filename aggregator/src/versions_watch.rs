@@ -265,6 +265,7 @@ fn analyze_commit<'repo>(
     Ok(ResourceRepoCommit {
         id: repo::oid_to_id(commit.id()),
         message: msg_header,
+        long_message: msg_body.unwrap_or_else(String::new),
         author_name: commit
             .author()
             .name()

@@ -62,6 +62,7 @@ pub enum ResourceRepoChange {
 pub struct ResourceRepoCommit {
     pub id: Id,
     pub message: String,
+    pub long_message: String,
     pub time: DateTime<Utc>,
     pub author_name: String,
     pub author_email: String,
