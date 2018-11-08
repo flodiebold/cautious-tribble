@@ -61,7 +61,6 @@ export function VersionDialog(props: IVersionDialogProps) {
         } catch (e) {
             // TODO handle error
             console.error("error deploying", e); // tslint:disable-line
-        } finally {
             setDeploying(false);
         }
     };
