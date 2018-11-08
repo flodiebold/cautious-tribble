@@ -64,9 +64,8 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                 ) {
                     const w = env.length * 8;
                     versionsAndEnvs.push(
-                        <g>
+                        <g key={env}>
                             <rect
-                                key={env}
                                 x={x + 2}
                                 y={2}
                                 width={w}
