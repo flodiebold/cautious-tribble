@@ -1,4 +1,6 @@
 import * as React from "react";
+// @ts-ignore
+import { useEffect, useReducer, useRef, useState } from "react";
 import * as ReactDOM from "react-dom";
 
 import AppBar from "@material-ui/core/AppBar";
@@ -143,83 +145,96 @@ export interface IUiData {
     history: IResourceRepoCommit[];
 }
 
-class Page extends React.Component<{}, { tab: number; data: IUiData }> {
-    constructor(props: {}) {
-        super(props);
-        this.state = {
-            data: {
-                counter: 0,
-                deployers: {},
-                transitions: {},
-                resources: {},
-                history: []
-            },
-            tab: 0
+function useWebSocket(url: string, onMessage: (ev: MessageEvent) => void) {
+    const ws: { current: WebSocket | null } = useRef(null);
+    const timeout: { current: NodeJS.Timeout | null } = useRef(null);
+    const connect = () => {
+        ws.current = new WebSocket(url);
+        ws.current.onmessage = onMessage;
+        ws.current.onclose = (ev: CloseEvent) => {
+            if (ev.code === 1000) {
+                // ok
+                return;
+            }
+            timeout.current = setTimeout(
+                connect,
+                4000 /* TODO make this configurable */
+            );
         };
+    };
+    useEffect(
+        () => {
+            connect();
+            return () => {
+                if (ws.current !== null) {
+                    ws.current.close(1000, "going away");
+                    ws.current = null;
+                }
+                if (timeout.current !== null) {
+                    clearTimeout(timeout.current);
+                    timeout.current = null;
+                }
+            };
+        },
+        [url]
+    );
+}
 
-        const host = document.location ? document.location.host : "";
-
-        const ws = new WebSocket("ws://" + host + "/api");
-
-        ws.onmessage = this.handleWebSocketMessage;
+function applyMessage(data: IUiData, message: Message): IUiData {
+    if (message.type === "FullStatus" || message.type === "DeployerStatus") {
+        Object.assign(data.deployers, message.deployers);
     }
 
-    public handleWebSocketMessage = (ev: MessageEvent) => {
+    if (message.type === "FullStatus" || message.type === "TransitionStatus") {
+        Object.assign(data.transitions, message.transitions);
+    }
+
+    if (message.type === "FullStatus" || message.type === "Versions") {
+        Object.assign(data.resources, message.resources);
+        data.history = message.history;
+    }
+
+    data.counter = message.counter;
+    return data;
+}
+
+function Page() {
+    const [tab, setTab] = useState(0);
+    const [data, dispatchMessage]: [IUiData, (m: Message) => void] = useReducer(
+        applyMessage,
+        {
+            counter: 0,
+            deployers: {},
+            transitions: {},
+            resources: {},
+            history: []
+        }
+    );
+    const host = document.location ? document.location.host : "";
+
+    useWebSocket("ws://" + host + "/api", (ev: MessageEvent) => {
         const message: Message = JSON.parse(ev.data);
+        dispatchMessage(message);
+    });
 
-        this.setState(state => {
-            const data = state.data;
-            if (
-                message.type === "FullStatus" ||
-                message.type === "DeployerStatus"
-            ) {
-                Object.assign(data.deployers, message.deployers);
-            }
-
-            if (
-                message.type === "FullStatus" ||
-                message.type === "TransitionStatus"
-            ) {
-                Object.assign(data.transitions, message.transitions);
-            }
-
-            if (message.type === "FullStatus" || message.type === "Versions") {
-                Object.assign(data.resources, message.resources);
-                data.history = message.history;
-            }
-
-            data.counter = message.counter;
-            return { data };
-        });
-    };
-
-    public handleTabChange = (ev: any, tab: number) => {
-        this.setState({ tab });
-    };
-
-    public render() {
-        return (
-            <div>
-                <AppBar position="static">
-                    <Tabs
-                        value={this.state.tab}
-                        onChange={this.handleTabChange}
-                    >
-                        <Tab label="Resources" />
-                        <Tab label="History" />
-                        <Tab label="Data" />
-                    </Tabs>
-                </AppBar>
-                {this.state.tab === 0 && (
-                    <ResourcesView data={this.state.data} />
-                )}
-                {this.state.tab === 1 && <HistoryView data={this.state.data} />}
-                {this.state.tab === 2 && (
-                    <pre>{JSON.stringify(this.state.data, null, 4)}</pre>
-                )}
-            </div>
-        );
-    }
+    return (
+        <div>
+            <AppBar position="static">
+                <Tabs
+                    value={tab}
+                    onChange={(ev: any, newTab: number) => setTab(newTab)}
+                >
+                    <Tab label="Resources" />
+                    <Tab label="History" />
+                    <Tab label="Data" />
+                </Tabs>
+            </AppBar>
+            {tab === 0 && <ResourcesView data={data} />}
+            {tab === 1 && <HistoryView data={data} />}
+            {tab === 2 && <pre>{JSON.stringify(data, null, 4)}</pre>}
+        </div>
+    );
 }
 
 ReactDOM.render(<Page />, document.getElementById("main"));
+// ReactDOM.createRoot(document.getElementById("main")).render(<Page />);
