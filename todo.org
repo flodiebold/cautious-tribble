@@ -181,7 +181,7 @@ i.e. validation failures in latest should prevent only those services from being
 ** playground
 *** TODO allow using real kubernetes
 *** TODO allow using different config?
-*** TODO restart services when they are rebuilt
+*** TODO restart services when they are rebuilt (or killed for any reason)
 ** test cases
 *** deployer
 **** when I add a service in dev, the deployer deploys it
@@ -212,17 +212,20 @@ i.e. validation failures in latest should prevent only those services from being
    - content & whether it's versioned
    - metadata / labels (only from latest env?)
  - aggregated / interpreted changes (see below)
+** TODO fix cpu usage / refactor message distribution
 ** TODO test commit analysis
 ** TODO integrationtest websocket updates
 ** TODO more resource info
  - type
  - metadata / labels
 ** TODO further commit analysis
+ - transition info from commit message trailers
  - locks/unlocks
  - transition schedule
  - transition config changes (when moved there)
 ** TODO provide config information (in particular, transitions)
  - transition config should maybe be in the versions repo anyway
+ - also what envs have deployers
 ** TODO aggregate transition status from versions repo & transitioner status (& configuration)
 ** TODO send smaller updates
 ** TODO serve ui
@@ -252,7 +255,9 @@ warp: bind_with_graceful_shutdown
 ** TODO allow reverting resources to a previous version
 ** TODO show transition status
  - including detailed check status
+ -> env page for the target env?
 ** TODO show lock status of each env
+ - left menu
 ** TODO show lock status of each resource
 ** TODO show version history of an env
  - allow filtering history tab by env
