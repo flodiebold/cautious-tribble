@@ -4,6 +4,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import * as ReactDOM from "react-dom";
 
 import AppBar from "@material-ui/core/AppBar";
+import { createMuiTheme, MuiThemeProvider } from "@material-ui/core/styles";
 import Tab from "@material-ui/core/Tab";
 import Tabs from "@material-ui/core/Tabs";
 
@@ -198,6 +199,12 @@ function applyMessage(data: IUiData, message: Message): IUiData {
     return data;
 }
 
+const theme = createMuiTheme({
+    typography: {
+        useNextVariants: true
+    }
+});
+
 function Page() {
     const [tab, setTab] = useState(0);
     const [data, dispatchMessage]: [IUiData, (m: Message) => void] = useReducer(
@@ -218,21 +225,23 @@ function Page() {
     });
 
     return (
-        <div>
-            <AppBar position="static">
-                <Tabs
-                    value={tab}
-                    onChange={(ev: any, newTab: number) => setTab(newTab)}
-                >
-                    <Tab label="Resources" />
-                    <Tab label="History" />
-                    <Tab label="Data" />
-                </Tabs>
-            </AppBar>
-            {tab === 0 && <ResourcesView data={data} />}
-            {tab === 1 && <HistoryView data={data} />}
-            {tab === 2 && <pre>{JSON.stringify(data, null, 4)}</pre>}
-        </div>
+        <MuiThemeProvider theme={theme}>
+            <div>
+                <AppBar position="static">
+                    <Tabs
+                        value={tab}
+                        onChange={(ev: any, newTab: number) => setTab(newTab)}
+                    >
+                        <Tab label="Resources" />
+                        <Tab label="History" />
+                        <Tab label="Data" />
+                    </Tabs>
+                </AppBar>
+                {tab === 0 && <ResourcesView data={data} />}
+                {tab === 1 && <HistoryView data={data} />}
+                {tab === 2 && <pre>{JSON.stringify(data, null, 4)}</pre>}
+            </div>
+        </MuiThemeProvider>
     );
 }
 
