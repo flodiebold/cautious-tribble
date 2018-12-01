@@ -21,7 +21,7 @@ crossbeam = "0.4"
 bus = "2"
 
 log = "0.4"
-env_logger = "0.5"
+env_logger = "0.6"
 
 regex = "1"
 
