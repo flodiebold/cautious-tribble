@@ -17,7 +17,7 @@ reqwest = "0.9"
 warp = "0.1"
 futures = "0.1"
 
-crossbeam = "0.4"
+crossbeam = "0.5"
 bus = "2"
 
 log = "0.4"
