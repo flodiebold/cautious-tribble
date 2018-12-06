@@ -229,8 +229,7 @@ function Page() {
                 <AppBar position="static">
                     <Tabs
                         value={tab}
-                        onChange={(ev: any, newTab: number) => setTab(newTab)}
-                    >
+                        onChange={(ev: any, newTab: number) => setTab(newTab)}>
                         <Tab label="Resources" />
                         <Tab label="History" />
                         <Tab label="Data" />

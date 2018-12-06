@@ -68,8 +68,7 @@ export function VersionDialog(props: IVersionDialogProps) {
         <Dialog
             open
             onClose={onClose}
-            aria-labelledby="responsive-dialog-title"
-        >
+            aria-labelledby="responsive-dialog-title">
             <DialogTitle id="responsive-dialog-title">
                 {resource} {version.version}
             </DialogTitle>
@@ -124,8 +123,7 @@ export function VersionDialog(props: IVersionDialogProps) {
                         variant="contained"
                         color="primary"
                         disabled={!deployEnabled || deploying}
-                        onClick={handleDeploy}
-                    >
+                        onClick={handleDeploy}>
                         Deploy
                     </Button>
                     {deploying && (

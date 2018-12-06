@@ -82,8 +82,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                                 textAnchor="start"
                                 alignmentBaseline="middle"
                                 x={x + 4}
-                                y={r + 2}
-                            >
+                                y={r + 2}>
                                 {env}
                             </text>
                         </g>
@@ -114,8 +113,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                 <svg
                     viewBox={`0 0 ${x + r * 2 + 4} ${r * 2 + 4}`}
                     xmlns="http://www.w3.org/2000/svg"
-                    style={{ width: x + r * 2 + 4, height: r * 2 + 4 }}
-                >
+                    style={{ width: x + r * 2 + 4, height: r * 2 + 4 }}>
                     {x > 55 && (
                         <line
                             x1={r}
@@ -144,8 +142,7 @@ class ResourceHistory extends React.Component<IResourceHistoryProps> {
                         horizontal: "center"
                     }}
                     onClose={this.handlePopoverClose}
-                    disableRestoreFocus
-                >
+                    disableRestoreFocus>
                     {this.state.popoverText}
                 </Popover>
                 {showingVersionDialogFor && (
