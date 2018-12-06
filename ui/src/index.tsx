@@ -1,5 +1,4 @@
 import * as React from "react";
-// @ts-ignore
 import { useEffect, useReducer, useRef, useState } from "react";
 import * as ReactDOM from "react-dom";
 
@@ -148,7 +147,7 @@ export interface IUiData {
 
 function useWebSocket(url: string, onMessage: (ev: MessageEvent) => void) {
     const ws: { current: WebSocket | null } = useRef(null);
-    const timeout: { current: NodeJS.Timeout | null } = useRef(null);
+    const timeout: { current: number | null } = useRef(null);
     const connect = () => {
         ws.current = new WebSocket(url);
         ws.current.onmessage = onMessage;

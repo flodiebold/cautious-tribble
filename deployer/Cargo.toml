@@ -16,10 +16,10 @@ regex = "1"
 
 warp = "0.1"
 
-crossbeam = "0.4"
+crossbeam = "0.5"
 
 log = "0.4"
-env_logger = "0.5"
+env_logger = "0.6"
 
 # kubeclient = "0.1"
 kubeclient = { git = "https://github.com/flodiebold/kubeclient-rs.git" }

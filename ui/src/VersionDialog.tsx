@@ -1,5 +1,4 @@
 import * as React from "react";
-// @ts-ignore
 import { useState } from "react";
 
 import Button from "@material-ui/core/Button";
@@ -14,10 +13,8 @@ import Divider from "@material-ui/core/Divider";
 import FormControl from "@material-ui/core/FormControl";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import FormGroup from "@material-ui/core/FormGroup";
-import FormHelperText from "@material-ui/core/FormHelperText";
 import FormLabel from "@material-ui/core/FormLabel";
 import TextField from "@material-ui/core/TextField";
-import withMobileDialog from "@material-ui/core/withMobileDialog";
 
 import { IResourceVersion } from ".";
 import { deploy } from "./api";
@@ -31,7 +28,9 @@ export interface IVersionDialogProps {
 
 export function VersionDialog(props: IVersionDialogProps) {
     const { onClose, version, resource, deployableEnvs } = props;
-    const [deployEnvs, setDeployEnvs] = useState({});
+    const [deployEnvs, setDeployEnvs] = useState({} as {
+        [k: string]: boolean;
+    });
     const [reasonMessage, setReasonMessage] = useState("");
     const [deploying, setDeploying] = useState(false);
     const deployEnabled =
@@ -81,8 +80,8 @@ export function VersionDialog(props: IVersionDialogProps) {
             </DialogContent>
             <Divider />
             <DialogContent>
-                <FormControl component="fieldset" margin="normal">
-                    <FormLabel component="legend">Deploy to</FormLabel>
+                <FormControl component={"fieldset" as any} margin="normal">
+                    <FormLabel component={"legend" as any}>Deploy to</FormLabel>
                     <FormGroup>
                         {deployableEnvs.map(env => (
                             <FormControlLabel

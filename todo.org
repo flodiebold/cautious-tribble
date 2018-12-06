@@ -267,6 +267,8 @@ warp: bind_with_graceful_shutdown
  - require giving message
 ** TODO allow locking resources
 ** TODO allow searching resources by labels
+** TODO allow locking a service at the same time as deploying it
+ - general ui for locking
 ** TODO fix hack hiding 'latest'
  - both in resource view (bubbles) and in history view ("updated on" lines)
  - maybe instead base it on whether there's a deployer for the env?
