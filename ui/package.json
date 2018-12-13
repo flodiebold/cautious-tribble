@@ -12,8 +12,8 @@
     "build": "webpack -p --progress",
     "ts-build": "tsc",
     "lint": "tslint -c tslint.json --project .",
-    "format": "prettier --tab-width 4 --write \"src/**/*.{ts,tsx,css}\"",
-    "format-check": "prettier --tab-width 4 --list-different \"src/**/*.{ts,tsx,css}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format-check": "prettier --list-different \"src/**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
     "@types/react": "^16.7.11",
@@ -36,5 +36,9 @@
     "@material-ui/icons": "^3.0.1",
     "react": "^16.7.0-alpha.2",
     "react-dom": "^16.7.0-alpha.2"
+  },
+  "prettier": {
+    "tabWidth": 4,
+    "jsxBracketSameLine": true
   }
 }
