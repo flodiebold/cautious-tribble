@@ -306,6 +306,8 @@ https://bors.tech/
  - versions repo set up & some resources defined
  - automatically recompile & restart services when making changes
 ** TODO build static binaries & docker images
+https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-applications/
+ - need to add kubectl (copy from docker image?)
 ** TODO kubernetes setup
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
