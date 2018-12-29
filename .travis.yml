@@ -67,3 +67,8 @@ cache:
   yarn: true
   directories:
     - ui/node_modules
+before_cache:
+  # stolen from rust-analyzer, this seems to help caching a lot
+  - find ./target/debug -type f -maxdepth 1 -delete
+  - rm -fr ./target/debug/{deps,.fingerprint}/{common-*,deployer-*,aggregator-*,transitioner-*,git_fixture-*,integration_test-*}
+  - rm -f  ./target/.rustc_info.json
