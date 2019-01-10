@@ -16,7 +16,7 @@ reqwest = "0.9"
 
 warp = "0.1"
 
-crossbeam = "0.5"
+crossbeam = "0.6"
 
 log = "0.4"
 env_logger = "0.6"
