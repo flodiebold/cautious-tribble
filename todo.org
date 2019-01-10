@@ -56,46 +56,49 @@
 ** TODO reload config on every loop
 ** TODO fix signal handling
 use https://docs.rs/signal-hook/0.1.0/signal_hook/
-** TODO add dry run mode (default for CLI)
-** TODO add full diff mode that compares all resources with what would be deployed
- - in CLI mode, show diffs using treediff crate
- - fall back automatically to this for resources that don't have an annotation
- - don't deploy if the diff contains nothing
-** TODO cli: add nicer output
- - json output with -o json
- - table otherwise
- - expect only one env by default, all envs with option
- - show commit message of the deployed / to deploy commit for each resource
-** TODO allow reading from file system instead of git in CLI mode
-** TODO check rollout status of configmap to all nodes
- - somehow?
-** TODO support deploying daemonsets
- - restart pods?
-** TODO support deploying ingresses
-** TODO support deploying cron jobs
-** TODO support deploying namespaces
- - create before other stuff
-** TODO roll deployments when configmaps change?
-** TODO just use blob OIDs instead of earliest commit?
-** TODO handle undeploying something
-is that a use case though?
-** TODO do resource patching without kubectl?
- - makes diffs more reliable
- - API support in https://github.com/kubernetes/features/issues/555
+** Maybe now
+*** TODO better version file merging
+*** TODO validate yamls before deploying
+  - allow disabling validation by yaml
+  - detect k8s version automatically?
+  - maybe https://gitlab.com/silwol/juster
+** Later
+*** TODO add dry run mode (default for CLI)
+*** TODO add full diff mode that compares all resources with what would be deployed
+  - in CLI mode, show diffs using treediff crate
+  - fall back automatically to this for resources that don't have an annotation
+  - don't deploy if the diff contains nothing
+*** TODO cli: add nicer output
+  - json output with -o json
+  - table otherwise
+  - expect only one env by default, all envs with option
+  - show commit message of the deployed / to deploy commit for each resource
+*** TODO allow reading from file system instead of git in CLI mode
+*** TODO check rollout status of configmap to all nodes
+  - somehow?
+*** TODO support deploying daemonsets
+  - restart pods?
+*** TODO support deploying ingresses
+*** TODO support deploying cron jobs
+*** TODO support deploying namespaces
+  - create before other stuff
+*** TODO roll deployments when configmaps change?
+*** TODO just use blob OIDs instead of earliest commit?
+*** TODO handle undeploying something
+ is that a use case though?
+*** TODO do resource patching without kubectl?
+  - makes diffs more reliable
+  - API support in https://github.com/kubernetes/features/issues/555
 
-See also:
-kubectl diff -- https://github.com/kubernetes/features/issues/491
-current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
-** TODO use k8s api instead of relying on kubectl for deployment
-** TODO allow complete deployment stop for an env (i.e. disabling a deployer)
- - although that becomes a problem when you have something you really want deployed anyway
- - in that case you could maybe deploy it via command-line
-** TODO validate yamls before deploying
- - allow disabling validation by yaml
- - detect k8s version automatically?
- - maybe https://gitlab.com/silwol/juster
-** TODO validate & report validation status for envs that aren't actually deployed (i.e. 'latest')
- - handle as 'just validation' Deployer?
+ See also:
+ kubectl diff -- https://github.com/kubernetes/features/issues/491
+ current kubectl code -- https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/util/jsonmergepatch/patch.go
+*** TODO use k8s api instead of relying on kubectl for deployment
+*** TODO allow complete deployment stop for an env (i.e. disabling a deployer)
+  - although that becomes a problem when you have something you really want deployed anyway
+  - in that case you could maybe deploy it via command-line
+*** TODO validate & report validation status for envs that aren't actually deployed (i.e. 'latest')
+  - handle as 'just validation' Deployer?
 * transition manager
 ** DONE pull from versions repo regularly
    CLOSED: [2018-02-12 Mo 23:03]
@@ -134,26 +137,27 @@ DM-Target: pp
    CLOSED: [2018-10-31 Mi 20:40]
 ** TODO add unlock after transition
 ** TODO allow restricting transitions to subdirs
+** TODO add per-resource locks
 ** TODO Copy logs from commits when transitioning
   - maybe the aggregator is a better place for that
-** TODO add per-resource locks
 ** TODO handle remote callbacks during push and use push_update_reference
  - and handle push conficts
 ** TODO don't transition resources that don't have a base file in the target env
-** TODO add manual confirm check
-** TODO add jenkins checks
-** TODO add k8s job checks
 ** TODO fix signal handling
-** TODO reload config on every loop
-** TODO make runnable as CLI tool
-** TODO add dry run mode
 ** TODO don't log stack traces for connection failures etc.
  - log error on info level
  - keep last error for transition status info
-** TODO allow specifying that a check should only prevent the problematic resources from being transitioned
-i.e. validation failures in latest should prevent only those services from being deployed
 ** TODO move transition config to versions repo?
  - maybe different branch?
+** Later
+*** TODO add jenkins checks
+*** TODO add k8s job checks
+*** TODO add manual confirm check
+*** TODO reload config on every loop
+*** TODO make runnable as CLI tool
+*** TODO add dry run mode
+*** TODO allow specifying that a check should only prevent the problematic resources from being transitioned
+ i.e. validation failures in latest should prevent only those services from being deployed
 * integration tests
 ** DONE fix hard-coded ports and namespaces, so the tests can run in parallel
    CLOSED: [2018-04-01 So 19:22]
@@ -212,30 +216,32 @@ i.e. validation failures in latest should prevent only those services from being
    - content & whether it's versioned
    - metadata / labels (only from latest env?)
  - aggregated / interpreted changes (see below)
+** TODO serve ui
 ** TODO fix cpu usage / refactor message distribution
 ** TODO fix hardcoded list of envs
 ** TODO test commit analysis
 ** TODO integrationtest websocket updates
-** TODO further commit analysis
- - transition info from commit message trailers
- - locks/unlocks
- - transition schedule
- - transition config changes (when moved there)
-** TODO provide config information (in particular, transitions)
- - transition config should maybe be in the versions repo anyway
- - also what envs have deployers
-** TODO aggregate transition status from versions repo & transitioner status (& configuration)
-** TODO send smaller updates
-** TODO serve ui
-** TODO graceful shutdown
+** Maybe
+*** TODO provide config information (in particular, transitions)
+  - transition config should maybe be in the versions repo anyway
+  - also what envs have deployers
+*** TODO aggregate transition status from versions repo & transitioner status (& configuration)
+** Later
+*** TODO further commit analysis
+  - transition info from commit message trailers
+  - locks/unlocks
+  - transition schedule
+  - transition config changes (when moved there)
+*** TODO send smaller updates
+*** TODO add endpoints to lock envs & resources
+*** TODO add endpoint to create new version
+*** TODO more resource info
+  - type
+  - metadata / labels
+*** TODO include current state in served UI html
+*** TODO graceful shutdown
 warp: bind_with_graceful_shutdown
-** TODO add endpoints to lock envs & resources
-** TODO add endpoint to create new version
-** TODO more resource info
- - type
- - metadata / labels
-** TODO include current state in served UI html
-** TODO make sure aggregator & ui work and make sense without transitioner
+*** TODO make sure aggregator & ui work and make sense without transitioner
 * ui
 ** DONE add tslint setup
    CLOSED: [2018-08-30 Do 20:38]
@@ -245,37 +251,38 @@ warp: bind_with_graceful_shutdown
    CLOSED: [2018-10-14 So 19:33]
 ** DONE show version deployed according to version repo as bubble
    CLOSED: [2018-11-03 Sa 11:50]
+** DONE allow reverting resources to a previous version
+   CLOSED: [2019-01-10 Do 21:48]
+** TODO allow locking environments
+ - require giving message
+** TODO allow locking resources
+ - allow locking a service at the same time as deploying it
 ** TODO show deployment status of each resource
  - show spinner if still deploying (including if the deployer hasn't caught up yet)
  - show error symbol for errors
 ** TODO show deployment status details (e.g. error messages)
  - resource details dialog
-** TODO show base data history for resource
- - needs to be per env
- - resource details dialog?
-** TODO allow reverting resources to a previous version
-** TODO show transition status
- - including detailed check status
- -> env page for the target env?
-** TODO show lock status of each env
- - left menu
-** TODO show lock status of each resource
-** TODO show version history of an env
- - allow filtering history tab by env
-** TODO allow filtering history tab by resource?
-** TODO allow locking environments
- - require giving message
-** TODO allow locking resources
-** TODO allow searching resources by labels
-** TODO allow locking a service at the same time as deploying it
- - general ui for locking
 ** TODO fix hack hiding 'latest'
  - both in resource view (bubbles) and in history view ("updated on" lines)
  - maybe instead base it on whether there's a deployer for the env?
-** TODO in deploy dialog, check and disable checkboxes for envs where the version is currently deployed
-** TODO add unit tests
-** TODO reconnect websocket after losing connection
-** TODO oauth support
+** TODO show lock status of each env
+ - left menu
+** TODO show lock status of each resource
+** Later
+*** TODO show base data history for resource
+  - needs to be per env
+  - resource details dialog?
+*** TODO show transition status
+  - including detailed check status
+  -> env page for the target env?
+*** TODO show version history of an env
+  - allow filtering history tab by env
+*** TODO allow filtering history tab by resource?
+*** TODO allow searching resources by labels
+*** TODO in deploy dialog, check and disable checkboxes for envs where the version is currently deployed
+*** TODO add unit tests
+*** TODO reconnect websocket after losing connection
+*** TODO oauth support
 ** resources tab
 ** history tab
   - filter by env, event type, resources
@@ -299,21 +306,23 @@ https://bors.tech/
  - versions repo set up & some resources defined
  - automatically recompile & restart services when making changes
 ** TODO build static binaries & docker images
-** TODO test coverage
-** TODO add structured logging
+** TODO kubernetes setup
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
  - this could be its own service that watches the aggregator change feed
-** TODO datadog integration (events when deploying / transitioning, ...)
-** TODO contribute to cron library
- - add Clone
- - add Deserialize
-** TODO add cli option to write version update (for use in push job)
- - include commit messages since the last version
- - request last version known by dm via api, post new version via api
 ** TODO documentation
-** TODO contribution issues
+** Later
+*** TODO contribution issues
+*** TODO add structured logging
+*** TODO test coverage
+*** TODO datadog integration (events when deploying / transitioning, ...)
+*** TODO contribute to cron library
+  - add Clone
+  - add Deserialize
+*** TODO add cli option to write version update (for use in push job)
+  - include commit messages since the last version
+  - request last version known by dm via api, post new version via api
 * later
 ** Allow scaling down & locking deployments temporarily
 ** Canaries
