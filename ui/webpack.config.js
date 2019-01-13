@@ -9,7 +9,7 @@ module.exports = {
     mode: process.env.WEBPACK_SERVE ? "development" : "production",
 
     output: {
-        filename: "./dist/bundle.js"
+        filename: "./bundle.js"
     },
 
     // Enable sourcemaps for debugging webpack's output.
