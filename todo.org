@@ -345,6 +345,7 @@ https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-ap
 ** DONE clean up naming
    CLOSED: [2018-08-11 Sa 17:32]
  - deployable / deployment -> resource
+** TODO move certain configuration to env (and the rest to the repo)
 ** TODO use ResourceRepo abstraction in transitioner as well
 ** TODO clean up resource name vs. file name confusion
 ** TODO call versions repo resource repo everywhere

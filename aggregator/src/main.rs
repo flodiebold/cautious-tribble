@@ -6,6 +6,7 @@ use bus::Bus;
 use failure::Error;
 use log::info;
 use structopt::StructOpt;
+use serde_derive::Deserialize;
 
 use common::aggregator::{FullStatus, Message};
 
@@ -24,17 +25,24 @@ struct Options {
     config: PathBuf,
 }
 
+#[derive(Debug, Deserialize)]
+struct Env {
+    ui_path: Option<PathBuf>,
+}
+
 pub struct ServiceState {
     config: config::Config,
+    env: Env,
     full_status: RwLock<Arc<FullStatus>>,
     bus: Mutex<Bus<Arc<Message>>>,
 }
 
-fn serve(config: Config) -> Result<(), Error> {
+fn serve(config: Config, env: Env) -> Result<(), Error> {
     let bus = Mutex::new(Bus::new(100));
     let full_status = Default::default();
     let service_state = Arc::new(ServiceState {
         config,
+        env,
         full_status,
         bus,
     });
@@ -58,8 +66,9 @@ fn run() -> Result<(), Error> {
     env_logger::init();
     let options = Options::from_args();
     let config = Config::load(&options.config)?;
+    let env = envy::from_env()?;
 
-    serve(config)
+    serve(config, env)
 }
 
 fn main() {

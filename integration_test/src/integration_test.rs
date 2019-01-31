@@ -121,6 +121,10 @@ impl IntegrationTest {
         self.dir.path().join("versions.git")
     }
 
+    fn project_path(&self) -> PathBuf {
+        self.executable_root.parent().unwrap().parent().unwrap().to_owned()
+    }
+
     pub fn git_fixture(&self, data: &str) -> git_fixture::RepoFixture {
         let template = git_fixture::RepoTemplate::from_string(data).unwrap();
         template.create_in(&self.versions_repo_path()).unwrap()
@@ -286,6 +290,7 @@ impl IntegrationTest {
             .env("RUST_LOG", "warn,aggregator=debug")
             .env("RUST_BACKTRACE", "1")
             .env("PATH", std::env::var("PATH").unwrap_or_default())
+            .env("UI_PATH", self.project_path().join("ui/dist"))
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
