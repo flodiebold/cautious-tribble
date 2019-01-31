@@ -1,0 +1,6 @@
+# Default values for dm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+globals:
+  versions-repo-url: git://foo
