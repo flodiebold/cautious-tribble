@@ -731,7 +731,7 @@ dependencies = [
  "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "signal-hook 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "websocket 0.22.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "websocket 0.22.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2049,7 +2049,7 @@ dependencies = [
 
 [[package]]
 name = "websocket"
-version = "0.22.1"
+version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2344,7 +2344,7 @@ dependencies = [
 "checksum walkdir 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "bb08f9e670fab86099470b97cd2b252d6527f0b3cc1401acdb595ffc9dd288ff"
 "checksum want 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "797464475f30ddb8830cc529aaaae648d581f99e2036a928877dfde027ddf6b3"
 "checksum warp 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "0b50e9f714ba8f0fe42813db73d14931c42f6bf4f94b51b1ad306ac06cd1f718"
-"checksum websocket 0.22.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bb412a29fd5e66304ba151e1af55c4228764db47a483725041a900d9df293e1a"
+"checksum websocket 0.22.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d2c67346c042adbd4f5b2a49700e340befc5b772094fec8d36df6b825523d933"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
 "checksum winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "92c1eb33641e276cfa214a0522acad57be5c56b10cb348b3c5117db75f3ac4b0"
 "checksum winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
