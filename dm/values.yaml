@@ -4,3 +4,7 @@
 
 globals:
   versions-repo-url: git://foo
+  image:
+    repository: dm
+    tag: latest
+    pullPolicy: IfNotPresent

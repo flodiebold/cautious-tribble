@@ -4,11 +4,6 @@
 
 replicaCount: 1
 
-image:
-  repository: dm
-  tag: latest
-  pullPolicy: IfNotPresent
-
 nameOverride: ""
 fullnameOverride: ""
 
@@ -46,3 +41,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+global:
+  versions-repo-url: git://foo
+  image:
+    repository: dm
+    tag: latest
+    pullPolicy: IfNotPresent

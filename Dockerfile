@@ -1,5 +1,5 @@
 # backend
-FROM ekidd/rust-musl-builder
+FROM dm-build:prebuild
 WORKDIR /home/rust/src
 USER rust
 COPY . ./
