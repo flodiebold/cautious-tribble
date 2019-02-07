@@ -39,8 +39,16 @@ struct Options {
     config: PathBuf,
 }
 
+#[derive(Debug, Deserialize)]
+struct Env {
+    #[serde(flatten)]
+    common: common::Env,
+    deployer_url: Option<String>,
+}
+
 pub struct ServiceState {
     config: Config,
+    env: Env,
     client: reqwest::Client,
     transition_status: Mutex<IndexMap<String, TransitionStatusInfo>>,
 }
@@ -212,7 +220,7 @@ fn run_transition(
         commit, transition.source, transition.target
     );
 
-    git::push(repo, &service_state.config.common.versions_url)?;
+    git::push(repo, &service_state.env.common.versions_url)?;
 
     info!("Pushed.");
 
@@ -276,11 +284,20 @@ mod test {
     use super::*;
     use git_fixture::RepoFixture;
 
-    fn make_config(s: &str, repo: &git2::Repository) -> Result<config::Config, Error> {
-        let mut c: config::Config = serde_yaml::from_str(s)?;
-        c.common.versions_url = repo.path().to_string_lossy().into_owned();
-        c.common.versions_checkout_path = repo.path().to_string_lossy().into_owned();
+    fn make_config(s: &str) -> Result<config::Config, Error> {
+        let c: config::Config = serde_yaml::from_str(s)?;
         Ok(c)
+    }
+
+    fn make_env(repo: &git2::Repository) -> Env {
+        Env {
+            common: common::Env {
+                versions_url: repo.path().to_string_lossy().into_owned(),
+                versions_checkout_path: repo.path().to_string_lossy().into_owned(),
+                api_port: None,
+            },
+            deployer_url: None,
+        }
     }
 
     fn test_time() -> DateTime<Utc> {
@@ -293,12 +310,13 @@ mod test {
             RepoFixture::from_str(include_str!("./fixtures/transition_source_missing.yaml"))
                 .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(include_str!("./fixtures/simple_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -325,12 +343,13 @@ mod test {
             RepoFixture::from_str(include_str!("./fixtures/transition_target_created.yaml"))
                 .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(include_str!("./fixtures/simple_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -346,12 +365,13 @@ mod test {
             RepoFixture::from_str(include_str!("./fixtures/transition_target_changed.yaml"))
                 .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(include_str!("./fixtures/simple_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -366,12 +386,13 @@ mod test {
         let fixture =
             RepoFixture::from_str(include_str!("./fixtures/transition_subdirs.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config =
-            make_config(include_str!("./fixtures/simple_config.yaml"), &fixture.repo).unwrap();
+        let config = make_config(include_str!("./fixtures/simple_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -386,15 +407,13 @@ mod test {
         let fixture =
             RepoFixture::from_str(include_str!("./fixtures/transition_priority.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/three_envs_config.yaml"),
-            &fixture.repo,
-        )
-        .unwrap();
+        let config = make_config(include_str!("./fixtures/three_envs_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -409,15 +428,13 @@ mod test {
         let fixture =
             RepoFixture::from_str(include_str!("./fixtures/second_transition_runs.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/three_envs_config.yaml"),
-            &fixture.repo,
-        )
-        .unwrap();
+        let config = make_config(include_str!("./fixtures/three_envs_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -431,15 +448,13 @@ mod test {
     fn test_prod_locked() {
         let fixture = RepoFixture::from_str(include_str!("./fixtures/prod_locked.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/three_envs_config.yaml"),
-            &fixture.repo,
-        )
-        .unwrap();
+        let config = make_config(include_str!("./fixtures/three_envs_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -453,15 +468,13 @@ mod test {
     fn test_both_locked() {
         let fixture = RepoFixture::from_str(include_str!("./fixtures/both_locked.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/three_envs_config.yaml"),
-            &fixture.repo,
-        )
-        .unwrap();
+        let config = make_config(include_str!("./fixtures/three_envs_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -480,15 +493,13 @@ mod test {
             RepoFixture::from_str(include_str!("./fixtures/timed_transition_pending.yaml"))
                 .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/timed_transition_config.yaml"),
-            &fixture.repo,
-        )
-        .unwrap();
+        let config = make_config(include_str!("./fixtures/timed_transition_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -520,15 +531,13 @@ mod test {
             RepoFixture::from_str(include_str!("./fixtures/timed_transition_pending.yaml"))
                 .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/timed_transition_config.yaml"),
-            &fixture.repo,
-        )
-        .unwrap();
+        let config = make_config(include_str!("./fixtures/timed_transition_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -550,15 +559,16 @@ mod test {
         ))
         .unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
-        let config = make_config(
-            include_str!("./fixtures/timed_transition_config_no_schedule.yaml"),
-            &fixture.repo,
-        )
+        let config = make_config(include_str!(
+            "./fixtures/timed_transition_config_no_schedule.yaml"
+        ))
         .unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
         let state = ServiceState {
             config,
+            env,
             client,
             transition_status,
         };
@@ -578,12 +588,14 @@ fn run() -> Result<(), Error> {
     env_logger::init();
     let options = Options::from_args();
     let config = config::Config::load(&options.config)?;
-    let repo = git::init_or_open(&config.common.versions_checkout_path)?;
+    let env: Env = envy::from_env()?;
+    let repo = git::init_or_open(&env.common.versions_checkout_path)?;
 
     let client = reqwest::Client::new();
     let transition_status = Mutex::new(IndexMap::new());
     let service_state = Arc::new(ServiceState {
         config,
+        env,
         client,
         transition_status,
     });
@@ -593,7 +605,7 @@ fn run() -> Result<(), Error> {
     info!("Transitioner running.");
 
     loop {
-        if let Err(error) = git::update(&repo, &service_state.config.common.versions_url) {
+        if let Err(error) = git::update(&repo, &service_state.env.common.versions_url) {
             // TODO improve this error logging
             error!(
                 "Updating versions repo failed: {}\n{}",

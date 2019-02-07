@@ -27,17 +27,25 @@ spec:
           env:
             - name: VERSIONS_URL
               value: "{{ .Values.global.versionsRepoUrl }}"
+            - name: VERSIONS_CHECKOUT_PATH
+              value: "/data"
+            - name: API_PORT
+              value: 80
+            - name: DEPLOYER_URL
+              value: dm-deployer
+            - name: TRANSITIONER_URL
+              value: dm-transitioner
           ports:
             - name: http
               containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
           resources:
 {{ toYaml .Values.resources | indent 12 }}

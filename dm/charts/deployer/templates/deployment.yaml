@@ -8,7 +8,9 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "deployer.name" . }}
@@ -24,6 +26,13 @@ spec:
           image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           command: ["/bin/deployer"]
+          env:
+            - name: VERSIONS_URL
+              value: "{{ .Values.global.versionsRepoUrl }}"
+            - name: VERSIONS_CHECKOUT_PATH
+              value: "/data"
+            - name: API_PORT
+              value: 80
           ports:
             - name: http
               containerPort: 80

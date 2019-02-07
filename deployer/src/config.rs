@@ -6,8 +6,6 @@ use failure::Error;
 use serde_derive::{Deserialize, Serialize};
 use serde_yaml;
 
-use common;
-
 use crate::deployment::{kubernetes, mock, Deployer};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,8 +26,6 @@ impl DeployerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(flatten)]
-    pub common: common::Config,
     pub deployers: BTreeMap<String, DeployerConfig>,
 }
 

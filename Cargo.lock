@@ -369,6 +369,7 @@ dependencies = [
  "common 0.1.0",
  "crossbeam 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "envy 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "git2 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "git_fixture 0.1.0",
@@ -725,7 +726,6 @@ name = "integration_test"
 version = "0.1.0"
 dependencies = [
  "common 0.1.0",
- "deployer 0.1.0",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "git2 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "git_fixture 0.1.0",
@@ -1846,6 +1846,7 @@ dependencies = [
  "cron 0.4.1 (git+https://github.com/zslayton/cron?rev=2ef8d178189cd6fa04ee41c19354afa7141c6c73)",
  "crossbeam 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "envy 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "git2 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "git_fixture 0.1.0",
