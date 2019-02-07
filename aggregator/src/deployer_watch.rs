@@ -10,10 +10,10 @@ use common::aggregator::Message;
 use common::deployment::AllDeployerStatus;
 
 use super::ServiceState;
-use crate::config::Config;
+use crate::Env;
 
-fn get_current_deployer_status(config: &Config) -> Result<AllDeployerStatus, Error> {
-    if let Some(deployer_url) = config.deployer_url.as_ref() {
+fn get_current_deployer_status(env: &Env) -> Result<AllDeployerStatus, Error> {
+    if let Some(deployer_url) = env.deployer_url.as_ref() {
         Ok(reqwest::get(&format!("{}/status", deployer_url))?
             .error_for_status()?
             .json()?)
@@ -27,7 +27,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
         let mut last_status = Default::default();
         loop {
             trace!("Retrieve deployer status...");
-            let status = match get_current_deployer_status(&service_state.config) {
+            let status = match get_current_deployer_status(&service_state.env) {
                 Ok(status) => status,
                 Err(e) => {
                     error!(

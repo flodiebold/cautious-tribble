@@ -33,7 +33,7 @@ fn check_source_clean(
     transition: &PendingTransitionInfo,
     service_state: &ServiceState,
 ) -> Result<PreconditionResult, Error> {
-    let deployer_url = if let Some(url) = service_state.config.deployer_url.as_ref() {
+    let deployer_url = if let Some(url) = service_state.env.deployer_url.as_ref() {
         url
     } else {
         error!(

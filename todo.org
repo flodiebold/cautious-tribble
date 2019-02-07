@@ -306,6 +306,8 @@ https://bors.tech/
  - versions repo set up & some resources defined
  - automatically recompile & restart services when making changes
 ** TODO build static binaries & docker images
+https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-applications/
+ - need to add kubectl (copy from docker image?)
 ** TODO kubernetes setup
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
@@ -343,6 +345,8 @@ https://bors.tech/
 ** DONE clean up naming
    CLOSED: [2018-08-11 Sa 17:32]
  - deployable / deployment -> resource
+** TODO use https://github.com/tcr/wasm-typescript-definition
+** TODO move certain configuration to env (and the rest to the repo)
 ** TODO use ResourceRepo abstraction in transitioner as well
 ** TODO clean up resource name vs. file name confusion
 ** TODO call versions repo resource repo everywhere
@@ -351,6 +355,8 @@ https://bors.tech/
 ** TODO remove use of kubeclient, directly use k8s-openapi, support multiple k8s versions?
 ** TODO use thunder?
 ** TODO use fail in testing?
+** TODO use assert_fs?
+https://crates.io/crates/assert_fs
 * alternatives for version file merge method
 ** text substitution:
 *** version file e.g.:

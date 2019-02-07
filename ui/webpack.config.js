@@ -2,14 +2,40 @@ const path = require("path");
 const process = require("process");
 const convert = require("koa-connect");
 const proxy = require("http-proxy-middleware");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
+const HtmlWebpackIncludeAssetsPlugin = require("html-webpack-include-assets-plugin");
 
 module.exports = {
     entry: "./src/index.tsx",
 
+    plugins: [
+        new CopyWebpackPlugin([
+            {
+                from: "./node_modules/react/umd/react.development.js",
+                to: "react.development.js"
+            },
+            {
+                from: "./node_modules/react-dom/umd/react-dom.development.js",
+                to: "react-dom.development.js"
+            }
+        ]),
+        new HtmlWebpackPlugin({
+            hash: true,
+            template: "./src/index.html",
+            filename: "index.html"
+        }),
+        new HtmlWebpackIncludeAssetsPlugin({
+            assets: ["react.development.js", "react-dom.development.js"],
+            append: false,
+            hash: true
+        })
+    ],
+
     mode: process.env.WEBPACK_SERVE ? "development" : "production",
 
     output: {
-        filename: "./dist/bundle.js"
+        filename: "./bundle.js"
     },
 
     // Enable sourcemaps for debugging webpack's output.
@@ -43,7 +69,9 @@ module.exports = {
         content: [__dirname],
         add: (app, middleware, options) => {
             app.use(
-                convert(proxy("/api", { target: "http://localhost:9003", ws: true }))
+                convert(
+                    proxy("/api", { target: "http://localhost:9003", ws: true })
+                )
             );
             // app.use(convert(history()));
         }

@@ -9,6 +9,7 @@ use std::time::Duration;
 use crossbeam::atomic::ArcCell;
 use failure::Error;
 use log::error;
+use serde_derive::Deserialize;
 use structopt::StructOpt;
 
 use common::deployment::AllDeployerStatus;
@@ -29,6 +30,13 @@ struct Options {
     command: Command,
 }
 
+#[derive(Debug, Deserialize)]
+struct Env {
+    #[serde(flatten)]
+    common: common::Env,
+    api_port: Option<u16>,
+}
+
 #[derive(Debug, StructOpt)]
 enum Command {
     #[structopt(name = "serve")]
@@ -44,13 +52,13 @@ enum Command {
 
 pub struct ServiceState {
     latest_status: ArcCell<AllDeployerStatus>,
-    config: config::Config,
+    env: Env,
 }
 
-fn serve(config: Config) -> Result<(), Error> {
+fn serve(config: Config, env: Env) -> Result<(), Error> {
     let mut repo = repo::GitResourceRepo::open(
-        &config.common.versions_checkout_path,
-        config.common.versions_url.clone(),
+        &env.common.versions_checkout_path,
+        env.common.versions_url.clone(),
     )?;
 
     let mut deployers = config
@@ -61,7 +69,7 @@ fn serve(config: Config) -> Result<(), Error> {
 
     let service_state = Arc::new(ServiceState {
         latest_status: ArcCell::new(Arc::new(AllDeployerStatus::empty())),
-        config,
+        env,
     });
 
     api::start(service_state.clone());
@@ -107,10 +115,10 @@ fn serve(config: Config) -> Result<(), Error> {
     }
 }
 
-fn deploy(config: Config) -> Result<(), Error> {
+fn deploy(config: Config, env: Env) -> Result<(), Error> {
     let repo = repo::GitResourceRepo::open(
-        &config.common.versions_checkout_path,
-        config.common.versions_url.clone(),
+        &env.common.versions_checkout_path,
+        env.common.versions_url.clone(),
     )?;
 
     let mut deployers = config
@@ -128,10 +136,10 @@ fn deploy(config: Config) -> Result<(), Error> {
     Ok(())
 }
 
-fn check(config: Config) -> Result<(), Error> {
+fn check(config: Config, env: Env) -> Result<(), Error> {
     let repo = repo::GitResourceRepo::open(
-        &config.common.versions_checkout_path,
-        config.common.versions_url.clone(),
+        &env.common.versions_checkout_path,
+        env.common.versions_url.clone(),
     )?;
 
     let mut deployers = config
@@ -165,11 +173,12 @@ fn run() -> Result<(), Error> {
     env_logger::init();
     let options = Options::from_args();
     let config = Config::load(&options.config)?;
+    let env = envy::from_env()?;
 
     match options.command {
-        Command::Serve => serve(config),
-        Command::Check => check(config),
-        Command::Deploy => deploy(config),
+        Command::Serve => serve(config, env),
+        Command::Check => check(config, env),
+        Command::Deploy => deploy(config, env),
     }
 }
 

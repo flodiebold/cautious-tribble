@@ -17,7 +17,7 @@ fn status(state: Arc<ServiceState>) -> impl warp::Reply {
 
 pub fn start(service_state: Arc<ServiceState>) {
     thread::spawn(move || {
-        let port = service_state.config.common.api_port.unwrap_or(9001);
+        let port = service_state.env.api_port.unwrap_or(9001);
         let state = warp::any().map(move || service_state.clone());
         let health = warp::path("health")
             .and(warp::path::end())

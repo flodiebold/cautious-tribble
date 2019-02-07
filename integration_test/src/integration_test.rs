@@ -121,6 +121,15 @@ impl IntegrationTest {
         self.dir.path().join("versions.git")
     }
 
+    fn project_path(&self) -> PathBuf {
+        self.executable_root
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_owned()
+    }
+
     pub fn git_fixture(&self, data: &str) -> git_fixture::RepoFixture {
         let template = git_fixture::RepoTemplate::from_string(data).unwrap();
         template.create_in(&self.versions_repo_path()).unwrap()
@@ -201,30 +210,13 @@ impl IntegrationTest {
         self.ports[&service]
     }
 
-    fn adapt_config(&self, config: &str, service: TestService) -> String {
-        config
-            .replace("%%api_port%%", &self.get_port(service).to_string())
-            .replace(
-                "%%deployer_port%%",
-                &self.get_port(TestService::Deployer).to_string(),
-            )
-            .replace(
-                "%%transitioner_port%%",
-                &self.get_port(TestService::Transitioner).to_string(),
-            )
-            .replace(
-                "%%aggregator_port%%",
-                &self.get_port(TestService::Aggregator).to_string(),
-            )
-            .replace("%%suffix%%", &self.suffix)
-            .replace(
-                "%%versions_checkout_path%%",
-                &format!("./versions_checkout_{:?}", service),
-            )
+    fn adapt_config(&self, config: &str) -> String {
+        config.replace("%%suffix%%", &self.suffix)
     }
 
     pub fn run_deployer(&mut self, config: &str) -> &mut Self {
-        let config = self.adapt_config(config, TestService::Deployer);
+        let service = TestService::Deployer;
+        let config = self.adapt_config(config);
         let config_path = self.dir.path().join("deployer.yaml");
         {
             let mut file = File::create(&config_path).unwrap();
@@ -240,6 +232,12 @@ impl IntegrationTest {
             .env("RUST_LOG", "warn,deployer=debug")
             .env("RUST_BACKTRACE", "1")
             .env("PATH", std::env::var("PATH").unwrap_or_default())
+            .env("API_PORT", self.get_port(service).to_string())
+            .env("VERSIONS_URL", "./versions.git")
+            .env(
+                "VERSIONS_CHECKOUT_PATH",
+                format!("./versions_checkout_{:?}", service),
+            )
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -248,7 +246,8 @@ impl IntegrationTest {
     }
 
     pub fn run_transitioner(&mut self, config: &str) -> &mut Self {
-        let config = self.adapt_config(config, TestService::Transitioner);
+        let service = TestService::Transitioner;
+        let config = self.adapt_config(config);
         let config_path = self.dir.path().join("transitioner.yaml");
         {
             let mut file = File::create(&config_path).unwrap();
@@ -263,6 +262,16 @@ impl IntegrationTest {
             .env("RUST_LOG", "warn,transitioner=debug")
             .env("RUST_BACKTRACE", "1")
             .env("PATH", std::env::var("PATH").unwrap_or_default())
+            .env("API_PORT", self.get_port(service).to_string())
+            .env("VERSIONS_URL", "./versions.git")
+            .env(
+                "VERSIONS_CHECKOUT_PATH",
+                format!("./versions_checkout_{:?}", service),
+            )
+            .env(
+                "DEPLOYER_URL",
+                format!("http://localhost:{}", self.get_port(TestService::Deployer)),
+            )
             .stdin(Stdio::null())
             .spawn()
             .unwrap();
@@ -271,7 +280,8 @@ impl IntegrationTest {
     }
 
     pub fn run_aggregator(&mut self, config: &str) -> &mut Self {
-        let config = self.adapt_config(config, TestService::Aggregator);
+        let service = TestService::Aggregator;
+        let config = self.adapt_config(config);
         let config_path = self.dir.path().join("aggregator.yaml");
         {
             let mut file = File::create(&config_path).unwrap();
@@ -286,6 +296,24 @@ impl IntegrationTest {
             .env("RUST_LOG", "warn,aggregator=debug")
             .env("RUST_BACKTRACE", "1")
             .env("PATH", std::env::var("PATH").unwrap_or_default())
+            .env("UI_PATH", self.project_path().join("ui/dist"))
+            .env("API_PORT", self.get_port(service).to_string())
+            .env("VERSIONS_URL", "./versions.git")
+            .env(
+                "VERSIONS_CHECKOUT_PATH",
+                format!("./versions_checkout_{:?}", service),
+            )
+            .env(
+                "DEPLOYER_URL",
+                format!("http://localhost:{}", self.get_port(TestService::Deployer)),
+            )
+            .env(
+                "TRANSITIONER_URL",
+                format!(
+                    "http://localhost:{}",
+                    self.get_port(TestService::Transitioner)
+                ),
+            )
             .stdin(Stdio::null())
             .spawn()
             .unwrap();

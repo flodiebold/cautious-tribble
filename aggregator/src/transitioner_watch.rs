@@ -11,10 +11,10 @@ use common::chrono::{self, Utc};
 use common::transitions::AllTransitionStatus;
 
 use super::ServiceState;
-use crate::config::Config;
+use crate::Env;
 
-fn get_current_transitioner_status(config: &Config) -> Result<AllTransitionStatus, Error> {
-    if let Some(transitioner_url) = config.transitioner_url.as_ref() {
+fn get_current_transitioner_status(env: &Env) -> Result<AllTransitionStatus, Error> {
+    if let Some(transitioner_url) = env.transitioner_url.as_ref() {
         Ok(reqwest::get(&format!("{}/status", transitioner_url))?
             .error_for_status()?
             .json()?)
@@ -28,7 +28,7 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
         let mut last_status = Default::default();
         loop {
             trace!("Retrieve transitioner status...");
-            let mut status = match get_current_transitioner_status(&service_state.config) {
+            let mut status = match get_current_transitioner_status(&service_state.env) {
                 Ok(status) => status,
                 Err(e) => {
                     error!(
