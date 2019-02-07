@@ -4,11 +4,6 @@
 
 replicaCount: 1
 
-image:
-  repository: dm
-  tag: latest
-  pullPolicy: IfNotPresent
-
 nameOverride: ""
 fullnameOverride: ""
 
@@ -25,8 +20,8 @@ tolerations: []
 affinity: {}
 
 global:
-  versions-repo-url: git://foo
+  versionsRepoUrl: git://foo
   image:
-    repository: dm
+    repository: flodiebold/cautious-tribble
     tag: latest
     pullPolicy: IfNotPresent
