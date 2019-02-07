@@ -9,8 +9,8 @@ use std::time::Duration;
 use crossbeam::atomic::ArcCell;
 use failure::Error;
 use log::error;
-use structopt::StructOpt;
 use serde_derive::Deserialize;
+use structopt::StructOpt;
 
 use common::deployment::AllDeployerStatus;
 use common::repo::{self, ResourceRepo};
