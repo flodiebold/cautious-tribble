@@ -30,7 +30,7 @@ spec:
             - name: VERSIONS_CHECKOUT_PATH
               value: "/data"
             - name: API_PORT
-              value: 80
+              value: "80"
             - name: DEPLOYER_URL
               value: dm-deployer
             - name: TRANSITIONER_URL
