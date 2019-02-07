@@ -1,5 +1,5 @@
 # backend
-FROM dm-build:prebuild
+FROM flodiebold/cautious-tribble-build
 WORKDIR /home/rust/src
 USER rust
 COPY . ./

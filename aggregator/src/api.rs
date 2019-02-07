@@ -27,7 +27,7 @@ fn deploy(state: Arc<ServiceState>, body: DeploymentData) -> Result<impl warp::R
 
 pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let port = service_state.config.common.api_port.unwrap_or(9001);
+        let port = service_state.env.common.api_port.unwrap_or(9001);
         let service_state_1 = service_state.clone();
         let state = warp::any().map(move || service_state_1.clone());
         let health = warp::path("health")
@@ -132,8 +132,8 @@ struct DeploymentData {
 
 fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<Id, Error> {
     let repo = repo::GitResourceRepo::open(
-        &service_state.config.common.versions_checkout_path,
-        service_state.config.common.versions_url.clone(),
+        &service_state.env.common.versions_checkout_path,
+        service_state.env.common.versions_url.clone(),
     )?;
 
     let head_commit = repo.repo.find_commit(repo.head)?;
@@ -179,7 +179,7 @@ fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<I
 
     info!("Made commit {}. Pushing...", commit);
 
-    git::push(&repo.repo, &service_state.config.common.versions_url)?;
+    git::push(&repo.repo, &service_state.env.common.versions_url)?;
 
     info!("Pushed.");
 

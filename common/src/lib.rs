@@ -5,6 +5,6 @@ pub mod git;
 pub mod repo;
 pub mod transitions;
 
-pub use crate::config::Config;
+pub use crate::config::{Config, Env};
 
 pub use chrono;
