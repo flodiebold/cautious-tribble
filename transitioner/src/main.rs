@@ -43,6 +43,7 @@ struct Options {
 struct Env {
     #[serde(flatten)]
     common: common::Env,
+    api_port: Option<u16>,
     deployer_url: Option<String>,
 }
 
@@ -294,9 +295,9 @@ mod test {
             common: common::Env {
                 versions_url: repo.path().to_string_lossy().into_owned(),
                 versions_checkout_path: repo.path().to_string_lossy().into_owned(),
-                api_port: None,
             },
             deployer_url: None,
+            api_port: None,
         }
     }
 

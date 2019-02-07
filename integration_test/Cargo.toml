@@ -22,4 +22,4 @@ indexmap = { version = "1", features = ["serde-1"] }
 
 common = { path = "../common" }
 git_fixture = { path = "../git_fixture" }
-deployer = { path = "../deployer", package = "deployer" }
+# deployer = { path = "../deployer", package = "deployer" }

@@ -18,6 +18,7 @@ mod versions_watch;
 struct Env {
     #[serde(flatten)]
     common: common::Env,
+    api_port: Option<u16>,
     ui_path: Option<PathBuf>,
     deployer_url: Option<String>,
     transitioner_url: Option<String>,

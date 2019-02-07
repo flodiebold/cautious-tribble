@@ -1,6 +1,3 @@
-versions_url: "./versions.git"
-versions_checkout_path: %%versions_checkout_path%%
-api_port: %%api_port%%
 deployers:
   dev:
     type: Mock
@@ -15,5 +12,3 @@ transitions:
   dev:
     source: latest
     target: dev
-deployer_url: "http://localhost:%%deployer_port%%"
-transitioner_url: "http://localhost:%%transitioner_port%%"

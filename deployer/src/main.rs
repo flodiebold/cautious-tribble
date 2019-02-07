@@ -34,6 +34,7 @@ struct Options {
 struct Env {
     #[serde(flatten)]
     common: common::Env,
+    api_port: Option<u16>,
 }
 
 #[derive(Debug, StructOpt)]

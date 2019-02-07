@@ -27,7 +27,7 @@ fn deploy(state: Arc<ServiceState>, body: DeploymentData) -> Result<impl warp::R
 
 pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let port = service_state.env.common.api_port.unwrap_or(9001);
+        let port = service_state.env.api_port.unwrap_or(9001);
         let service_state_1 = service_state.clone();
         let state = warp::any().map(move || service_state_1.clone());
         let health = warp::path("health")

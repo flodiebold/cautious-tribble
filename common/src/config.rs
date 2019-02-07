@@ -11,5 +11,5 @@ pub struct Config {
 pub struct Env {
     pub versions_url: String,
     pub versions_checkout_path: String,
-    pub api_port: Option<u16>,
+    // pub api_port: Option<u16>, // doesn't work with envy in #[serde(flatten)]
 }
