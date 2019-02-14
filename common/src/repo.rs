@@ -103,38 +103,31 @@ pub trait ResourceRepo {
 }
 
 use super::git;
+use crate::config::Env;
 use git2::{Commit, ErrorCode, Oid, Repository, Sort};
 
 pub struct GitResourceRepo {
     pub repo: Repository,
     pub head: Oid,
-    remote_url: String,
+    env: Env, // TODO introduce our own type here
 }
 
 impl GitResourceRepo {
-    pub fn open(checkout_path: &str, remote_url: String) -> Result<GitResourceRepo, Error> {
-        let repo = git::init_or_open(checkout_path)?;
-        git::update(&repo, &remote_url)?;
+    pub fn open(env: Env) -> Result<GitResourceRepo, Error> {
+        let repo = git::init_or_open(&env.versions_checkout_path)?;
+        git::update(&env, &repo)?;
         let head = git::get_head_commit(&repo)?.id();
-        Ok(GitResourceRepo {
-            repo,
-            head,
-            remote_url,
-        })
+        Ok(GitResourceRepo { repo, head, env })
     }
 
-    pub fn from_repo(repo: Repository, head: Oid, remote_url: String) -> GitResourceRepo {
-        GitResourceRepo {
-            repo,
-            head,
-            remote_url,
-        }
+    pub fn from_repo(repo: Repository, head: Oid, env: Env) -> GitResourceRepo {
+        GitResourceRepo { repo, head, env }
     }
 }
 
 impl ResourceRepo for GitResourceRepo {
     fn update(&mut self) -> Result<(), Error> {
-        git::update(&self.repo, &self.remote_url)?;
+        git::update(&self.env, &self.repo)?;
         self.head = git::get_head_commit(&self.repo)?.id();
         Ok(())
     }
@@ -301,7 +294,14 @@ mod test {
     ) -> GitResourceRepoWithTempDir {
         let head = git_fixture.get_commit(head).unwrap();
         let (repo, tempdir) = git_fixture.into_inner();
-        let inner = GitResourceRepo::from_repo(repo, head, String::new());
+        let env = Env {
+            versions_url: String::new(),
+            versions_checkout_path: String::new(),
+            ssh_public_key: None,
+            ssh_private_key: None,
+            ssh_username: None,
+        };
+        let inner = GitResourceRepo::from_repo(repo, head, env);
         GitResourceRepoWithTempDir { inner, tempdir }
     }
 

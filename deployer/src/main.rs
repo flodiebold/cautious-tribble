@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process;
 use std::sync::Arc;
 use std::thread;
@@ -10,7 +10,6 @@ use crossbeam::atomic::ArcCell;
 use failure::Error;
 use log::error;
 use serde_derive::Deserialize;
-use structopt::StructOpt;
 
 use common::deployment::AllDeployerStatus;
 use common::repo::{self, ResourceRepo};
@@ -21,33 +20,12 @@ mod deployment;
 
 use crate::config::Config;
 
-#[derive(Debug, StructOpt)]
-struct Options {
-    /// The location of the configuration file.
-    #[structopt(short = "c", long = "config", parse(from_os_str))]
-    config: PathBuf,
-    #[structopt(subcommand)]
-    command: Command,
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct Env {
     #[serde(flatten)]
     common: common::Env,
+    kube_config: Option<String>,
     api_port: Option<u16>,
-}
-
-#[derive(Debug, StructOpt)]
-enum Command {
-    #[structopt(name = "serve")]
-    /// Run the deployer as a server, constantly checking for updates.
-    Serve,
-    #[structopt(name = "check")]
-    /// Compare the current state of the cluster to the intended state.
-    Check,
-    #[structopt(name = "deploy")]
-    /// Deploy the intended state to the cluster.
-    Deploy,
 }
 
 pub struct ServiceState {
@@ -55,16 +33,21 @@ pub struct ServiceState {
     env: Env,
 }
 
-fn serve(config: Config, env: Env) -> Result<(), Error> {
-    let mut repo = repo::GitResourceRepo::open(
-        &env.common.versions_checkout_path,
-        env.common.versions_url.clone(),
-    )?;
+fn serve(env: Env) -> Result<(), Error> {
+    let mut repo = repo::GitResourceRepo::open(env.common.clone())?;
+
+    let config = repo
+        .get(Path::new("deployers.yaml"))?
+        .map_or(Ok(Config::default()), |data| Config::load(&data))?;
 
     let mut deployers = config
         .deployers
         .iter()
-        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
+        .map(|(env_name, deployer_config)| {
+            deployer_config
+                .create(&env)
+                .map(|d| (env_name.to_owned(), d))
+        })
         .collect::<Result<BTreeMap<_, _>, Error>>()?;
 
     let service_state = Arc::new(ServiceState {
@@ -115,71 +98,11 @@ fn serve(config: Config, env: Env) -> Result<(), Error> {
     }
 }
 
-fn deploy(config: Config, env: Env) -> Result<(), Error> {
-    let repo = repo::GitResourceRepo::open(
-        &env.common.versions_checkout_path,
-        env.common.versions_url.clone(),
-    )?;
-
-    let mut deployers = config
-        .deployers
-        .iter()
-        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
-        .collect::<Result<BTreeMap<_, _>, Error>>()?;
-
-    for (env, deployer) in &mut deployers {
-        let env_status = deployment::deploy_env(deployer, &repo, env, None, None)?;
-
-        println!("Status of {}: {:?}", env, env_status);
-    }
-
-    Ok(())
-}
-
-fn check(config: Config, env: Env) -> Result<(), Error> {
-    let repo = repo::GitResourceRepo::open(
-        &env.common.versions_checkout_path,
-        env.common.versions_url.clone(),
-    )?;
-
-    let mut deployers = config
-        .deployers
-        .iter()
-        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
-        .collect::<Result<BTreeMap<_, _>, Error>>()?;
-
-    for (env, deployer) in &mut deployers {
-        let version = repo.version();
-
-        let mut env_status = deployment::new_deployer_status(version);
-
-        if let Some(resources) = deployment::get_resources(&repo, env, None)? {
-            let (new_rollout_status, new_status_by_resource) =
-                deployment::check_rollout_status(deployer, &resources.resources)?;
-
-            env_status.rollout_status = new_rollout_status;
-            env_status
-                .status_by_resource
-                .extend(new_status_by_resource.into_iter());
-        }
-
-        println!("Status of {}: {:?}", env, env_status);
-    }
-
-    Ok(())
-}
-
 fn run() -> Result<(), Error> {
     env_logger::init();
-    let options = Options::from_args();
-    let config = Config::load(&options.config)?;
     let env = envy::from_env()?;
 
-    match options.command {
-        Command::Serve => serve(config, env),
-        Command::Check => check(config, env),
-        Command::Deploy => deploy(config, env),
-    }
+    serve(env)
 }
 
 fn main() {

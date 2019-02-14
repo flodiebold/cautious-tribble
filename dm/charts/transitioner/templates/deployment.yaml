@@ -21,11 +21,15 @@ spec:
         app.kubernetes.io/name: {{ include "transitioner.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      volumes:
+      - name: secret-volume
+        secret:
+          secretName: ssh-key-secret
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
-          command: ["/bin/aggregator"]
+          command: ["/bin/transitioner"]
           env:
             - name: VERSIONS_URL
               value: "{{ .Values.global.versionsRepoUrl }}"
@@ -34,7 +38,11 @@ spec:
             - name: API_PORT
               value: "80"
             - name: DEPLOYER_URL
-              value: dm-deployer
+              value: http://dm-deployer
+            - name: SSH_PRIVATE_KEY
+              value: /ssh-keys/id_rsa
+            - name: SSH_PUBLIC_KEY
+              value: /ssh-keys/id_rsa.pub
           ports:
             - name: http
               containerPort: 80
@@ -47,6 +55,10 @@ spec:
             httpGet:
               path: /
               port: http
+          volumeMounts:
+          - name: secret-volume
+            readOnly: true
+            mountPath: "/ssh-keys"
           resources:
 {{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}

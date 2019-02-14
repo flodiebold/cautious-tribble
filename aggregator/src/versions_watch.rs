@@ -308,10 +308,7 @@ fn analyze_commits(
 }
 
 pub fn start(service_state: Arc<ServiceState>) -> Result<thread::JoinHandle<()>, Error> {
-    let mut repo = repo::GitResourceRepo::open(
-        &service_state.env.common.versions_checkout_path,
-        service_state.env.common.versions_url.clone(),
-    )?;
+    let mut repo = repo::GitResourceRepo::open(service_state.env.common.clone())?;
     // TODO move to the ResourceRepo abstraction
     let mut last_head = None;
     let mut last_analysis: VersionsAnalysis = Default::default();

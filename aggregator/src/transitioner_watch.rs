@@ -40,6 +40,8 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                         error!("caused by: {}", cause);
                     }
 
+                    thread::sleep(Duration::from_secs(1));
+
                     continue;
                 }
             };

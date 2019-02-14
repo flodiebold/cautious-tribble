@@ -131,7 +131,8 @@ impl IntegrationTest {
     }
 
     pub fn git_fixture(&self, data: &str) -> git_fixture::RepoFixture {
-        let template = git_fixture::RepoTemplate::from_string(data).unwrap();
+        let data = self.adapt_config(data);
+        let template = git_fixture::RepoTemplate::from_string(&data).unwrap();
         template.create_in(&self.versions_repo_path()).unwrap()
     }
 
@@ -214,19 +215,9 @@ impl IntegrationTest {
         config.replace("%%suffix%%", &self.suffix)
     }
 
-    pub fn run_deployer(&mut self, config: &str) -> &mut Self {
+    pub fn run_deployer(&mut self) -> &mut Self {
         let service = TestService::Deployer;
-        let config = self.adapt_config(config);
-        let config_path = self.dir.path().join("deployer.yaml");
-        {
-            let mut file = File::create(&config_path).unwrap();
-            file.write_all(config.as_bytes()).unwrap();
-            file.flush().unwrap();
-        }
         let child = Command::new(self.executable_root.join("deployer"))
-            .arg("--config")
-            .arg(&config_path)
-            .arg("serve")
             .current_dir(self.dir.path())
             .env_clear()
             .env("RUST_LOG", "warn,deployer=debug")
@@ -245,18 +236,9 @@ impl IntegrationTest {
         self
     }
 
-    pub fn run_transitioner(&mut self, config: &str) -> &mut Self {
+    pub fn run_transitioner(&mut self) -> &mut Self {
         let service = TestService::Transitioner;
-        let config = self.adapt_config(config);
-        let config_path = self.dir.path().join("transitioner.yaml");
-        {
-            let mut file = File::create(&config_path).unwrap();
-            file.write_all(config.as_bytes()).unwrap();
-            file.flush().unwrap();
-        }
         let child = Command::new(self.executable_root.join("transitioner"))
-            .arg("--config")
-            .arg(&config_path)
             .current_dir(self.dir.path())
             .env_clear()
             .env("RUST_LOG", "warn,transitioner=debug")
@@ -279,18 +261,9 @@ impl IntegrationTest {
         self
     }
 
-    pub fn run_aggregator(&mut self, config: &str) -> &mut Self {
+    pub fn run_aggregator(&mut self) -> &mut Self {
         let service = TestService::Aggregator;
-        let config = self.adapt_config(config);
-        let config_path = self.dir.path().join("aggregator.yaml");
-        {
-            let mut file = File::create(&config_path).unwrap();
-            file.write_all(config.as_bytes()).unwrap();
-            file.flush().unwrap();
-        }
         let child = Command::new(self.executable_root.join("aggregator"))
-            .arg("--config")
-            .arg(&config_path)
             .current_dir(self.dir.path())
             .env_clear()
             .env("RUST_LOG", "warn,aggregator=debug")
