@@ -15,9 +15,9 @@ fn main() -> Result<(), Error> {
     let fixture = test.git_fixture(include_str!("./example.yaml"));
     fixture.set_ref("refs/heads/master", "base").unwrap();
     // FIXME make it possible to interrupt during this
-    test.run_deployer(include_str!("./config_playground.yaml"))
-        .run_transitioner(include_str!("./config_playground.yaml"))
-        .run_aggregator(include_str!("./config_playground.yaml"))
+    test.run_deployer()
+        .run_transitioner()
+        .run_aggregator()
         .wait_ready()
         .connect_to_aggregator_socket()
         .wait_transition("prod", 1);

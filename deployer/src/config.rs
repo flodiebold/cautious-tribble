@@ -1,6 +1,4 @@
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::path::Path;
 
 use failure::Error;
 use serde_derive::{Deserialize, Serialize};
@@ -24,13 +22,13 @@ impl DeployerConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub deployers: BTreeMap<String, DeployerConfig>,
 }
 
 impl Config {
-    pub fn load(file: &Path) -> Result<Config, Error> {
-        Ok(serde_yaml::from_reader(File::open(file)?)?)
+    pub fn load(data: &[u8]) -> Result<Config, Error> {
+        Ok(serde_yaml::from_slice(data)?)
     }
 }

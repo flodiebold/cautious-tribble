@@ -6,10 +6,10 @@ use integration_test::*;
 fn minikube_deploy_and_transition() {
     let mut test = IntegrationTest::new();
     test.create_namespace("dev-").create_namespace("prod-");
-    let fixture = test.git_fixture(include_str!("./repo.yaml"));
+    let fixture = test.git_fixture(include_str!("./repo_k8s.yaml"));
     fixture.set_ref("refs/heads/master", "head1").unwrap();
-    test.run_deployer(include_str!("./config_k8s.yaml"))
-        .run_transitioner(include_str!("./config_k8s.yaml"))
+    test.run_deployer()
+        .run_transitioner()
         .wait_ready()
         .wait_env_rollout_done("dev")
         .wait_transition("prod", 1)

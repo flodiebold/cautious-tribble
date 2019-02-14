@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -13,10 +13,9 @@ use git2::{ObjectType, Repository, Signature};
 use indexmap::IndexMap;
 use log::{error, info};
 use serde_derive::Deserialize;
-use structopt::StructOpt;
 
 use common::git::{self, TreeZipper};
-use common::repo::{oid_to_id, Id};
+use common::repo::{oid_to_id, GitResourceRepo, Id, ResourceRepo};
 use common::transitions::{
     SkipReason, TransitionResult, TransitionRunInfo, TransitionStatusInfo,
     TransitionSuccessfulRunInfo,
@@ -31,13 +30,6 @@ mod transition_state;
 use crate::config::Config;
 use crate::precondition::{Precondition, PreconditionResult};
 use crate::transition_state::{TransitionState, TransitionStates};
-
-#[derive(Debug, StructOpt)]
-struct Options {
-    /// The location of the configuration file.
-    #[structopt(short = "c", long = "config", parse(from_os_str))]
-    config: PathBuf,
-}
 
 #[derive(Debug, Deserialize)]
 struct Env {
@@ -590,10 +582,12 @@ mod test {
 
 fn run() -> Result<(), Error> {
     env_logger::init();
-    let options = Options::from_args();
-    let config = config::Config::load(&options.config)?;
     let env: Env = envy::from_env()?;
-    let repo = git::init_or_open(&env.common.versions_checkout_path)?;
+    let mut repo = GitResourceRepo::open(env.common.clone())?;
+
+    let config = repo
+        .get(Path::new("transitions.yaml"))?
+        .map_or(Ok(Config::default()), |data| Config::load(&data))?;
 
     let client = reqwest::Client::new();
     let transition_status = Mutex::new(IndexMap::new());
@@ -609,7 +603,7 @@ fn run() -> Result<(), Error> {
     info!("Transitioner running.");
 
     loop {
-        if let Err(error) = git::update(&service_state.env.common, &repo) {
+        if let Err(error) = repo.update() {
             // TODO improve this error logging
             error!(
                 "Updating versions repo failed: {}\n{}",
@@ -623,7 +617,7 @@ fn run() -> Result<(), Error> {
             continue;
         }
 
-        if let Err(error) = run_one_transition(&repo, &service_state, Utc::now()) {
+        if let Err(error) = run_one_transition(&repo.repo, &service_state, Utc::now()) {
             error!("Transition failed: {}\n{}", error, error.backtrace());
             for cause in error.iter_causes() {
                 error!("caused by: {}", cause);

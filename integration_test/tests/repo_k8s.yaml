@@ -1,5 +1,21 @@
 commits:
   - files:
+      deployers.yaml: |
+        dev:
+          type: Kubernetes
+          kubeconf: "./kube_config"
+          namespace: "dev-%%suffix%%"
+        prod:
+          type: Kubernetes
+          kubeconf: "./kube_config"
+          namespace: "prod-%%suffix%%"
+      transitions.yaml: |
+        transitions:
+          prod:
+            source: dev
+            target: prod
+            preconditions:
+              - SourceClean
       dev/deployable/s1-service.yaml: |
         apiVersion: v1
         kind: Service
