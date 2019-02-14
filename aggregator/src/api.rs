@@ -131,10 +131,7 @@ struct DeploymentData {
 }
 
 fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<Id, Error> {
-    let repo = repo::GitResourceRepo::open(
-        &service_state.env.common.versions_checkout_path,
-        service_state.env.common.versions_url.clone(),
-    )?;
+    let repo = repo::GitResourceRepo::open(service_state.env.common.clone())?;
 
     let head_commit = repo.repo.find_commit(repo.head)?;
     let tree = head_commit.tree()?;

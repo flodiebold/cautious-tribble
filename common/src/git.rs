@@ -6,15 +6,35 @@ use std::path::{Path, PathBuf};
 use failure::{format_err, Error, ResultExt};
 use git2::{self, Blob, Commit, ObjectType, Repository, Tree, TreeBuilder, TreeEntry};
 
-pub fn update(repo: &Repository, url: &str) -> Result<(), Error> {
+use crate::config::Env;
+
+pub fn update(env: &Env, repo: &Repository) -> Result<(), Error> {
     let mut remote = repo
-        .remote_anonymous(url)
+        .remote_anonymous(&env.versions_url)
         .context("creating remote failed")?;
 
     // TODO use RemoteCallBacks to watch progress
+    let mut callbacks = git2::RemoteCallbacks::new();
+    callbacks.credentials(|_, username, _| {
+        git2::Cred::ssh_key(
+            username.unwrap_or_else(|| env.ssh_username.as_ref().map_or("", |s| &s)),
+            env.ssh_public_key.as_ref().map(Path::new),
+            env.ssh_private_key
+                .as_ref()
+                .map_or(Path::new("/root/.ssh/id_rsa"), Path::new),
+            None,
+        )
+    });
+
+    let mut options = git2::FetchOptions::new();
+    options.remote_callbacks(callbacks);
 
     remote
-        .fetch(&["+refs/heads/master:refs/dm_head"], None, None)
+        .fetch(
+            &["+refs/heads/master:refs/dm_head"],
+            Some(&mut options),
+            None,
+        )
         .context("fetch failed")?;
 
     Ok(())

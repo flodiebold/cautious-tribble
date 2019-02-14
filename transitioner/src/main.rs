@@ -295,6 +295,9 @@ mod test {
             common: common::Env {
                 versions_url: repo.path().to_string_lossy().into_owned(),
                 versions_checkout_path: repo.path().to_string_lossy().into_owned(),
+                ssh_private_key: None,
+                ssh_public_key: None,
+                ssh_username: None,
             },
             deployer_url: None,
             api_port: None,
@@ -606,7 +609,7 @@ fn run() -> Result<(), Error> {
     info!("Transitioner running.");
 
     loop {
-        if let Err(error) = git::update(&repo, &service_state.env.common.versions_url) {
+        if let Err(error) = git::update(&service_state.env.common, &repo) {
             // TODO improve this error logging
             error!(
                 "Updating versions repo failed: {}\n{}",

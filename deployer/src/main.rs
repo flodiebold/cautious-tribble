@@ -30,7 +30,7 @@ struct Options {
     command: Command,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct Env {
     #[serde(flatten)]
     common: common::Env,
@@ -56,10 +56,7 @@ pub struct ServiceState {
 }
 
 fn serve(config: Config, env: Env) -> Result<(), Error> {
-    let mut repo = repo::GitResourceRepo::open(
-        &env.common.versions_checkout_path,
-        env.common.versions_url.clone(),
-    )?;
+    let mut repo = repo::GitResourceRepo::open(env.common.clone())?;
 
     let mut deployers = config
         .deployers
@@ -116,10 +113,7 @@ fn serve(config: Config, env: Env) -> Result<(), Error> {
 }
 
 fn deploy(config: Config, env: Env) -> Result<(), Error> {
-    let repo = repo::GitResourceRepo::open(
-        &env.common.versions_checkout_path,
-        env.common.versions_url.clone(),
-    )?;
+    let repo = repo::GitResourceRepo::open(env.common.clone())?;
 
     let mut deployers = config
         .deployers
@@ -137,10 +131,7 @@ fn deploy(config: Config, env: Env) -> Result<(), Error> {
 }
 
 fn check(config: Config, env: Env) -> Result<(), Error> {
-    let repo = repo::GitResourceRepo::open(
-        &env.common.versions_checkout_path,
-        env.common.versions_url.clone(),
-    )?;
+    let repo = repo::GitResourceRepo::open(env.common.clone())?;
 
     let mut deployers = config
         .deployers

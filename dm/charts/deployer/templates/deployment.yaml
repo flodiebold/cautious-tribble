@@ -21,11 +21,15 @@ spec:
         app.kubernetes.io/name: {{ include "deployer.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      volumes:
+      - name: secret-volume
+        secret:
+          secretName: ssh-key-secret
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
-          command: ["/bin/deployer"]
+          command: ["/bin/deployer", "serve"]
           env:
             - name: VERSIONS_URL
               value: "{{ .Values.global.versionsRepoUrl }}"
@@ -33,18 +37,26 @@ spec:
               value: "/data"
             - name: API_PORT
               value: "80"
+            - name: SSH_PRIVATE_KEY
+              value: /ssh-keys/id_rsa
+            - name: SSH_PUBLIC_KEY
+              value: /ssh-keys/id_rsa.pub
           ports:
             - name: http
               containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
+          volumeMounts:
+          - name: secret-volume
+            readOnly: true
+            mountPath: "/ssh-keys"
           resources:
 {{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}

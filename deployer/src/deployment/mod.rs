@@ -288,7 +288,7 @@ pub fn deploy_env(
 #[cfg(test)]
 mod test {
     use super::*;
-    use common::repo;
+    use common::{repo, Env};
     use git_fixture;
     use serde_json::json;
     use std::path::Path;
@@ -296,7 +296,14 @@ mod test {
     fn make_resource_repo(git_fixture: git_fixture::RepoFixture, head: &str) -> impl ResourceRepo {
         let head = git_fixture.get_commit(head).unwrap();
         let (repo, tempdir) = git_fixture.into_inner();
-        let inner = repo::GitResourceRepo::from_repo(repo, head, String::new());
+        let env = Env {
+            versions_url: String::new(),
+            versions_checkout_path: String::new(),
+            ssh_public_key: None,
+            ssh_private_key: None,
+            ssh_username: None,
+        };
+        let inner = repo::GitResourceRepo::from_repo(repo, head, env);
         repo::GitResourceRepoWithTempDir { inner, tempdir }
     }
 

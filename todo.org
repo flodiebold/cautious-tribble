@@ -305,10 +305,23 @@ https://bors.tech/
  - all parts running
  - versions repo set up & some resources defined
  - automatically recompile & restart services when making changes
-** TODO build static binaries & docker images
+** DONE build static binaries & docker images
+   CLOSED: [2019-02-14 Do 21:12]
 https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-applications/
  - need to add kubectl (copy from docker image?)
+** TODO figure out git authentication (+ installation)
+ssh-keygen -t rsa -b 4096 -C "cautious-tribble" (-f ./id_rsa -N "" ?)
+kubectl create secret generic ssh-key-secret --from-file=id_rsa=./id_rsa --from-file=id_rsa.pub=./id_rsa.pub
+or generate during installation?
+** TODO installation procedure
+ - automatically initialize version repo? (with a readme, config file, file for DM deployments)
 ** TODO kubernetes setup
+ - handle helm --namespace?
+*** Command:
+helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git | kubectl apply -f -
+*** Command for testing with local image:
+docker build -f ./Dockerfile -t flodiebold/cautious-tribble:test . && docker push flodiebold/cautious-tribble:test
+helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git --set global.image.tag=test --set global.image.pullPolicy=Always | kubectl apply -f -
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
