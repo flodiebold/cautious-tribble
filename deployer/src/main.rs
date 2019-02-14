@@ -24,6 +24,7 @@ use crate::config::Config;
 struct Env {
     #[serde(flatten)]
     common: common::Env,
+    kube_config: Option<String>,
     api_port: Option<u16>,
 }
 
@@ -42,7 +43,11 @@ fn serve(env: Env) -> Result<(), Error> {
     let mut deployers = config
         .deployers
         .iter()
-        .map(|(env, deployer_config)| deployer_config.create().map(|d| (env.to_owned(), d)))
+        .map(|(env_name, deployer_config)| {
+            deployer_config
+                .create(&env)
+                .map(|d| (env_name.to_owned(), d))
+        })
         .collect::<Result<BTreeMap<_, _>, Error>>()?;
 
     let service_state = Arc::new(ServiceState {

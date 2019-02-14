@@ -15,19 +15,19 @@ use common::deployment::{ResourceState, RolloutStatusReason};
 use common::repo::Id;
 
 use super::{Deployer, Resource};
+use crate::Env;
 
 const VERSION_ANNOTATION: &str = "new-dm/version";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    kubeconf: String,
     namespace: String,
     glob: Option<String>,
 }
 
 impl Config {
-    pub fn create(&self) -> Result<KubernetesDeployer, Error> {
-        KubernetesDeployer::new(self)
+    pub(crate) fn create(&self, env: &Env) -> Result<KubernetesDeployer, Error> {
+        KubernetesDeployer::new(env, self)
     }
 }
 
@@ -38,11 +38,15 @@ pub struct KubernetesDeployer {
 }
 
 impl KubernetesDeployer {
-    fn new(config: &Config) -> Result<KubernetesDeployer, Error> {
+    fn new(env: &Env, config: &Config) -> Result<KubernetesDeployer, Error> {
+        let kubeconf = env
+            .kube_config
+            .clone()
+            .unwrap_or_else(|| "./kube_config".to_string());
         Ok(KubernetesDeployer {
-            kubeconf: config.kubeconf.clone(),
+            client: Kubernetes::load_conf(&kubeconf)?.namespace(&config.namespace),
+            kubeconf,
             namespace: config.namespace.clone(),
-            client: Kubernetes::load_conf(&config.kubeconf)?.namespace(&config.namespace),
         })
     }
     fn kubectl_apply(&self, data: &str) -> Result<(), Error> {

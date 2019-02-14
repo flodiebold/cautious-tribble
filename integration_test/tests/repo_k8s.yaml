@@ -1,14 +1,13 @@
 commits:
   - files:
       deployers.yaml: |
-        dev:
-          type: Kubernetes
-          kubeconf: "./kube_config"
-          namespace: "dev-%%suffix%%"
-        prod:
-          type: Kubernetes
-          kubeconf: "./kube_config"
-          namespace: "prod-%%suffix%%"
+        deployers:
+          dev:
+            type: Kubernetes
+            namespace: "dev-%%suffix%%"
+          prod:
+            type: Kubernetes
+            namespace: "prod-%%suffix%%"
       transitions.yaml: |
         transitions:
           prod:
