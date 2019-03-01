@@ -759,9 +759,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "k8s-openapi"
 version = "0.3.0"
-source = "git+https://github.com/Arnavion/k8s-openapi-codegen#80785d15f824adf6b46b00348f36e0146b32ee87"
+source = "git+https://github.com/Arnavion/k8s-openapi-codegen#03b83395e5ed3f5a9e5aa479bd1d0a7cf852c0dc"
 dependencies = [
- "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
