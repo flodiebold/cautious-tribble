@@ -56,6 +56,7 @@
 ** TODO reload config on every loop
 ** TODO fix signal handling
 use https://docs.rs/signal-hook/0.1.0/signal_hook/
+** TODO support jsonnet
 ** Maybe now
 *** TODO better version file merging
 *** TODO validate yamls before deploying
@@ -216,7 +217,8 @@ DM-Target: pp
    - content & whether it's versioned
    - metadata / labels (only from latest env?)
  - aggregated / interpreted changes (see below)
-** TODO serve ui
+** DONE serve ui
+   CLOSED: [2019-05-16 Do 19:53]
 ** TODO fix cpu usage / refactor message distribution
 ** TODO fix hardcoded list of envs
 ** TODO test commit analysis
@@ -314,15 +316,17 @@ https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-ap
 ssh-keygen -t rsa -b 4096 -C "cautious-tribble" (-f ./id_rsa -N "" ?)
 kubectl create secret generic ssh-key-secret --from-file=id_rsa=./id_rsa --from-file=id_rsa.pub=./id_rsa.pub
 or generate during installation?
+ - add endpoint to get public key fingerprint?
 ** TODO installation procedure
  - automatically initialize version repo? (with a readme, config file, file for DM deployments)
 ** TODO kubernetes setup
- - handle helm --namespace?
+*** TODO handle helm --namespace?
+*** TODO bootstrap to DM
 *** Command:
-helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git | kubectl apply -f -
+helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git --set aggregator.service.type=NodePort | kubectl apply -f -
 *** Command for testing with local image:
 docker build -f ./Dockerfile -t flodiebold/cautious-tribble:test . && docker push flodiebold/cautious-tribble:test
-helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git --set global.image.tag=test --set global.image.pullPolicy=Always | kubectl apply -f -
+helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git --set aggregator.service.type=NodePort --set global.image.tag=test --set global.image.pullPolicy=Always | kubectl apply -f -
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
@@ -359,18 +363,20 @@ helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebol
 ** DONE clean up naming
    CLOSED: [2018-08-11 Sa 17:32]
  - deployable / deployment -> resource
+** DONE move certain configuration to env (and the rest to the repo)
+   CLOSED: [2019-05-16 Do 19:59]
 ** TODO use https://github.com/tcr/wasm-typescript-definition
-** TODO move certain configuration to env (and the rest to the repo)
 ** TODO use ResourceRepo abstraction in transitioner as well
 ** TODO clean up resource name vs. file name confusion
 ** TODO call versions repo resource repo everywhere
 ** TODO remove the need for refs/dm_head, instead directly work with commit IDs?
 ** TODO switch to result-in-main / exitfailure
-** TODO remove use of kubeclient, directly use k8s-openapi, support multiple k8s versions?
+** TODO switch to kubernetes-rust, upgrade k8s-openapi
 ** TODO use thunder?
 ** TODO use fail in testing?
 ** TODO use assert_fs?
 https://crates.io/crates/assert_fs
+** TODO use async/await
 * alternatives for version file merge method
 ** text substitution:
 *** version file e.g.:
