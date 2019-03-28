@@ -57,6 +57,8 @@
 ** TODO fix signal handling
 use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO support jsonnet
+ - [ ] implement import handler
+ - [ ] correctly determine change version, even through imports
 ** Maybe now
 *** TODO better version file merging
 *** TODO validate yamls before deploying

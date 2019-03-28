@@ -1,5 +1,8 @@
-use std::{ ffi::OsStr, collections::{BTreeMap, HashMap}};
 use std::path::Path;
+use std::{
+    collections::{BTreeMap, HashMap},
+    ffi::OsStr,
+};
 
 use failure::{bail, format_err, Error};
 use log::{debug, error, info, warn};
@@ -78,8 +81,11 @@ pub fn get_resources(
             .to_string();
         let content = if entry.path.extension() == Some(OsStr::new("jsonnet")) {
             // FIXME implement import handler
-            // FIXME implement same for versioned resources, provide version data as external variable
-            let result = vm.evaluate_snippet(entry.path, std::str::from_utf8(&entry.content)?)
+            // FIXME implement same for versioned resources, provide version
+            // data as external variable
+            vm.ext_code("version", "null");
+            let result = vm
+                .evaluate_snippet(entry.path, std::str::from_utf8(&entry.content)?)
                 .map_err(|e| format_err!("jsonnet error: {}", e.as_str()))?;
             serde_json::from_str(&result)?
         } else {
@@ -99,7 +105,6 @@ pub fn get_resources(
 
     repo.walk(&env_path.join("version"), |entry| {
         // FIXME don't fail everything if content is invalid
-        let content = serde_yaml::from_slice(&entry.content)?;
         let name = entry
             .path
             .file_stem()
@@ -107,6 +112,7 @@ pub fn get_resources(
             .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
             .to_string();
         let base_file_name = env_path.join("base").join(&entry.path);
+        // FIXME maybe the version file shouldn't need to be called .jsonnet
         let base_file_content = match repo.get(&base_file_name) {
             Ok(Some(content)) => content,
             Ok(None) => {
@@ -116,10 +122,22 @@ pub fn get_resources(
             }
             Err(e) => bail!(e),
         };
-        let base_file_content = serde_yaml::from_slice(&base_file_content)?;
+        let merged_content = if base_file_name.extension() == Some(OsStr::new("jsonnet")) {
+            // FIXME implement import handler
+            let content: serde_json::Value = serde_yaml::from_slice(&entry.content)?;
+            vm.ext_code("version", &serde_json::to_string(&content)?);
+            let result = vm
+                .evaluate_snippet(entry.path, std::str::from_utf8(&base_file_content)?)
+                .map_err(|e| format_err!("jsonnet error: {}", e.as_str()))?;
+            serde_json::from_str(&result)?
+        } else {
+            let content = serde_yaml::from_slice(&entry.content)?;
+            let base_file_content = serde_yaml::from_slice(&base_file_content)?;
+            merge_resource(base_file_content, &content)
+        };
         let resource = Resource {
             name: name.clone(),
-            merged_content: merge_resource(base_file_content, &content),
+            merged_content,
             version: entry.last_change,
             message: entry.change_message,
         };
@@ -451,9 +469,10 @@ mod test {
 
     #[test]
     fn test_get_resources_jsonnet_1() {
-        let fixture =
-            git_fixture::RepoFixture::from_str(include_str!("./fixtures/get_resources_jsonnet_1.yaml"))
-            .unwrap();
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_resources_jsonnet_1.yaml"
+        ))
+        .unwrap();
         let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
         let result =
             get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
@@ -462,6 +481,23 @@ mod test {
         assert_eq!(info.resources.len(), 1);
         assert_eq!(info.resources[0].name, "foo");
         assert_eq!(info.resources[0].merged_content, json!({ "bar": 2 }));
+        assert_eq!(info.resources[0].version, head)
+    }
+
+    #[test]
+    fn test_get_resources_jsonnet_2() {
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_resources_jsonnet_2.yaml"
+        ))
+        .unwrap();
+        let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
+        let result =
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+        assert!(result.is_some());
+        let info = result.unwrap();
+        assert_eq!(info.resources.len(), 1);
+        assert_eq!(info.resources[0].name, "foo");
+        assert_eq!(info.resources[0].merged_content, json!({ "bar": 3 }));
         assert_eq!(info.resources[0].version, head)
     }
 }

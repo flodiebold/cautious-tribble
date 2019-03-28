@@ -1,0 +1,5 @@
+commits:
+  - files:
+      available/base/foo.jsonnet: '{bar: 1 + std.extVar("version").foo}'
+      available/version/foo.jsonnet: 'foo: 2'
+    name: head
