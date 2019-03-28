@@ -1,0 +1,4 @@
+commits:
+  - files:
+      available/deployable/foo.jsonnet: "local foo = 1; {bar: 1 + foo}"
+    name: head
