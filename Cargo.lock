@@ -7,7 +7,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "aggregator"
 version = "0.1.0"
 dependencies = [
- "bus 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bus 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "crossbeam 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -162,10 +162,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "bus"
-version = "2.0.1"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "atomic-option 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crossbeam-channel 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot_core 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2153,7 +2154,7 @@ dependencies = [
 "checksum block-buffer 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49665c62e0e700857531fa5d3763e91b539ff1abeebd56808d378b495870d60d"
 "checksum block-padding 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4fc4358306e344bf9775d0197fd00d2603e5afb0771bb353538630f022068ea3"
 "checksum build_const 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "39092a32794787acd8525ee150305ff051b0aa6cc2abaf193924f5ab05425f39"
-"checksum bus 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9c75ae1a023780d63496c00720e9e6ce64f56872c22094d4fd456f13f43238eb"
+"checksum bus 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "504f634a58035c52be107e638291fd395c51f6d98305daeaea6c557438475d9e"
 "checksum byte-tools 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "560c32574a12a89ecd91f5e742165893f86e3ab98d21f8ea548658eb9eef5f40"
 "checksum byte-tools 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "980479e6fde23246dfb54d47580d66b4e99202e7579c5eaa9fe10ecb5ebd2182"
 "checksum byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "94f88df23a25417badc922ab0f5716cc1330e87f71ddd9203b3a3ccd9cedf75d"
