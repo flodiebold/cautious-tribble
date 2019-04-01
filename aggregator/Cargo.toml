@@ -17,7 +17,7 @@ envy = "0.3"
 warp = "0.1"
 futures = "0.1"
 
-crossbeam = "0.6"
+crossbeam = "0.7"
 bus = "2"
 
 log = "0.4"
