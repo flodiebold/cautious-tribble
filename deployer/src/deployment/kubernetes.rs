@@ -138,7 +138,7 @@ impl Deployer for KubernetesDeployer {
     }
 
     fn deploy(&mut self, resource: &Resource) -> Result<(), Error> {
-        use serde_json::{self, Value};
+        use serde_json::Value;
         let mut data: Value = resource.merged_content.clone(); // TODO
         {
             let metadata = data
