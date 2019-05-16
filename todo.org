@@ -313,7 +313,6 @@ https://bors.tech/
    CLOSED: [2019-02-14 Do 21:12]
 https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-applications/
  - need to add kubectl (copy from docker image?)
-** TODO reload configs regularly
 ** TODO figure out git authentication (+ installation)
 ssh-keygen -t rsa -b 4096 -C "cautious-tribble" (-f ./id_rsa -N "" ?)
 kubectl create secret generic ssh-key-secret --from-file=id_rsa=./id_rsa --from-file=id_rsa.pub=./id_rsa.pub
@@ -329,12 +328,13 @@ helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebol
 *** Command for testing with local image:
 docker build -f ./Dockerfile -t flodiebold/cautious-tribble:test . && docker push flodiebold/cautious-tribble:test
 helm template dm --name dm --set global.versionsRepoUrl=git@github.com:flodiebold/resource-repo-test.git --set aggregator.service.type=NodePort --set global.image.tag=test --set global.image.pullPolicy=Always | kubectl apply -f -
+** TODO documentation
 ** TODO slack integration
  - slack transitions (both big ones like pp->prod, and constant ones like dev and pp deployments)
  - slack bot that can deploy and lock
  - this could be its own service that watches the aggregator change feed
-** TODO documentation
 ** Later
+*** TODO reload configs regularly
 *** TODO contribution issues
 *** TODO add structured logging
 *** TODO test coverage

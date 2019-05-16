@@ -16,6 +16,8 @@ impl Default for TransitionStates {
     }
 }
 
+const TRANSITION_STATE_FILE: &'static str = "transition_state.yaml";
+
 impl TransitionStates {
     pub fn load(repo: &Repository) -> Result<TransitionStates, Error> {
         let head = git::get_head_commit(repo)?;
@@ -23,14 +25,14 @@ impl TransitionStates {
 
         let zipper = TreeZipper::from(repo, tree);
 
-        let locks_blob = if let Some(blob) = zipper.get_blob("transitions.yaml")? {
+        let locks_blob = if let Some(blob) = zipper.get_blob(TRANSITION_STATE_FILE)? {
             blob
         } else {
             return Ok(TransitionStates::default());
         };
 
         let result = serde_yaml::from_slice(locks_blob.content())
-            .context("deserializing transitions.yaml failed")?;
+            .context("deserializing transition state file failed")?;
 
         Ok(result)
     }
@@ -41,19 +43,19 @@ impl TransitionStates {
         tree_builder: &mut TreeBuilder<'repo>,
     ) -> Result<(), Error> {
         if self.0.is_empty() {
-            if tree_builder.get("transitions.yaml")?.is_some() {
-                tree_builder.remove("transitions.yaml")?;
+            if tree_builder.get(TRANSITION_STATE_FILE)?.is_some() {
+                tree_builder.remove(TRANSITION_STATE_FILE)?;
             }
         } else {
             let mut serialized =
-                serde_yaml::to_vec(self).context("serializing transitions.yaml failed")?;
+                serde_yaml::to_vec(self).context("serializing transition state file failed")?;
             serialized.extend("\n".as_bytes());
 
             let blob = repo.blob(&serialized).context("writing blob failed")?;
 
             tree_builder
-                .insert("transitions.yaml", blob, 0o100644)
-                .context("updating transitions.yaml failed")?;
+                .insert(TRANSITION_STATE_FILE, blob, 0o100644)
+                .context("updating transition state file failed")?;
         }
         Ok(())
     }
