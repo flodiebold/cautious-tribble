@@ -1,12 +1,15 @@
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::{
+    collections::{BTreeMap, HashMap},
+    ffi::OsStr,
+};
 
 use failure::{bail, format_err, Error};
 use log::{debug, error, info, warn};
 
 use common::deployment::{DeployerStatus, ResourceState, RolloutStatus};
 use common::repo::{Id, ResourceRepo};
+use jsonnet::JsonnetVm;
 
 pub mod kubernetes;
 pub mod mock;
@@ -14,9 +17,6 @@ pub mod mock;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Resource {
     pub name: String,
-    pub base_file_name: PathBuf,
-    pub version_file_name: Option<PathBuf>,
-    pub version_content: BTreeMap<String, String>,
     pub merged_content: serde_json::Value,
     pub version: Id,
     pub message: String,
@@ -66,24 +66,35 @@ pub fn get_resources(
         return Ok(None);
     }
 
+    let mut vm = JsonnetVm::new();
+
     let env_path = &Path::new(env);
 
     repo.walk(&env_path.join("deployable"), |entry| {
-        // FIXME don't fail everything if content is invalid, report the
-        // resource as errored
-        let content = serde_yaml::from_slice(&entry.content)?;
+        // FIXME don't fail everything if content is invalid or jsonnet fails,
+        // report the resource as errored
         let name = entry
             .path
             .file_stem()
             .and_then(|s| s.to_str())
             .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
             .to_string();
+        let content = if entry.path.extension() == Some(OsStr::new("jsonnet")) {
+            // FIXME implement import handler
+            // FIXME implement same for versioned resources, provide version
+            // data as external variable
+            vm.ext_code("version", "null");
+            let result = vm
+                .evaluate_snippet(entry.path, std::str::from_utf8(&entry.content)?)
+                .map_err(|e| format_err!("jsonnet error: {}", e.as_str()))?;
+            serde_json::from_str(&result)?
+        } else {
+            serde_yaml::from_slice(&entry.content)?
+        };
+
         let resource = Resource {
             name: name.clone(),
-            base_file_name: env_path.join("deployable").join(entry.path),
             merged_content: content,
-            version_content: BTreeMap::new(),
-            version_file_name: None,
             version: entry.last_change,
             message: entry.change_message,
         };
@@ -94,7 +105,6 @@ pub fn get_resources(
 
     repo.walk(&env_path.join("version"), |entry| {
         // FIXME don't fail everything if content is invalid
-        let content = serde_yaml::from_slice(&entry.content)?;
         let name = entry
             .path
             .file_stem()
@@ -102,6 +112,7 @@ pub fn get_resources(
             .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
             .to_string();
         let base_file_name = env_path.join("base").join(&entry.path);
+        // FIXME maybe the version file shouldn't need to be called .jsonnet
         let base_file_content = match repo.get(&base_file_name) {
             Ok(Some(content)) => content,
             Ok(None) => {
@@ -111,13 +122,22 @@ pub fn get_resources(
             }
             Err(e) => bail!(e),
         };
-        let base_file_content = serde_yaml::from_slice(&base_file_content)?;
+        let merged_content = if base_file_name.extension() == Some(OsStr::new("jsonnet")) {
+            // FIXME implement import handler
+            let content: serde_json::Value = serde_yaml::from_slice(&entry.content)?;
+            vm.ext_code("version", &serde_json::to_string(&content)?);
+            let result = vm
+                .evaluate_snippet(entry.path, std::str::from_utf8(&base_file_content)?)
+                .map_err(|e| format_err!("jsonnet error: {}", e.as_str()))?;
+            serde_json::from_str(&result)?
+        } else {
+            let content = serde_yaml::from_slice(&entry.content)?;
+            let base_file_content = serde_yaml::from_slice(&base_file_content)?;
+            merge_resource(base_file_content, &content)
+        };
         let resource = Resource {
             name: name.clone(),
-            base_file_name,
-            merged_content: merge_resource(base_file_content, &content),
-            version_content: content,
-            version_file_name: Some(env_path.join("version").join(&entry.path)),
+            merged_content,
             version: entry.last_change,
             message: entry.change_message,
         };
@@ -291,7 +311,6 @@ mod test {
     use common::{repo, Env};
     use git_fixture;
     use serde_json::json;
-    use std::path::Path;
 
     fn make_resource_repo(git_fixture: git_fixture::RepoFixture, head: &str) -> impl ResourceRepo {
         let head = git_fixture.get_commit(head).unwrap();
@@ -331,10 +350,6 @@ mod test {
         let info = result.unwrap();
         assert_eq!(info.resources.len(), 1);
         assert_eq!(info.resources[0].name, "foo");
-        assert_eq!(
-            info.resources[0].base_file_name,
-            Path::new("available/deployable/foo")
-        );
         assert_eq!(info.resources[0].merged_content, json!("blubb"));
         assert_eq!(info.resources[0].version, head)
     }
@@ -352,17 +367,9 @@ mod test {
         info.resources.sort_by_key(|d| d.name.clone());
         assert_eq!(info.resources.len(), 2);
         assert_eq!(info.resources[0].name, "bar");
-        assert_eq!(
-            info.resources[0].base_file_name,
-            Path::new("available/deployable/bar")
-        );
         assert_eq!(info.resources[0].merged_content, json!("xx"));
         assert_eq!(info.resources[0].version, head);
         assert_eq!(info.resources[1].name, "foo");
-        assert_eq!(
-            info.resources[1].base_file_name,
-            Path::new("available/deployable/foo")
-        );
         assert_eq!(info.resources[1].merged_content, json!("blubb"));
         assert_eq!(info.resources[1].version, head);
     }
@@ -381,25 +388,9 @@ mod test {
         info.resources.sort_by_key(|d| d.name.clone());
         assert_eq!(info.resources.len(), 2);
         assert_eq!(info.resources[0].name, "nothing");
-        assert_eq!(
-            info.resources[0].base_file_name,
-            Path::new("available/base/nothing")
-        );
-        assert_eq!(
-            info.resources[0].version_file_name,
-            Some(PathBuf::from("available/version/nothing"))
-        );
         assert_eq!(info.resources[0].merged_content, json!("blubb"));
         assert_eq!(info.resources[0].version, head);
         assert_eq!(info.resources[1].name, "simple");
-        assert_eq!(
-            info.resources[1].base_file_name,
-            Path::new("available/base/simple")
-        );
-        assert_eq!(
-            info.resources[1].version_file_name,
-            Some(PathBuf::from("available/version/simple"))
-        );
         assert_eq!(
             info.resources[1].merged_content,
             json!({
@@ -422,20 +413,8 @@ mod test {
         info.resources.sort_by_key(|d| d.name.clone());
         assert_eq!(info.resources.len(), 3);
         assert_eq!(info.resources[0].name, "bar");
-        assert_eq!(
-            info.resources[0].base_file_name,
-            Path::new("available/deployable/bar")
-        );
         assert_eq!(info.resources[1].name, "baz");
-        assert_eq!(
-            info.resources[1].base_file_name,
-            Path::new("available/deployable/subdir/baz")
-        );
         assert_eq!(info.resources[2].name, "blub");
-        assert_eq!(
-            info.resources[2].base_file_name,
-            Path::new("available/deployable/othersubdir/blub")
-        );
     }
 
     #[test]
@@ -486,5 +465,39 @@ mod test {
         assert_eq!(info.resources[0].version, head);
         assert_eq!(info.resources[1].name, "foo");
         assert_eq!(info.resources[1].version, first);
+    }
+
+    #[test]
+    fn test_get_resources_jsonnet_1() {
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_resources_jsonnet_1.yaml"
+        ))
+        .unwrap();
+        let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
+        let result =
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+        assert!(result.is_some());
+        let info = result.unwrap();
+        assert_eq!(info.resources.len(), 1);
+        assert_eq!(info.resources[0].name, "foo");
+        assert_eq!(info.resources[0].merged_content, json!({ "bar": 2 }));
+        assert_eq!(info.resources[0].version, head)
+    }
+
+    #[test]
+    fn test_get_resources_jsonnet_2() {
+        let fixture = git_fixture::RepoFixture::from_str(include_str!(
+            "./fixtures/get_resources_jsonnet_2.yaml"
+        ))
+        .unwrap();
+        let head = repo::oid_to_id(fixture.get_commit("head").unwrap());
+        let result =
+            get_resources(&make_resource_repo(fixture, "head"), "available", None).unwrap();
+        assert!(result.is_some());
+        let info = result.unwrap();
+        assert_eq!(info.resources.len(), 1);
+        assert_eq!(info.resources[0].name, "foo");
+        assert_eq!(info.resources[0].merged_content, json!({ "bar": 3 }));
+        assert_eq!(info.resources[0].version, head)
     }
 }
