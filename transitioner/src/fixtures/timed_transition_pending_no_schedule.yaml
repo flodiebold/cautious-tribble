@@ -1,6 +1,6 @@
 commits:
   - files:
-      transitions.yaml: |
+      transition_state.yaml: |
         ---
         prod:
           scheduled: 2018-01-01T00:00:00Z

@@ -1,13 +1,13 @@
 commits:
   - files:
-      transitions.yaml: |
+      transition_state.yaml: |
         ---
         prod:
           scheduled: "2018-01-01T00:00:00Z"
       available/version/foo: x
     name: head
   - files:
-      transitions.yaml: |
+      transition_state.yaml: |
         ---
         prod:
           scheduled: "2018-01-02T00:00:00Z"
