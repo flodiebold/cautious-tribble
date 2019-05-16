@@ -162,22 +162,19 @@ function useWebSocket(url: string, onMessage: (ev: MessageEvent) => void) {
             );
         };
     };
-    useEffect(
-        () => {
-            connect();
-            return () => {
-                if (ws.current !== null) {
-                    ws.current.close(1000, "going away");
-                    ws.current = null;
-                }
-                if (timeout.current !== null) {
-                    clearTimeout(timeout.current);
-                    timeout.current = null;
-                }
-            };
-        },
-        [url]
-    );
+    useEffect(() => {
+        connect();
+        return () => {
+            if (ws.current !== null) {
+                ws.current.close(1000, "going away");
+                ws.current = null;
+            }
+            if (timeout.current !== null) {
+                clearTimeout(timeout.current);
+                timeout.current = null;
+            }
+        };
+    }, [url]);
 }
 
 function applyMessage(data: IUiData, message: Message): IUiData {
