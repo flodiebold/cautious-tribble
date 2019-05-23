@@ -1,12 +1,8 @@
-use kubeclient::clients::KubeClient;
-use kubeclient::resources::Deployment;
 use std::collections::HashMap;
 
 use failure::{bail, format_err, Error, ResultExt};
-use k8s_openapi::v1_10::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use kubeclient::clients::ReadClient;
-use kubeclient::resources::{Kind, Resource as KubeResource};
-use kubeclient::Kubernetes;
+use k8s_openapi::{api, apimachinery::pkg::apis::meta::v1::ObjectMeta};
+use kubernetes::config::Configuration as KubeConfig;
 use log::{debug, info, warn};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::json;
@@ -22,6 +18,9 @@ const VERSION_ANNOTATION: &str = "new-dm/version";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     namespace: String,
+    context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
     glob: Option<String>,
 }
 
@@ -32,20 +31,27 @@ impl Config {
 }
 
 pub struct KubernetesDeployer {
-    kubeconf: String,
     namespace: String,
-    client: Kubernetes,
+    context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
+    client: KubeConfig,
 }
 
 impl KubernetesDeployer {
-    fn new(env: &Env, config: &Config) -> Result<KubernetesDeployer, Error> {
-        let kubeconf = env
-            .kube_config
-            .clone()
-            .unwrap_or_else(|| "./kube_config".to_string());
+    fn new(_env: &Env, config: &Config) -> Result<KubernetesDeployer, Error> {
+        let options = kubernetes::config::ConfigOptions {
+            cluster: config.cluster.clone(),
+            context: config.context.clone(),
+            user: config.user.clone(),
+        };
+        let configuration = kubernetes::config::incluster_config()
+            .or_else(|_| kubernetes::config::load_kube_config_with(options))?;
         Ok(KubernetesDeployer {
-            client: Kubernetes::load_conf(&kubeconf)?.namespace(&config.namespace),
-            kubeconf,
+            client: configuration,
+            context: config.context.clone(),
+            cluster: config.cluster.clone(),
+            user: config.user.clone(),
             namespace: config.namespace.clone(),
         })
     }
@@ -54,16 +60,19 @@ impl KubernetesDeployer {
         use std::io::Write;
         use std::process::{Command, Stdio};
 
-        let mut process = Command::new("kubectl")
-            .args(&[
-                "apply",
-                "--namespace",
-                &self.namespace,
-                "--kubeconfig",
-                &self.kubeconf,
-                "-f",
-                "-",
-            ])
+        let mut builder = Command::new("kubectl");
+        builder.args(&["apply", "--namespace", &self.namespace]);
+        if let Some(context) = &self.context {
+            builder.args(&["--context", &context]);
+        }
+        if let Some(cluster) = &self.cluster {
+            builder.args(&["--cluster", &cluster]);
+        }
+        if let Some(user) = &self.user {
+            builder.args(&["--user", &user]);
+        }
+        builder.args(&["-f", "-"]);
+        let mut process = builder
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -113,14 +122,26 @@ impl Deployer for KubernetesDeployer {
             let kind = determine_kind(&d.merged_content)?;
 
             let state = match kind {
-                Kind::Deployment => get_deployment_state(&self.client.deployments(), d)?,
+                Kind::Deployment => get_deployment_state(&self.client, &self.namespace, d)?,
                 // TODO these should work
                 Kind::DaemonSet => bail!("Unsupported resource type: {:?}", kind),
                 Kind::Pod => bail!("Unsupported resource type: {:?}", kind),
 
-                Kind::Service => get_simple_resource_state(&self.client.services(), d)?,
-                Kind::ConfigMap => get_simple_resource_state(&self.client.config_maps(), d)?,
-                Kind::Secret => get_simple_resource_state(&self.client.secrets(), d)?,
+                Kind::Service => get_simple_resource_state::<api::core::v1::Service>(
+                    &self.client,
+                    &self.namespace,
+                    d,
+                )?,
+                Kind::ConfigMap => get_simple_resource_state::<api::core::v1::ConfigMap>(
+                    &self.client,
+                    &self.namespace,
+                    d,
+                )?,
+                Kind::Secret => get_simple_resource_state::<api::core::v1::Secret>(
+                    &self.client,
+                    &self.namespace,
+                    d,
+                )?,
                 Kind::NetworkPolicy | Kind::Node => {
                     bail!("Unsupported resource type: {:?}", kind);
                 }
@@ -165,12 +186,15 @@ impl Deployer for KubernetesDeployer {
     }
 }
 
-fn determine_rollout_status(
-    name: &str,
-    dep: &::kubeclient::resources::Deployment,
-) -> RolloutStatusReason {
+fn determine_rollout_status(name: &str, dep: &api::apps::v1::Deployment) -> RolloutStatusReason {
     if let Some(status) = &dep.status {
-        if dep.metadata.generation > status.observed_generation {
+        if dep
+            .metadata
+            .as_ref()
+            .and_then(|m| m.generation)
+            .unwrap_or(0)
+            > status.observed_generation.unwrap_or(0)
+        {
             return RolloutStatusReason::NotYetObserved;
         }
 
@@ -193,13 +217,14 @@ fn determine_rollout_status(
 
         if dep
             .spec
-            .replicas
+            .as_ref()
+            .and_then(|s| s.replicas)
             .map(|r| r > updated_replicas)
             .unwrap_or(false)
         {
             // not enough replicas yet
             return RolloutStatusReason::NotAllUpdated {
-                expected: dep.spec.replicas.unwrap(),
+                expected: dep.spec.as_ref().unwrap().replicas.unwrap(),
                 updated: updated_replicas,
             };
         }
@@ -234,10 +259,12 @@ fn determine_rollout_status(
 }
 
 fn get_deployment_state(
-    client: &KubeClient<Deployment>,
+    config: &KubeConfig,
+    namespace: &str,
     d: &Resource,
 ) -> Result<Option<ResourceState>, Error> {
-    let kube_deployment = get_kubernetes_resource(client, &d.name)?;
+    let kube_deployment =
+        get_kubernetes_resource::<api::apps::v1::Deployment>(config, namespace, &d.name)?;
 
     let kube_deployment = if let Some(k) = kube_deployment {
         k
@@ -252,11 +279,16 @@ fn get_deployment_state(
     Ok(Some(state))
 }
 
-fn get_simple_resource_state<T: KubeResource>(
-    client: &KubeClient<T>,
+fn get_simple_resource_state<
+    T: k8s_openapi::Resource
+        + k8s_openapi::Metadata<Ty = ObjectMeta>
+        + for<'de> serde::Deserialize<'de>,
+>(
+    config: &KubeConfig,
+    namespace: &str,
     r: &Resource,
 ) -> Result<Option<ResourceState>, Error> {
-    let resource = get_kubernetes_resource(&client, &r.name)?;
+    let resource = get_kubernetes_resource::<T>(&config, namespace, &r.name)?;
 
     let resource = if let Some(k) = resource {
         k
@@ -269,15 +301,14 @@ fn get_simple_resource_state<T: KubeResource>(
     Ok(Some(state))
 }
 
-fn to_resource_state<T: KubeResource>(
+fn to_resource_state<T: k8s_openapi::Metadata<Ty = ObjectMeta>>(
     resource: &Resource,
     kube_resource: &T,
     rollout_status: RolloutStatusReason,
 ) -> ResourceState {
     let version_annotation = kube_resource
         .metadata()
-        .annotations
-        .as_ref()
+        .and_then(|m| m.annotations.as_ref())
         .and_then(|ann| ann.get(VERSION_ANNOTATION))
         .map(|s| s.as_str());
 
@@ -290,16 +321,48 @@ fn to_resource_state<T: KubeResource>(
     }
 }
 
-fn get_kubernetes_resource<T: KubeResource>(
-    client: &KubeClient<T>,
+fn get_kubernetes_resource<
+    T: k8s_openapi::Resource
+        + k8s_openapi::Metadata<Ty = ObjectMeta>
+        + for<'de> serde::Deserialize<'de>,
+>(
+    config: &KubeConfig,
+    namespace: &str,
     name: &str,
 ) -> Result<Option<T>, Error> {
-    let result = match client.get(name) {
-        Ok(r) => r,
-        Err(ref e) if e.http_status() == Some(404) => return Ok(None),
-        Err(e) => return Err(e.into()),
+    let url = format!(
+        "{}/{}/{}/namespaces/{}/{}s/{}",
+        config.base_path,
+        if T::group() == "" { "api" } else { "apis" },
+        T::api_version(),
+        namespace,
+        T::kind().to_ascii_lowercase(),
+        name
+    );
+    let response = config.client.get(&url).send()?;
+    debug!("GET {} => {}", url, response.status());
+    let result = match response.error_for_status() {
+        Ok(mut r) => r.json()?,
+        Err(e) => {
+            if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+                return Ok(None);
+            }
+            return Err(e.into());
+        }
     };
     Ok(Some(result))
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Kind {
+    DaemonSet,
+    Deployment,
+    ConfigMap,
+    NetworkPolicy,
+    Node,
+    Pod,
+    Secret,
+    Service,
 }
 
 #[derive(Deserialize, Debug)]
@@ -311,7 +374,6 @@ struct MinimalResource {
 }
 
 fn determine_kind(data: &serde_json::Value) -> Result<Kind, Error> {
-    // TODO: it should be possible to do this without cloning
     let resource: MinimalResource = serde_json::from_value(data.clone())?;
     Ok(resource.kind)
 }

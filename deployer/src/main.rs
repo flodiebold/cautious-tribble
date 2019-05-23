@@ -24,7 +24,6 @@ use crate::config::Config;
 struct Env {
     #[serde(flatten)]
     common: common::Env,
-    kube_config: Option<String>,
     api_port: Option<u16>,
 }
 

@@ -24,8 +24,13 @@ log = "0.4"
 env_logger = "0.6"
 
 # kubeclient = "0.1"
-kubeclient = { git = "https://github.com/flodiebold/kubeclient-rs.git" }
-k8s-openapi = { git = "https://github.com/Arnavion/k8s-openapi-codegen", branch = "master", features = ["v1_10"] }
+# kubeclient = { git = "https://github.com/flodiebold/kubeclient-rs.git" }
+kubernetes = { git = "https://github.com/ynqa/kubernetes-rust.git" }
+# k8s-openapi = { git = "https://github.com/Arnavion/k8s-openapi-codegen", branch = "master", features = ["v1_10"] }
+k8s-openapi = { version = "0.4", features = ["v1_10"] }
+http = "0.1"
+
+reqwest = "0.9"
 
 common = { path = "../common" }
 
