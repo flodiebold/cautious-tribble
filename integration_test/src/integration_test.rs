@@ -225,6 +225,7 @@ impl IntegrationTest {
             .env("PATH", std::env::var("PATH").unwrap_or_default())
             .env("API_PORT", self.get_port(service).to_string())
             .env("VERSIONS_URL", "./versions.git")
+            .env("KUBECONFIG", "./kube_config")
             .env(
                 "VERSIONS_CHECKOUT_PATH",
                 format!("./versions_checkout_{:?}", service),
