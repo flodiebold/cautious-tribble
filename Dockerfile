@@ -3,7 +3,8 @@ FROM flodiebold/cautious-tribble-build
 WORKDIR /home/rust/src
 USER rust
 COPY . ./
-RUN cargo build -p deployer -p transitioner -p aggregator --release
+# RUN env CC=musl-gcc cargo build -p deployer -p transitioner -p aggregator --release
+RUN env CC=musl-gcc cargo build -p deployer
 
 # ui
 FROM node:11-alpine

@@ -2,4 +2,4 @@ FROM ekidd/rust-musl-builder
 WORKDIR /home/rust/src
 USER rust
 COPY . ./
-RUN cargo build -p deployer -p transitioner -p aggregator --release
+RUN env CC=musl-gcc RUSTFLAGS="-C target-feature=+crt-static" cargo build -p deployer -p transitioner -p aggregator --release
