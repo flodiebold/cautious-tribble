@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Florian Diebold <flodiebold@gmail.com>"]
 edition = "2018"
 
+[features]
+vendored-openssl = ["common/vendored-openssl"]
+
 [dependencies]
 failure = "0.1"
 git2 = "0.8"
