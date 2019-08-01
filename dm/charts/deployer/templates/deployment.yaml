@@ -25,6 +25,9 @@ spec:
       - name: secret-volume
         secret:
           secretName: ssh-key-secret
+      - name: kubeconfig-volume
+        secret:
+          secretName: kubeconfig
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
@@ -41,6 +44,8 @@ spec:
               value: /ssh-keys/id_rsa
             - name: SSH_PUBLIC_KEY
               value: /ssh-keys/id_rsa.pub
+            - name: KUBECONFIG
+              value: /kubeconfig/kubeconf.yaml
           ports:
             - name: http
               containerPort: 80
@@ -57,6 +62,9 @@ spec:
           - name: secret-volume
             readOnly: true
             mountPath: "/ssh-keys"
+          - name: kubeconfig-volume
+            readOnly: true
+            mountPath: "/kubeconfig"
           resources:
 {{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}
