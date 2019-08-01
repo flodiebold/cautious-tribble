@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 use std::process;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{atomic::AtomicU32, Arc, RwLock};
 
-use bus::Bus;
 use failure::Error;
 use log::info;
 use serde_derive::Deserialize;
@@ -27,16 +26,18 @@ struct Env {
 pub struct ServiceState {
     env: Env,
     full_status: RwLock<Arc<FullStatus>>,
-    bus: Mutex<Bus<Arc<Message>>>,
+    client_counter: AtomicU32,
+    receivers: RwLock<Vec<(u32, futures::sync::mpsc::Sender<Message>)>>,
 }
 
 fn serve(env: Env) -> Result<(), Error> {
-    let bus = Mutex::new(Bus::new(100));
+    let receivers = RwLock::new(Vec::with_capacity(100));
     let full_status = Default::default();
     let service_state = Arc::new(ServiceState {
         env,
         full_status,
-        bus,
+        client_counter: AtomicU32::new(0),
+        receivers,
     });
 
     let versions_watch = versions_watch::start(service_state.clone())?;

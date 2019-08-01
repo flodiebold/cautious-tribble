@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use failure::{format_err, Error};
 use git2::{Commit, Oid, Sort};
-use log::error;
+use log::{debug, error};
 use regex::Regex;
 use serde_yaml;
 
@@ -328,14 +328,17 @@ pub fn start(service_state: Arc<ServiceState>) -> Result<thread::JoinHandle<()>,
                     full_status.analysis = last_analysis.clone();
                     full_status.counter
                 };
-                service_state
-                    .bus
-                    .lock()
-                    .unwrap()
-                    .broadcast(Arc::new(Message::Versions {
+                for (client_id, tx) in &*service_state.receivers.read().unwrap() {
+                    if let Err(e) = tx.clone().try_send(Message::Versions {
                         counter,
                         analysis: last_analysis.clone(),
-                    }));
+                    }) {
+                        debug!(
+                            "Error sending message to WebSocket client {}: {}",
+                            client_id, e
+                        );
+                    };
+                }
             }
         }
 

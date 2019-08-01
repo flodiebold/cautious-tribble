@@ -3,7 +3,7 @@ use std::thread;
 use std::time::Duration;
 
 use failure::{bail, Error};
-use log::{error, trace};
+use log::{debug, error, trace};
 use reqwest;
 
 use common::aggregator::Message;
@@ -74,14 +74,17 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
                     full_status.counter
                 };
 
-                service_state
-                    .bus
-                    .lock()
-                    .unwrap()
-                    .broadcast(Arc::new(Message::TransitionStatus {
+                for (client_id, tx) in &*service_state.receivers.read().unwrap() {
+                    if let Err(e) = tx.clone().try_send(Message::TransitionStatus {
                         counter,
                         transitions: status.clone(),
-                    }));
+                    }) {
+                        debug!(
+                            "Error sending message to WebSocket client {}: {}",
+                            client_id, e
+                        );
+                    };
+                }
 
                 last_status = status;
             } else {

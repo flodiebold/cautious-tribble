@@ -21,7 +21,6 @@ warp = "0.1"
 futures = "0.1"
 
 crossbeam = "0.6"
-bus = "2"
 
 log = "0.4"
 env_logger = "0.6"
