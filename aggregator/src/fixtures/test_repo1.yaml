@@ -1,0 +1,11 @@
+commits:
+  - files:
+      dev/version/foo: |
+        version: 1
+      dev/base/foo: stuff
+    name: first
+  - files:
+      dev/version/foo: |
+        version: 2
+      dev/base/foo: stuff
+    name: head

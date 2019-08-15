@@ -187,7 +187,8 @@ impl ResourceRepo for GitResourceRepo {
 
             let full_path = base_path.join(&path);
 
-            let last_change_commit = determine_last_change(&self.repo, self.head, &full_path)?;
+            let last_change_commit =
+                determine_last_change(&self.repo, id_to_oid(commit), &full_path)?;
 
             let last_change = oid_to_id(last_change_commit.id());
             let change_message = last_change_commit
