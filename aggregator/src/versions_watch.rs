@@ -321,21 +321,13 @@ pub fn start(service_state: Arc<ServiceState>) -> Result<thread::JoinHandle<()>,
                 last_head = Some(repo.head);
                 last_analysis = new_analysis;
 
-                let counter = {
-                    let mut write_lock = service_state.full_status.write().unwrap();
-                    let mut full_status = Arc::make_mut(&mut write_lock);
-                    full_status.counter += 1;
+                let counter = service_state.update_status(|full_status| {
                     full_status.analysis = last_analysis.clone();
-                    full_status.counter
-                };
-                service_state
-                    .bus
-                    .lock()
-                    .unwrap()
-                    .broadcast(Arc::new(Message::Versions {
-                        counter,
-                        analysis: last_analysis.clone(),
-                    }));
+                });
+                service_state.send_to_all_clients(Message::Versions {
+                    counter,
+                    analysis: last_analysis.clone(),
+                });
             }
         }
 
