@@ -3,7 +3,7 @@ use std::process;
 use std::sync::{atomic::AtomicU32, Arc, RwLock};
 
 use failure::Error;
-use log::info;
+use log::{debug, info};
 use serde_derive::Deserialize;
 
 use common::aggregator::{FullStatus, Message};
@@ -28,6 +28,29 @@ pub struct ServiceState {
     full_status: RwLock<Arc<FullStatus>>,
     client_counter: AtomicU32,
     receivers: RwLock<Vec<(u32, futures::sync::mpsc::Sender<Message>)>>,
+}
+
+impl ServiceState {
+    /// Updates the aggregator status, and returns a counter for the update
+    /// message.
+    pub fn update_status(&self, update_fn: impl FnOnce(&mut FullStatus)) -> usize {
+        let mut write_lock = self.full_status.write().unwrap();
+        let full_status = Arc::make_mut(&mut write_lock);
+        full_status.counter += 1;
+        update_fn(full_status);
+        full_status.counter
+    }
+
+    pub fn send_to_all_clients(&self, msg: Message) {
+        for (client_id, tx) in self.receivers.read().unwrap().iter() {
+            if let Err(e) = tx.clone().try_send(msg.clone()) {
+                debug!(
+                    "Error sending message to WebSocket client {}: {}",
+                    client_id, e
+                );
+            };
+        }
+    }
 }
 
 fn serve(env: Env) -> Result<(), Error> {

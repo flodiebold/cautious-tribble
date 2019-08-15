@@ -3,7 +3,7 @@ use std::thread;
 use std::time::Duration;
 
 use failure::{bail, Error};
-use log::{debug, error, trace};
+use log::{error, trace};
 use reqwest;
 
 use common::aggregator::Message;
@@ -66,25 +66,14 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
             if last_status != status {
                 trace!("Transitioner status changed: {:?}", status);
 
-                let counter = {
-                    let mut write_lock = service_state.full_status.write().unwrap();
-                    let full_status = Arc::make_mut(&mut write_lock);
-                    full_status.counter += 1;
+                let counter = service_state.update_status(|full_status| {
                     full_status.transitions = status.clone();
-                    full_status.counter
-                };
+                });
 
-                for (client_id, tx) in &*service_state.receivers.read().unwrap() {
-                    if let Err(e) = tx.clone().try_send(Message::TransitionStatus {
-                        counter,
-                        transitions: status.clone(),
-                    }) {
-                        debug!(
-                            "Error sending message to WebSocket client {}: {}",
-                            client_id, e
-                        );
-                    };
-                }
+                service_state.send_to_all_clients(Message::TransitionStatus {
+                    counter,
+                    transitions: status.clone(),
+                });
 
                 last_status = status;
             } else {
