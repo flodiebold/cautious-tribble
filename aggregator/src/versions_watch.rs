@@ -50,76 +50,6 @@ fn split_log_message(msg: &str) -> (String, Option<String>) {
     (header.trim().replace('\n', " "), body)
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn remove_trailers_noop() {
-        let s = r"Foo bar
-Baz.";
-        let (s2, trailers) = remove_trailers(s.to_string());
-        assert_eq!(s, s2);
-        assert!(trailers.is_empty());
-    }
-    #[test]
-    fn remove_trailers_one() {
-        let s = r"Foo bar
-Baz.
-
-DM-Transition: blubb
-
-";
-        let (s2, trailers) = remove_trailers(s.to_string());
-        assert_eq!("Foo bar\nBaz.", s2);
-        assert_eq!(trailers["DM-Transition"], "blubb");
-    }
-    #[test]
-    fn remove_trailers_multiple() {
-        let s = r"Foo bar
-Baz.
-
-DM-Transition: blubb
-
-DM-Source: foo
-DM-Target: bar
-
-";
-        let (s2, trailers) = remove_trailers(s.to_string());
-        assert_eq!("Foo bar\nBaz.", s2);
-        assert_eq!(trailers["DM-Transition"], "blubb");
-        assert_eq!(trailers["DM-Source"], "foo");
-        assert_eq!(trailers["DM-Target"], "bar");
-    }
-
-    #[test]
-    fn split_log_message_noop() {
-        let s = "Foo bar baz.";
-        let (header, body) = split_log_message(s);
-        assert_eq!(header, s);
-        assert_eq!(body, None);
-    }
-
-    #[test]
-    fn split_log_message_merge_lines() {
-        let s = "Foo bar
-baz.";
-        let (header, body) = split_log_message(s);
-        assert_eq!(header, "Foo bar baz.");
-        assert_eq!(body, None);
-    }
-
-    #[test]
-    fn split_log_message_1() {
-        let s = "Foo bar
-
-baz.";
-        let (header, body) = split_log_message(s);
-        assert_eq!(header, "Foo bar");
-        assert_eq!(body.unwrap(), "baz.");
-    }
-}
-
 fn analyze_commit<'repo>(
     repo: &'repo GitResourceRepo,
     commit: Commit<'repo>,
@@ -137,133 +67,123 @@ fn analyze_commit<'repo>(
     let (msg, _trailers) = remove_trailers(msg);
     let (msg_header, msg_body) = split_log_message(&msg);
 
+    let commit_id = repo::oid_to_id(commit.id());
+
     for env_path in &envs {
-        repo.walk_commit(
-            &env_path.join("version"),
-            repo::oid_to_id(commit.id()),
-            |entry| {
-                if entry.last_change != repo::oid_to_id(commit.id()) {
-                    return Ok(());
+        let env = EnvName(env_path.to_str().unwrap().to_string());
+        repo.walk_commit(&env_path.join("version"), commit_id, |entry| {
+            if entry.last_change != commit_id {
+                return Ok(());
+            }
+            // FIXME don't fail if anything is invalid here!
+            let content: HashMap<String, String> = serde_yaml::from_slice(&entry.content)?;
+            let name = entry
+                .path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
+                .to_string();
+            let resource_id = ResourceId(name);
+            if analysis
+                .resources
+                .get(&resource_id)
+                .map(|r| !r.versions.contains_key(&entry.content_id))
+                .unwrap_or(true)
+            {
+                let version_name = content
+                    .get("version")
+                    .ok_or_else(|| format_err!("No version found"))?;
+                let change_log = msg_body.clone().unwrap_or_else(String::new);
+                let version = ResourceVersion {
+                    version_id: entry.content_id,
+                    introduced_in: commit_id,
+                    version: version_name.clone(),
+                    change_log,
+                };
+                let change = ResourceRepoChange::Version {
+                    resource: resource_id.clone(),
+                    version,
+                };
+                if !changes.contains(&change) {
+                    changes.push(change);
                 }
-                // FIXME don't fail if anything is invalid here!
-                let content: HashMap<String, String> = serde_yaml::from_slice(&entry.content)?;
-                let name = entry
-                    .path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
-                    .to_string();
-                let resource_id = ResourceId(name);
-                let env = EnvName(env_path.to_str().unwrap().to_string());
-                if analysis
-                    .resources
-                    .get(&resource_id)
-                    .map(|r| !r.versions.contains_key(&entry.content_id))
-                    .unwrap_or(true)
-                {
-                    let version_name = content.get("version").expect("FIXME");
-                    let change_log = msg_body.clone().unwrap_or_else(String::new);
-                    let version = ResourceVersion {
-                        version_id: entry.content_id,
-                        introduced_in: repo::oid_to_id(commit.id()),
-                        version: version_name.clone(),
-                        change_log,
-                    };
-                    let change = ResourceRepoChange::Version {
-                        resource: resource_id.clone(),
-                        version,
-                    };
-                    if !changes.contains(&change) {
-                        changes.push(change);
-                    }
-                }
-                let previous_version_id = analysis
-                    .resources
-                    .get(&resource_id)
-                    .and_then(|r| r.version_by_env.get(&env))
-                    .map(|v| *v);
-                if previous_version_id
-                    .map(|v| v != entry.content_id)
-                    .unwrap_or(true)
-                {
-                    changes.push(ResourceRepoChange::VersionDeployed {
-                        resource: resource_id,
-                        env,
-                        previous_version_id,
-                        version_id: entry.content_id,
-                    });
-                }
-                Ok(())
-            },
-        )?;
-        repo.walk_commit(
-            &env_path.join("base"),
-            repo::oid_to_id(commit.id()),
-            |entry| {
-                if entry.last_change != repo::oid_to_id(commit.id()) {
-                    return Ok(());
-                }
-                let name = entry
-                    .path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
-                    .to_string();
-                let resource_id = ResourceId(name);
-                let env = EnvName(env_path.to_str().unwrap().to_string());
-                if analysis
-                    .resources
-                    .get(&resource_id)
-                    .and_then(|r| r.base_data.get(&env))
-                    .map(|v| *v == entry.content_id)
-                    .unwrap_or(false)
-                {
-                    return Ok(());
-                }
-                changes.push(ResourceRepoChange::BaseData {
+            }
+            let previous_version_id = analysis
+                .resources
+                .get(&resource_id)
+                .and_then(|r| r.version_by_env.get(&env))
+                .map(|v| *v);
+            if previous_version_id
+                .map(|v| v != entry.content_id)
+                .unwrap_or(true)
+            {
+                changes.push(ResourceRepoChange::VersionDeployed {
                     resource: resource_id,
-                    env,
-                    content_id: entry.content_id,
+                    env: env.clone(),
+                    previous_version_id,
+                    version_id: entry.content_id,
                 });
-                Ok(())
-            },
-        )?;
-        repo.walk_commit(
-            &env_path.join("deployable"),
-            repo::oid_to_id(commit.id()),
-            |entry| {
-                if entry.last_change != repo::oid_to_id(commit.id()) {
-                    return Ok(());
-                }
-                let name = entry
-                    .path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
-                    .to_string();
-                let resource_id = ResourceId(name);
-                let env = EnvName(env_path.to_str().unwrap().to_string());
-                if analysis
-                    .resources
-                    .get(&resource_id)
-                    .and_then(|r| r.base_data.get(&env))
-                    .map(|v| *v == entry.content_id)
-                    .unwrap_or(false)
-                {
-                    return Ok(());
-                }
-                changes.push(ResourceRepoChange::Deployable {
-                    resource: resource_id,
-                    env,
-                    content_id: entry.content_id,
-                });
-                Ok(())
-            },
-        )?;
+            }
+            Ok(())
+        })?;
+        repo.walk_commit(&env_path.join("base"), commit_id, |entry| {
+            if entry.last_change != commit_id {
+                return Ok(());
+            }
+            let name = entry
+                .path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
+                .to_string();
+            let resource_id = ResourceId(name);
+            if analysis
+                .resources
+                .get(&resource_id)
+                .and_then(|r| r.base_data.get(&env))
+                .map(|v| *v == entry.content_id)
+                .unwrap_or(false)
+            {
+                return Ok(());
+            }
+            changes.push(ResourceRepoChange::BaseData {
+                resource: resource_id,
+                env: env.clone(),
+                content_id: entry.content_id,
+            });
+            Ok(())
+        })?;
+        repo.walk_commit(&env_path.join("deployable"), commit_id, |entry| {
+            if entry.last_change != commit_id {
+                return Ok(());
+            }
+            let name = entry
+                .path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
+                .to_string();
+            let resource_id = ResourceId(name);
+            if analysis
+                .resources
+                .get(&resource_id)
+                .and_then(|r| r.base_data.get(&env))
+                .map(|v| *v == entry.content_id)
+                .unwrap_or(false)
+            {
+                return Ok(());
+            }
+            changes.push(ResourceRepoChange::Deployable {
+                resource: resource_id,
+                env: env.clone(),
+                content_id: entry.content_id,
+            });
+            Ok(())
+        })?;
     }
 
     Ok(ResourceRepoCommit {
-        id: repo::oid_to_id(commit.id()),
+        id: commit_id,
         message: msg_header,
         long_message: msg_body.unwrap_or_else(String::new),
         author_name: commit
@@ -339,4 +259,154 @@ pub fn start(service_state: Arc<ServiceState>) -> Result<thread::JoinHandle<()>,
         }
     });
     Ok(handle)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use git_fixture;
+
+    #[test]
+    fn remove_trailers_noop() {
+        let s = r"Foo bar
+Baz.";
+        let (s2, trailers) = remove_trailers(s.to_string());
+        assert_eq!(s, s2);
+        assert!(trailers.is_empty());
+    }
+    #[test]
+    fn remove_trailers_one() {
+        let s = r"Foo bar
+Baz.
+
+DM-Transition: blubb
+
+";
+        let (s2, trailers) = remove_trailers(s.to_string());
+        assert_eq!("Foo bar\nBaz.", s2);
+        assert_eq!(trailers["DM-Transition"], "blubb");
+    }
+    #[test]
+    fn remove_trailers_multiple() {
+        let s = r"Foo bar
+Baz.
+
+DM-Transition: blubb
+
+DM-Source: foo
+DM-Target: bar
+
+";
+        let (s2, trailers) = remove_trailers(s.to_string());
+        assert_eq!("Foo bar\nBaz.", s2);
+        assert_eq!(trailers["DM-Transition"], "blubb");
+        assert_eq!(trailers["DM-Source"], "foo");
+        assert_eq!(trailers["DM-Target"], "bar");
+    }
+
+    #[test]
+    fn split_log_message_noop() {
+        let s = "Foo bar baz.";
+        let (header, body) = split_log_message(s);
+        assert_eq!(header, s);
+        assert_eq!(body, None);
+    }
+
+    #[test]
+    fn split_log_message_merge_lines() {
+        let s = "Foo bar
+baz.";
+        let (header, body) = split_log_message(s);
+        assert_eq!(header, "Foo bar baz.");
+        assert_eq!(body, None);
+    }
+
+    #[test]
+    fn split_log_message_1() {
+        let s = "Foo bar
+
+baz.";
+        let (header, body) = split_log_message(s);
+        assert_eq!(header, "Foo bar");
+        assert_eq!(body.unwrap(), "baz.");
+    }
+
+    fn make_resource_repo(
+        git_fixture: git_fixture::RepoFixture,
+        head: &str,
+    ) -> common::repo::GitResourceRepoWithTempDir {
+        let head = git_fixture.get_commit(head).unwrap();
+        let (repo, tempdir) = git_fixture.into_inner();
+        let env = common::Env {
+            versions_url: String::new(),
+            versions_checkout_path: String::new(),
+            ssh_public_key: None,
+            ssh_private_key: None,
+            ssh_username: None,
+        };
+        let inner = GitResourceRepo::from_repo(repo, head, env);
+        common::repo::GitResourceRepoWithTempDir { inner, tempdir }
+    }
+
+    #[test]
+    fn analyze_commits_1() {
+        let fixture =
+            git_fixture::RepoFixture::from_str(include_str!("./fixtures/test_repo1.yaml")).unwrap();
+        let repo = make_resource_repo(fixture, "head");
+        let mut analysis = VersionsAnalysis::default();
+        analyze_commits(&repo.inner, &mut analysis, None, repo.inner.head).unwrap();
+        assert_eq!(analysis.history.len(), 2);
+
+        assert_eq!(analysis.history[0].message, "Commit first");
+        assert_eq!(analysis.history[1].message, "Commit head");
+
+        let foo_id = ResourceId("foo".to_string());
+        let env = EnvName("dev".to_string());
+        let first_commit_id = analysis.history[0].id;
+        let version_1_id = "b82551848c644f63b8517a7bdf8be9a992e6f4da".parse().unwrap();
+        let expected_changes = &[
+            ResourceRepoChange::Version {
+                resource: foo_id.clone(),
+                version: ResourceVersion {
+                    version_id: version_1_id,
+                    introduced_in: first_commit_id,
+                    version: "1".to_string(),
+                    change_log: "".to_string(),
+                },
+            },
+            ResourceRepoChange::VersionDeployed {
+                resource: foo_id.clone(),
+                env: env.clone(),
+                previous_version_id: None,
+                version_id: version_1_id,
+            },
+            ResourceRepoChange::BaseData {
+                resource: foo_id.clone(),
+                env: env.clone(),
+                content_id: "59c5d2b4bc66e952a99b3b18a89cbc1e6704ffa0".parse().unwrap(),
+            },
+        ];
+        assert_eq!(analysis.history[0].changes, expected_changes);
+
+        let head_commit_id = analysis.history[1].id;
+        let version_2_id = "22817d2a9c7fc1f62d5670ca1e44948446543973".parse().unwrap();
+        let expected_changes_2 = &[
+            ResourceRepoChange::Version {
+                resource: foo_id.clone(),
+                version: ResourceVersion {
+                    version_id: version_2_id,
+                    introduced_in: head_commit_id,
+                    version: "2".to_string(),
+                    change_log: "".to_string(),
+                },
+            },
+            ResourceRepoChange::VersionDeployed {
+                resource: foo_id.clone(),
+                env: env.clone(),
+                previous_version_id: Some(version_1_id),
+                version_id: version_2_id,
+            },
+        ];
+        assert_eq!(analysis.history[1].changes, expected_changes_2);
+    }
 }
