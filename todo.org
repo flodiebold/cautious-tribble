@@ -141,9 +141,9 @@ DM-Source: dev
 DM-Target: pp
 ** DONE more details for Blocked and Failed transition status
    CLOSED: [2018-10-31 Mi 20:40]
-** TODO add per-resource locks
+** DONE add per-resource locks
+   CLOSED: [2019-08-29 Do 20:40]
 ** TODO add unlock after transition
-** TODO allow restricting transitions to subdirs
 ** TODO Copy logs from commits when transitioning
   - maybe the aggregator is a better place for that
 ** TODO handle remote callbacks during push and use push_update_reference
@@ -158,6 +158,7 @@ DM-Target: pp
 ** some way of 'transitioning' per-env config like configmaps?
  -> jsonnet
 ** Later
+*** TODO allow restricting transitions to subdirs
 *** TODO add jenkins checks
 *** TODO add k8s job checks
 *** TODO add manual confirm check

@@ -47,9 +47,10 @@ export function VersionDialog(props: IVersionDialogProps) {
             message: `Deploying ${resource} to ${
                 version.version
             } on ${joinedEnvNames} via UI\n\n${reasonMessage}`,
-            deployments: deployEnvNames.map(env => ({
+            resources: deployEnvNames.map(env => ({
                 resource,
                 version_id: version.version_id,
+                locked: true,
                 env
             }))
         };

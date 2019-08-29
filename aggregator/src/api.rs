@@ -138,20 +138,23 @@ pub fn start(service_state: Arc<ServiceState>) -> thread::JoinHandle<()> {
 // TODO move this stuff to a better place, and clean it up
 use common::git::{self, TreeZipper};
 use common::repo;
+use common::transitions::{Lock, Locks};
 
+use failure::ResultExt;
 use git2::Signature;
 
 #[derive(Debug, Deserialize)]
-struct SingleDeploymentData {
+struct ResourceDeploymentData {
     resource: ResourceId,
-    version_id: Id,
+    version_id: Option<Id>,
+    locked: Option<bool>,
     env: EnvName,
 }
 
 #[derive(Debug, Deserialize)]
 struct DeploymentData {
     message: String,
-    deployments: Vec<SingleDeploymentData>,
+    resources: Vec<ResourceDeploymentData>,
 }
 
 fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<Id, Error> {
@@ -160,21 +163,43 @@ fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<I
     let head_commit = repo.repo.find_commit(repo.head)?;
     let tree = head_commit.tree()?;
     let mut zip = TreeZipper::from(&repo.repo, tree.clone());
-    for deployment in data.deployments {
+    for deployment in data.resources {
         zip.descend(&deployment.env.0)?;
-        zip.descend("version")?;
 
-        zip.rebuild(|b| {
-            // FIXME instead find the actual location of the version file for the resource
-            b.insert(
-                format!("{}.yaml", deployment.resource.0),
-                repo::id_to_oid(deployment.version_id),
-                0o100644,
-            )?;
-            Ok(())
-        })?;
+        if let Some(version_id) = deployment.version_id {
+            zip.descend("version")?;
 
-        zip.ascend()?;
+            zip.rebuild(|b| {
+                // FIXME instead find the actual location of the version file for the resource
+                b.insert(
+                    format!("{}.yaml", deployment.resource.0),
+                    repo::id_to_oid(version_id),
+                    0o100644,
+                )?;
+                Ok(())
+            })?;
+
+            zip.ascend()?;
+        }
+
+        if let Some(locked) = deployment.locked {
+            update_locks(&mut zip, &repo.repo, &deployment.env, |locks| {
+                if locked {
+                    // lock
+                    locks
+                        .resource_locks
+                        .entry(deployment.resource.0.clone())
+                        .or_insert_with(Lock::default)
+                        .add_reason("locked from ui");
+                } else {
+                    // unlock
+                    if let Some(locks) = locks.resource_locks.get_mut(&deployment.resource.0) {
+                        locks.remove_reason("locked from ui");
+                    }
+                }
+            })?;
+        }
+
         zip.ascend()?;
     }
 
@@ -205,4 +230,35 @@ fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<I
     info!("Pushed.");
 
     Ok(repo::oid_to_id(commit))
+}
+
+fn update_locks<'repo>(
+    tree: &mut TreeZipper<'repo>,
+    repo: &'repo git2::Repository,
+    env: &EnvName,
+    mut f: impl FnMut(&mut Locks),
+) -> Result<(), Error> {
+    let mut locks = if let Some(blob) = tree.get_blob("locks.yaml")? {
+        serde_yaml::from_slice(blob.content())
+            .with_context(|_| format!("deserializing locks.yaml for env {} failed", env.0))?
+    } else {
+        Locks::default()
+    };
+
+    f(&mut locks);
+    // TODO clean locks (remove resources locks that are empty)
+
+    let mut serialized = serde_yaml::to_vec(&locks).context("serializing locks file failed")?;
+    serialized.extend("\n".as_bytes());
+
+    let blob = repo.blob(&serialized).context("writing blob failed")?;
+
+    tree.rebuild(|builder| {
+        builder
+            .insert("locks.yaml", blob, 0o100644)
+            .context("updating locks file failed")?;
+        Ok(())
+    })?;
+
+    Ok(())
 }

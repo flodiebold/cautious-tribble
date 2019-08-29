@@ -1,9 +1,7 @@
 use failure::{Error, ResultExt};
 use git2::Repository;
-use serde_derive::{Deserialize, Serialize};
 
 use common::git::{self, TreeZipper};
-use std::collections::HashMap;
 
 pub use common::transitions::{Lock, Locks};
 
