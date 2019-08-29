@@ -1,0 +1,23 @@
+commits:
+  - files:
+      prod/locks.yaml: |
+        resource_locks:
+          foo:
+            reasons:
+              - testing
+      available/version/foo.yaml: x
+      prod/version/foo.yaml: y
+      available/version/bar.yaml: x
+      prod/version/bar.yaml: y
+    name: head
+  - files:
+      prod/locks.yaml: |
+        resource_locks:
+          foo:
+            reasons:
+              - testing
+      available/version/foo.yaml: x
+      prod/version/foo.yaml: y
+      available/version/bar.yaml: x
+      prod/version/bar.yaml: x
+    name: expected

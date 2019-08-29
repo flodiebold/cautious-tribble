@@ -130,10 +130,21 @@ fn run_transition(
     for (path, entry) in source.walk(true) {
         let entry = entry?;
         if entry.kind() == Some(ObjectType::Blob) {
-            target.rebuild(|b| {
-                b.insert(entry.name_bytes(), entry.id(), entry.filemode())?;
-                Ok(())
-            })?;
+            if let Some(name) = entry.name() {
+                let resource_name = if name.ends_with(".yaml") {
+                    &name[0..name.len() - ".yaml".len()]
+                } else if name.ends_with(".jsonnet") {
+                    &name[0..name.len() - ".jsonnet".len()]
+                } else {
+                    name
+                };
+                if !target_locks.resource_is_locked(resource_name) {
+                    target.rebuild(|b| {
+                        b.insert(entry.name_bytes(), entry.id(), entry.filemode())?;
+                        Ok(())
+                    })?;
+                }
+            }
         } else if entry.kind() == Some(ObjectType::Tree) {
             while !path.starts_with(&last_path) {
                 last_path.pop();
@@ -445,6 +456,27 @@ mod test {
         let fixture = RepoFixture::from_str(include_str!("./fixtures/prod_locked.yaml")).unwrap();
         fixture.set_ref("refs/dm_head", "head").unwrap();
         let config = make_config(include_str!("./fixtures/three_envs_config.yaml")).unwrap();
+        let client = reqwest::Client::new();
+        let transition_status = Mutex::new(IndexMap::new());
+        let env = make_env(&fixture.repo);
+        let state = ServiceState {
+            config,
+            env,
+            client,
+            transition_status,
+        };
+
+        run_one_transition(&fixture.repo, &state, test_time()).unwrap();
+
+        fixture.assert_ref_matches("refs/dm_head", "expected");
+    }
+
+    #[test]
+    fn test_resource_locked() {
+        let fixture =
+            RepoFixture::from_str(include_str!("./fixtures/resource_locked.yaml")).unwrap();
+        fixture.set_ref("refs/dm_head", "head").unwrap();
+        let config = make_config(include_str!("./fixtures/simple_config.yaml")).unwrap();
         let client = reqwest::Client::new();
         let transition_status = Mutex::new(IndexMap::new());
         let env = make_env(&fixture.repo);
