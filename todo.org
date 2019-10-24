@@ -143,6 +143,9 @@ DM-Target: pp
    CLOSED: [2018-10-31 Mi 20:40]
 ** DONE add per-resource locks
    CLOSED: [2019-08-29 Do 20:40]
+** DONE move transition config to versions repo?
+   CLOSED: [2019-10-24 Do 21:44]
+ - maybe different branch?
 ** TODO add unlock after transition
 ** TODO Copy logs from commits when transitioning
   - maybe the aggregator is a better place for that
@@ -153,8 +156,6 @@ DM-Target: pp
 ** TODO don't log stack traces for connection failures etc.
  - log error on info level
  - keep last error for transition status info
-** TODO move transition config to versions repo?
- - maybe different branch?
 ** some way of 'transitioning' per-env config like configmaps?
  -> jsonnet
 ** Later
