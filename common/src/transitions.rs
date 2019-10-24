@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
@@ -59,3 +59,57 @@ pub struct TransitionRunInfo {
 }
 
 pub type AllTransitionStatus = IndexMap<String, TransitionStatusInfo>;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Lock {
+    pub reasons: Vec<String>,
+}
+
+impl Lock {
+    pub fn is_locked(&self) -> bool {
+        !self.reasons.is_empty()
+    }
+
+    pub fn add_reason(&mut self, reason: &str) {
+        if !self.reasons.iter().any(|r| r == reason) {
+            self.reasons.push(reason.to_owned());
+        }
+    }
+
+    pub fn remove_reason(&mut self, reason: &str) {
+        self.reasons.retain(|r| r != reason);
+    }
+}
+
+impl Default for Lock {
+    fn default() -> Lock {
+        Lock {
+            reasons: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Locks {
+    #[serde(default)]
+    pub env_lock: Lock,
+    #[serde(default)]
+    pub resource_locks: HashMap<String, Lock>,
+}
+
+impl Locks {
+    pub fn resource_is_locked(&self, resource: &str) -> bool {
+        self.resource_locks
+            .get(resource)
+            .map_or(false, |l| l.is_locked())
+    }
+}
+
+impl Default for Locks {
+    fn default() -> Locks {
+        Locks {
+            env_lock: Lock::default(),
+            resource_locks: HashMap::default(),
+        }
+    }
+}
