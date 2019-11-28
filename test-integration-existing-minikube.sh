@@ -11,12 +11,7 @@ echo "Building services..."
 cd integration_test
 
 echo "Building test images..."
-(
-    cd images/example-service
-
-    docker build . --build-arg ANSWER=23 -t exampleservice:23
-    docker build . --build-arg ANSWER=42 -t exampleservice:42
-)
+images/build.sh
 
 echo "Running tests..."
 cargo test "$@"

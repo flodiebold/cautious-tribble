@@ -346,11 +346,22 @@ impl IntegrationTest {
         }
 
         eprintln!(
+            "minikube stdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+
+        eprintln!(
             "minikube stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
 
-        String::from_utf8(output.stdout).unwrap().trim().to_owned()
+        // Newer versions of minikube print a * in front of the service url, for some reason
+        let trim_chars: &[_] = &[' ', '*', '\n'];
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .trim_start_matches(trim_chars)
+            .trim()
+            .to_owned()
     }
 
     pub fn wait_env_rollout_done(&mut self, env: &str) -> &mut Self {
