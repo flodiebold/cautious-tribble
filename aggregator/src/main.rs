@@ -27,7 +27,7 @@ pub struct ServiceState {
     env: Env,
     full_status: RwLock<Arc<FullStatus>>,
     client_counter: AtomicU32,
-    receivers: RwLock<Vec<(u32, futures::sync::mpsc::Sender<Message>)>>,
+    receivers: RwLock<Vec<(u32, futures::channel::mpsc::Sender<Message>)>>,
 }
 
 impl ServiceState {

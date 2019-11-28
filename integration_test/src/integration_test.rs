@@ -1,6 +1,7 @@
 use std;
 use std::collections::HashMap;
 use std::env;
+use std::error::Error as _;
 use std::fs::{self, File};
 use std::io::Write;
 use std::os::unix::process::ExitStatusExt;
@@ -555,7 +556,7 @@ fn should_retry<T>(result: &ReqwestResult<T>) -> bool {
             match error
                 .get_ref()
                 .and_then(|e| e.downcast_ref::<hyper::Error>())
-                .and_then(|e| e.cause2())
+                .and_then(|e| e.source())
                 .and_then(|e| e.downcast_ref::<std::io::Error>())
                 .map(|e| e.kind())
             {

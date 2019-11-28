@@ -82,7 +82,7 @@ export function HistoryView(props: IHistoryViewProps) {
     const history = props.data.history;
     const reversed = props.data.history.slice().reverse();
     return (
-        <Grid container spacing={16} style={{ padding: 16 }}>
+        <Grid container spacing={1} style={{ padding: 16 }}>
             <Grid item xs={12}>
                 <Paper>
                     <Table>

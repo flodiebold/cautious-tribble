@@ -15,9 +15,11 @@ use crate::Env;
 
 fn get_current_transitioner_status(env: &Env) -> Result<AllTransitionStatus, Error> {
     if let Some(transitioner_url) = env.transitioner_url.as_ref() {
-        Ok(reqwest::get(&format!("{}/status", transitioner_url))?
-            .error_for_status()?
-            .json()?)
+        Ok(
+            reqwest::blocking::get(&format!("{}/status", transitioner_url))?
+                .error_for_status()?
+                .json()?,
+        )
     } else {
         bail!("no transitioner url configured");
     }

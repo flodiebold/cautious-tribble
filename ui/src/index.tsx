@@ -178,26 +178,27 @@ function useWebSocket(url: string, onMessage: (ev: MessageEvent) => void) {
 }
 
 function applyMessage(data: IUiData, message: Message): IUiData {
+    const newData = { ...data };
     if (message.type === "FullStatus" || message.type === "DeployerStatus") {
-        Object.assign(data.deployers, message.deployers);
+        Object.assign(newData.deployers, message.deployers);
     }
 
     if (message.type === "FullStatus" || message.type === "TransitionStatus") {
-        Object.assign(data.transitions, message.transitions);
+        Object.assign(newData.transitions, message.transitions);
     }
 
     if (message.type === "FullStatus" || message.type === "Versions") {
-        Object.assign(data.resources, message.resources);
-        data.history = message.history;
+        Object.assign(newData.resources, message.resources);
+        newData.history = message.history;
     }
 
-    data.counter = message.counter;
-    return data;
+    newData.counter = message.counter;
+    return newData;
 }
 
 const theme = createMuiTheme({
     typography: {
-        useNextVariants: true
+        // useNextVariants: true
     }
 });
 

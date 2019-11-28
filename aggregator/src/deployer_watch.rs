@@ -14,7 +14,7 @@ use crate::Env;
 
 fn get_current_deployer_status(env: &Env) -> Result<AllDeployerStatus, Error> {
     if let Some(deployer_url) = env.deployer_url.as_ref() {
-        Ok(reqwest::get(&format!("{}/status", deployer_url))?
+        Ok(reqwest::blocking::get(&format!("{}/status", deployer_url))?
             .error_for_status()?
             .json()?)
     } else {

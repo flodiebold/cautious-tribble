@@ -44,9 +44,7 @@ export function VersionDialog(props: IVersionDialogProps) {
         );
         const joinedEnvNames = deployEnvNames.join(",");
         const data = {
-            message: `Deploying ${resource} to ${
-                version.version
-            } on ${joinedEnvNames} via UI\n\n${reasonMessage}`,
+            message: `Deploying ${resource} to ${version.version} on ${joinedEnvNames} via UI\n\n${reasonMessage}`,
             resources: deployEnvNames.map(env => ({
                 resource,
                 version_id: version.version_id,
@@ -115,7 +113,7 @@ export function VersionDialog(props: IVersionDialogProps) {
                     />
                 </FormControl>
             </DialogContent>
-            <DialogActions disableActionSpacing>
+            <DialogActions disableSpacing>
                 <Button onClick={onClose} color="primary" autoFocus>
                     Cancel
                 </Button>
