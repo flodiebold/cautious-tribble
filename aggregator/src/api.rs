@@ -85,40 +85,25 @@ fn user_connected(
     let client_id = service_state.client_counter.fetch_add(1, Ordering::SeqCst);
 
     // Send messages from the channel to the websocket
-    warp::spawn(
-        async move {
-            while let Some(msg) = chan_rx.next().await {
-                let text = match serde_json::to_string(&msg) {
-                    Ok(t) => t,
-                    Err(err) => {
-                        info!("Error sending WebSocket message to {}: {}", client_id, err);
-                        continue;
-                    }
-                };
-
-                if let Err(err) = ws_tx.send(warp::ws::Message::text(text)).await {
-                    info!(
-                        "WebSocket sender for {} closed with error: {}",
-                        client_id, err
-                    );
-                    break;
+    warp::spawn(async move {
+        while let Some(msg) = chan_rx.next().await {
+            let text = match serde_json::to_string(&msg) {
+                Ok(t) => t,
+                Err(err) => {
+                    info!("Error sending WebSocket message to {}: {}", client_id, err);
+                    continue;
                 }
+            };
+
+            if let Err(err) = ws_tx.send(warp::ws::Message::text(text)).await {
+                info!(
+                    "WebSocket sender for {} closed with error: {}",
+                    client_id, err
+                );
+                break;
             }
-        }, /*
-           // hopefully we can use async/await soon...
-           chan_rx
-               .then(move |msg: Result<Message, ()>| {
-                   Ok(Some(warp::ws::Message::text(text)))
-               })
-               .take_while(|o| Ok(o.is_some()))
-               .filter_map(|o| o)
-               .map_err::<warp::Error, _>(|_e: ()| unreachable!())
-               .forward(ws_tx)
-               .map_err(move |err| {
-               })
-               .map(|_| ()),
-                   */
-    );
+        }
+    });
 
     // TODO add a counter query parameter
     let full_status = service_state.full_status.read().unwrap().clone();
@@ -231,7 +216,7 @@ fn do_deploy(service_state: Arc<ServiceState>, data: DeploymentData) -> Result<I
 
     if new_tree.id() == tree.id() {
         // nothing changed
-        // TODO don't make a commit
+        return Ok(repo::oid_to_id(head_commit.id()));
     }
 
     let signature = Signature::now("DM Aggregator", "n/a")?;

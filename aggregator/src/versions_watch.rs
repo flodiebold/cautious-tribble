@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -57,33 +56,39 @@ fn analyze_commit<'repo>(
 ) -> Result<ResourceRepoCommit, Error> {
     let mut changes = Vec::with_capacity(2);
 
-    let envs = [
-        PathBuf::from("latest"),
-        PathBuf::from("dev"),
-        PathBuf::from("prod"),
-    ]; // FIXME
-
     let msg = commit.message().unwrap_or("[invalid utf8]").to_string();
     let (msg, _trailers) = remove_trailers(msg);
     let (msg_header, msg_body) = split_log_message(&msg);
 
     let commit_id = repo::oid_to_id(commit.id());
 
-    for env_path in &envs {
-        let env = EnvName(env_path.to_str().unwrap().to_string());
-        repo.walk_commit(&env_path.join("version"), commit_id, |entry| {
-            if entry.last_change != commit_id {
-                return Ok(());
-            }
+    repo.walk_commit(std::path::Path::new(""), commit_id, |entry| {
+        if entry.last_change != commit_id {
+            return Ok(());
+        }
+        // FIXME remove unwraps
+        let mut components = entry.path.components();
+        let env = match components.next() {
+            Some(c) => EnvName(c.as_os_str().to_str().unwrap().to_string()),
+            None => return Ok(()),
+        };
+        let next_part = match components.next() {
+            Some(p) => p.as_os_str().to_str().unwrap(),
+            None => return Ok(()),
+        };
+        // XXX determine type of thing from the next path component
+        // XXX do all the things here
+        let name = entry
+            .path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
+            .to_string();
+        let resource_id = ResourceId(name);
+
+        if next_part == "version" {
             // FIXME don't fail if anything is invalid here!
             let content: HashMap<String, String> = serde_yaml::from_slice(&entry.content)?;
-            let name = entry
-                .path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
-                .to_string();
-            let resource_id = ResourceId(name);
             if analysis
                 .resources
                 .get(&resource_id)
@@ -124,19 +129,7 @@ fn analyze_commit<'repo>(
                     version_id: entry.content_id,
                 });
             }
-            Ok(())
-        })?;
-        repo.walk_commit(&env_path.join("base"), commit_id, |entry| {
-            if entry.last_change != commit_id {
-                return Ok(());
-            }
-            let name = entry
-                .path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
-                .to_string();
-            let resource_id = ResourceId(name);
+        } else {
             if analysis
                 .resources
                 .get(&resource_id)
@@ -146,41 +139,22 @@ fn analyze_commit<'repo>(
             {
                 return Ok(());
             }
-            changes.push(ResourceRepoChange::BaseData {
-                resource: resource_id,
-                env: env.clone(),
-                content_id: entry.content_id,
-            });
-            Ok(())
-        })?;
-        repo.walk_commit(&env_path.join("deployable"), commit_id, |entry| {
-            if entry.last_change != commit_id {
-                return Ok(());
+            match next_part {
+                "base" => changes.push(ResourceRepoChange::BaseData {
+                    resource: resource_id,
+                    env: env.clone(),
+                    content_id: entry.content_id,
+                }),
+                "deployable" => changes.push(ResourceRepoChange::Deployable {
+                    resource: resource_id,
+                    env: env.clone(),
+                    content_id: entry.content_id,
+                }),
+                _ => {}
             }
-            let name = entry
-                .path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| format_err!("Invalid file name {:?}", entry.path))?
-                .to_string();
-            let resource_id = ResourceId(name);
-            if analysis
-                .resources
-                .get(&resource_id)
-                .and_then(|r| r.base_data.get(&env))
-                .map(|v| *v == entry.content_id)
-                .unwrap_or(false)
-            {
-                return Ok(());
-            }
-            changes.push(ResourceRepoChange::Deployable {
-                resource: resource_id,
-                env: env.clone(),
-                content_id: entry.content_id,
-            });
-            Ok(())
-        })?;
-    }
+        }
+        Ok(())
+    })?;
 
     Ok(ResourceRepoCommit {
         id: commit_id,
@@ -365,6 +339,11 @@ baz.";
         let first_commit_id = analysis.history[0].id;
         let version_1_id = "b82551848c644f63b8517a7bdf8be9a992e6f4da".parse().unwrap();
         let expected_changes = &[
+            ResourceRepoChange::BaseData {
+                resource: foo_id.clone(),
+                env: env.clone(),
+                content_id: "59c5d2b4bc66e952a99b3b18a89cbc1e6704ffa0".parse().unwrap(),
+            },
             ResourceRepoChange::Version {
                 resource: foo_id.clone(),
                 version: ResourceVersion {
@@ -379,11 +358,6 @@ baz.";
                 env: env.clone(),
                 previous_version_id: None,
                 version_id: version_1_id,
-            },
-            ResourceRepoChange::BaseData {
-                resource: foo_id.clone(),
-                env: env.clone(),
-                content_id: "59c5d2b4bc66e952a99b3b18a89cbc1e6704ffa0".parse().unwrap(),
             },
         ];
         assert_eq!(analysis.history[0].changes, expected_changes);
