@@ -58,6 +58,7 @@
 use https://docs.rs/signal-hook/0.1.0/signal_hook/
 ** TODO support jsonnet
  - [ ] implement import handler
+   - requires rust-jsonnet master
  - [ ] correctly determine change version, even through imports
  - only allow imports from corresponding version file or util folder?
  - possible use case: allowing certain parts of config to transition through the envs
@@ -230,7 +231,8 @@ DM-Target: pp
    CLOSED: [2019-05-16 Do 19:53]
 ** DONE fix cpu usage / refactor message distribution
    CLOSED: [2019-08-29 Do 19:42]
-** TODO fix hardcoded list of envs
+** DONE fix hardcoded list of envs
+   CLOSED: [2019-12-19 Do 20:54]
 ** Maybe
 *** TODO test commit analysis more
 *** TODO integrationtest websocket updates
