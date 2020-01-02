@@ -1,5 +1,5 @@
 status = [
-  "continuous-integration/travis-ci/push",
-  # "continuous-integration/appveyor/branch"
+  "Rust",
+  "TypeScript",
 ]
 delete_merged_branches = true
