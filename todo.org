@@ -47,6 +47,11 @@
   - command `deploy` to deploy
 ** DONE implement separated version files
    CLOSED: [2018-08-04 Sa 20:45]
+** TODO simplification
+ - no merging
+ - prepared packages with the full json/yaml for each env
+ - transitioner needs some more logic
+ - support arbitrary nested paths
 ** TODO improve error handling
  - report errors in yaml parsing etc. on the deployable status
 ** TODO when a deployment fails with 400 or similar, cache that and don't try again until it changes

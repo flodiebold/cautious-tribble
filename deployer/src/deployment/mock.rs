@@ -64,7 +64,7 @@ impl Deployer for MockDeployer {
             resource.name.clone(),
             MockResource {
                 version: resource.version,
-                content: resource.merged_content.clone(),
+                content: resource.content.clone(),
             },
         );
         Ok(())

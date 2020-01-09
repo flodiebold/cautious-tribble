@@ -119,7 +119,7 @@ impl Deployer for KubernetesDeployer {
         let mut result = HashMap::with_capacity(resources.len());
 
         for d in resources {
-            let kind = determine_kind(&d.merged_content)?;
+            let kind = determine_kind(&d.content)?;
 
             let state = match kind {
                 Kind::Deployment => get_deployment_state(&self.client, &self.namespace, d)?,
@@ -160,7 +160,7 @@ impl Deployer for KubernetesDeployer {
 
     fn deploy(&mut self, resource: &Resource) -> Result<(), Error> {
         use serde_json::Value;
-        let mut data: Value = resource.merged_content.clone(); // TODO
+        let mut data: Value = resource.content.clone(); // TODO
         {
             let metadata = data
                 .get_mut("metadata")

@@ -1,7 +1,6 @@
 commits:
   - files:
-      available/otherdir/bar.yaml: xx
-      available/deployable/bar: xx
+      available/otherdir/bar: xx
       available/deployable/subdir/baz: xx
       available/deployable/othersubdir/blub: xx
     name: head
