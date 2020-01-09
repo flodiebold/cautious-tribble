@@ -598,3 +598,12 @@ pub fn retrying_request<T, F: Fn() -> ReqwestResult<T>>(f: F) -> ReqwestResult<T
     }
     result
 }
+
+pub fn skip_minikube_tests() -> bool {
+    let should_skip =
+        std::env::var("CI").is_err() && std::env::var("ENABLE_MINIKUBE_TESTS").is_err();
+    if should_skip {
+        eprintln!("ignoring slow test")
+    }
+    should_skip
+}

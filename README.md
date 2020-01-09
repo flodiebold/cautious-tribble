@@ -73,7 +73,7 @@ This project consists of the following crates:
 There is also the (WIP) typescript + React UI in `ui`.
 
 ### Useful commands
- - `cargo test --all -- --skip minikube`: Runs all tests except the ones requiring minikube
+ - `cargo test --all`: Runs all tests except the ones requiring minikube
  - `test-integration-existing-minikube.sh`: Runs tests, including the minikube tests, but does not start minikube; so you need to have started it with `minikube start` before.
  - `test-integration.sh`: Starts minikube, runs all tests, and stops minikube again.
  - `cargo run -p integration_test`: Starts a 'playground' based on the integration test, with all components running. As long as the process is running, there's a directory `playground/` in which the configuration, versions repo etc. live.
