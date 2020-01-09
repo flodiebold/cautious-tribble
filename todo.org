@@ -62,6 +62,12 @@ use https://docs.rs/signal-hook/0.1.0/signal_hook/
  - [ ] correctly determine change version, even through imports
  - only allow imports from corresponding version file or util folder?
  - possible use case: allowing certain parts of config to transition through the envs
+** TODO make it possible to separate 'latest' etc. from envs in different repos?
+ - i.e. the parts the transitioner/ui is supposed to change vs. the parts that people change
+ - but there still needs to be a commit when there's a new deployable version anyway
+   - for deployments/jobs, but not for configmaps etc.
+** TODO support multiple repos?
+ - use submodules?
 ** TODO files resulting in multiple resources?
 ** Maybe now
 *** TODO better version file merging
@@ -282,6 +288,7 @@ warp: bind_with_graceful_shutdown
 ** TODO show lock status of each env
  - left menu
 ** TODO show lock status of each resource
+** TODO add a way to do a rolling restart of a resource
 ** Later
 *** TODO show base data history for resource
   - needs to be per env

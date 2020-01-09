@@ -4,6 +4,9 @@ use integration_test::*;
 
 #[test]
 fn minikube_deploy_k8s() {
+    if skip_minikube_tests() {
+        return;
+    }
     let mut test = IntegrationTest::new();
     test.create_namespace("dev-");
     let fixture = test.git_fixture(include_str!("./repo_k8s.yaml"));

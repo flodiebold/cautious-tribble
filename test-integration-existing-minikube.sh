@@ -13,5 +13,7 @@ cd integration_test
 echo "Building test images..."
 images/build.sh
 
+export ENABLE_MINIKUBE_TESTS=true
+
 echo "Running tests..."
 cargo test "$@"
